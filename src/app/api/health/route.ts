@@ -12,5 +12,15 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET() {
   const stato = await leggiStato();
-  return NextResponse.json(stato, { status: stato.ok ? 200 : 503 });
+
+  // L'endpoint e' pubblico per poter essere interrogato da nginx e dal deploy,
+  // ma il corpo non deve pubblicare versione di Postgres, estensioni o errori
+  // interni. I dettagli restano disponibili nella dashboard autenticata.
+  return NextResponse.json(
+    { ok: stato.ok },
+    {
+      status: stato.ok ? 200 : 503,
+      headers: { 'Cache-Control': 'no-store' },
+    },
+  );
 }

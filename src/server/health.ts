@@ -1,4 +1,4 @@
-import { prisma } from '@/server/db';
+import { systemPrisma } from '@/server/database/system-client';
 
 /**
  * Stato del sistema.
@@ -28,10 +28,10 @@ export async function leggiStato(): Promise<StatoSistema> {
   const inizio = Date.now();
 
   try {
-    const [versione] = await prisma.$queryRaw<{ versione: string }[]>`
+    const [versione] = await systemPrisma.$queryRaw<{ versione: string }[]>`
       SELECT current_setting('server_version') AS versione
     `;
-    const estensioni = await prisma.$queryRaw<{ extname: string }[]>`
+    const estensioni = await systemPrisma.$queryRaw<{ extname: string }[]>`
       SELECT extname FROM pg_extension ORDER BY extname
     `;
     const latenzaMs = Date.now() - inizio;
@@ -43,7 +43,7 @@ export async function leggiStato(): Promise<StatoSistema> {
     // non è una condizione di errore, è "non ancora migrato".
     let migrazioniApplicate: number | null = null;
     try {
-      const [conteggio] = await prisma.$queryRaw<{ n: bigint }[]>`
+      const [conteggio] = await systemPrisma.$queryRaw<{ n: bigint }[]>`
         SELECT count(*) AS n FROM _prisma_migrations WHERE finished_at IS NOT NULL
       `;
       migrazioniApplicate = conteggio ? Number(conteggio.n) : 0;

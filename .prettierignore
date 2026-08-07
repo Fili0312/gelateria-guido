@@ -3,6 +3,7 @@ node_modules
 src/generated
 prisma/migrations
 pnpm-lock.yaml
+next-env.d.ts
 storage
 tests/fixtures
 

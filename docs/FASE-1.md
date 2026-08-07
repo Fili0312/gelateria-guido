@@ -37,7 +37,7 @@ NEXT_BASE_PATH= pnpm dev
 # Controlli
 pnpm typecheck && pnpm lint && pnpm format:check
 
-# Deploy completo: dipendenze, migrazioni, client, build, riavvio, verifica
+# Deploy completo: dipendenze, client, build, migrazioni, riavvio, verifica
 ./scripts/deploy.sh
 
 # Backup a mano (gira comunque ogni notte alle 03:30)
@@ -51,12 +51,9 @@ tail -f /var/log/gelateria-backup.log
 curl -s https://filippo.eventoyou.com/gelateria/api/health | jq
 ```
 
-**Ripristino da backup:**
-
-```bash
-gunzip -c /var/backups/gelateria/gelateria_guido-AAAAMMGG-HHMMSS.sql.gz \
-  | psql -h 127.0.0.1 -U gelateria -d gelateria_guido
-```
+**Ripristino da backup:** non riversare un dump direttamente sul database
+live. La procedura verificabile su database nuovo, con collaudo e cutover, è in
+[OPERAZIONI.md](OPERAZIONI.md#ripristino-sicuro).
 
 ---
 
@@ -72,9 +69,10 @@ gunzip -c /var/backups/gelateria/gelateria_guido-AAAAMMGG-HHMMSS.sql.gz \
   esistono.
 - **Il client Prisma non è versionato** (`src/generated/`): lo rigenera
   `deploy.sh`.
-- **`deploy.sh` non riavvia se build o migrazioni falliscono**, e non dichiara
-  riuscito un deploy finché `/api/health` non risponde 200. Se fallisce, resta
-  su la versione precedente.
+- **`deploy.sh` costruisce prima di migrare** e non riavvia se build o
+  migrazioni falliscono; non dichiara riuscito un deploy finché `/api/health`
+  non risponde 200. Il limite della build in-place e il recupero dopo una
+  migrazione sono documentati in [OPERAZIONI.md](OPERAZIONI.md).
 - **`backup-db.sh` cancella i dump parziali.** Un archivio pieno di dump
   troncati è peggio di un archivio vuoto, perché sembra un backup che c'è.
   Verificato con un `pg_dump` che fallisce di proposito.

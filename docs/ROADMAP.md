@@ -149,9 +149,14 @@ scelte con cura: cambiarle dopo, con dati in produzione, è fastidioso.
 
 **Obiettivo.** Entrare nell'app e muoversi fra sezioni vuote ma reali.
 
+**Stato codice (7 agosto 2026):** completato e collaudato localmente. La messa
+live attende soltanto la scelta della password condivisa definitiva e il deploy;
+vedi [FASE-3.md](FASE-3.md).
+
 **Cosa sviluppare**
 
-- Login email/password (argon2), sessione su cookie httpOnly, logout.
+- Login con password unica condivisa (argon2id, decisione D4), sessione su
+  cookie httpOnly, logout.
 - Middleware di protezione delle rotte; helper `getCurrentUser()` e scope
   `organization_id` centralizzato nei repository (mai a mano nelle query).
 - Layout applicativo: navigazione laterale/superiore, breadcrumb, toast,
@@ -169,10 +174,10 @@ prima o poi qualcuno scrive una query senza filtro.
 
 **Completata quando**
 
-- [ ] login/logout funzionano, la sessione sopravvive al riavvio del servizio
-- [ ] una rotta protetta senza sessione reindirizza al login
-- [ ] i componenti UI di base sono usati almeno una volta ciascuno
-- [ ] nessuna query di dominio può essere scritta senza `organization_id`
+- [x] login/logout funzionano, la sessione sopravvive al riavvio del processo
+- [x] una rotta protetta senza sessione reindirizza al login
+- [x] i componenti UI di base sono usati almeno una volta ciascuno
+- [x] nessuna query di dominio può essere scritta senza `organization_id`
 
 ---
 

@@ -19,4 +19,61 @@ export default [
       ],
     },
   },
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    rules: {
+      // Il client Prisma grezzo e' un'uscita di sicurezza: ogni altro modulo
+      // applicativo deve passare dalla factory con organizationId obbligatorio.
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@/server/database/system-client',
+              message:
+                'Usare prismaForOrganization(); il client non scoped e riservato a login e health check.',
+            },
+            {
+              name: '@/generated/prisma/client',
+              message: 'Importare i tipi o il client Prisma dal confine @/server/db.',
+            },
+            {
+              name: '@prisma/client',
+              message: 'Importare i tipi o il client Prisma dal confine @/server/db.',
+            },
+          ],
+          patterns: [
+            {
+              group: [
+                '**/database/system-client',
+                '**/database/system-client.*',
+                '**/database/system-client/**',
+              ],
+              message:
+                'Usare prismaForOrganization(); anche gli import relativi del client non scoped sono vietati.',
+            },
+            {
+              group: [
+                '**/generated/prisma/client',
+                '**/generated/prisma/client.*',
+                '**/generated/prisma/client/**',
+              ],
+              message: 'Importare i tipi o il client Prisma dal confine @/server/db.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: [
+      'src/server/db.ts',
+      'src/server/database/system-client.ts',
+      'src/server/health.ts',
+      'src/app/api/auth/login/route.ts',
+    ],
+    rules: {
+      'no-restricted-imports': 'off',
+    },
+  },
 ];

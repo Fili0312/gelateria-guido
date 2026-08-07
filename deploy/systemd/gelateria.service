@@ -1,0 +1,61 @@
+[Unit]
+Description=Gelateria Guido - Gestione listini e ordini (Next.js)
+Documentation=file:///var/www/gelateria-guido/docs/OPERAZIONI.md
+After=network-online.target postgresql.service
+Wants=network-online.target postgresql.service
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=gelateria-app
+Group=gelateria-app
+WorkingDirectory=/var/www/gelateria-guido
+
+# Il service manager legge il file root-owned prima dell'avvio; il processo
+# riceve le variabili necessarie ma non puo' aprire o modificare `.env`.
+EnvironmentFile=/var/www/gelateria-guido/.env
+Environment=NODE_ENV=production
+Environment=NODE_OPTIONS=--max-old-space-size=512
+
+# `HOSTNAME=127.0.0.1` non basta con Next: -H impedisce di esporre la porta
+# applicativa su Internet e obbliga il traffico pubblico a passare da nginx.
+ExecStart=/var/www/gelateria-guido/node_modules/.bin/next start -H 127.0.0.1 -p 3030
+
+Restart=always
+RestartSec=3
+TimeoutStopSec=30
+KillSignal=SIGTERM
+SuccessExitStatus=143 SIGTERM
+SyslogIdentifier=gelateria
+
+# Il processo puo' scrivere soltanto dati applicativi e cache immagini Next.
+UMask=0077
+ProtectSystem=strict
+ReadWritePaths=/var/www/gelateria-guido/storage -/var/www/gelateria-guido/.next/cache
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+RemoveIPC=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+
+MemoryMax=768M
+TasksMax=128
+LimitNOFILE=8192
+
+[Install]
+WantedBy=multi-user.target

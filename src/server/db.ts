@@ -1,31 +1,67 @@
-import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '@/generated/prisma/client';
+import { Prisma } from '@/generated/prisma/client';
+import {
+  applyOrganizationScope,
+  OrganizationScopeError,
+} from '@/server/database/organization-scope';
+import { systemPrisma } from '@/server/database/system-client';
 
 /**
- * Client Prisma condiviso.
+ * Punto di ingresso Prisma per il codice applicativo.
  *
- * In sviluppo Next ricarica i moduli a ogni modifica: senza la cache su
- * `globalThis` ogni ricarica aprirebbe un nuovo pool di connessioni, e dopo
- * qualche minuto Postgres rifiuterebbe di aprirne altre.
+ * Il client senza scope vive intenzionalmente in `database/system-client` ed
+ * e' riservato a health check e bootstrap. Da questo modulo e' esportata solo
+ * la factory che rende organizationId obbligatorio.
  */
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  throw new Error(
-    'DATABASE_URL mancante: copiare .env.example in .env e impostarla. ' +
-      '(In produzione la legge systemd da EnvironmentFile.)',
+/**
+ * Client da usare per ogni query applicativa. Tutti i modelli che possiedono
+ * `organizationId` vengono filtrati automaticamente e ricevono la colonna in
+ * scrittura; i delegate che non possono essere isolati direttamente vengono
+ * rifiutati e vanno raggiunti come operazioni nested dal loro genitore.
+ *
+ * Il codice di dominio deve partire sempre da questa factory.
+ */
+function createOrganizationPrismaClient(organizationId: string) {
+  if (!organizationId) throw new OrganizationScopeError('organizationId obbligatorio.');
+
+  return systemPrisma.$extends(
+    Prisma.defineExtension({
+      name: 'organization-scope',
+      query: {
+        $allModels: {
+          $allOperations({ model, operation, args, query }) {
+            const scopedArgs = applyOrganizationScope(model, operation, args, organizationId);
+            return query(scopedArgs as typeof args);
+          },
+        },
+      },
+    }),
   );
 }
 
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+type ExtendedOrganizationPrismaClient = ReturnType<typeof createOrganizationPrismaClient>;
+type ClientControlMethod = Extract<keyof ExtendedOrganizationPrismaClient, `$${string}`>;
+type NonDirectlyScopedDelegate =
+  | 'organization'
+  | 'priceListRow'
+  | 'supplierImportProfile'
+  | 'importJob'
+  | 'productAlias'
+  | 'productMatchCandidate'
+  | 'supplierProductPrice'
+  | 'productBestOffer'
+  | 'orderLine'
+  | 'orderDocument'
+  | 'emailDelivery'
+  | 'aiCache';
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    adapter: new PrismaPg({ connectionString }),
-    log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
-  });
+/** Espone solo i delegate dei modelli, mai query raw o metodi di controllo. */
+export type OrganizationPrismaClient = Omit<
+  ExtendedOrganizationPrismaClient,
+  ClientControlMethod | NonDirectlyScopedDelegate
+>;
+export type OrganizationJsonInput = Prisma.InputJsonValue;
 
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma;
+export function prismaForOrganization(organizationId: string): OrganizationPrismaClient {
+  return createOrganizationPrismaClient(organizationId);
 }

@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "next dev -p 3030",
     "build": "next build",
-    "start": "next start -p 3030",
-    "lint": "eslint src",
+    "start": "next start -H 127.0.0.1 -p 3030",
+    "lint": "eslint src scripts/*.{ts,mjs}",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -16,12 +16,14 @@
     "db:migrate": "./scripts/nuova-migrazione.sh",
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "auth:hash": "tsx scripts/genera-hash-password.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@node-rs/argon2": "^2.0.2",
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.8.0",
     "decimal.js": "^10.6.0",
