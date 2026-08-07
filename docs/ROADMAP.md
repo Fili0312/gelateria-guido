@@ -356,6 +356,18 @@ e ripreso.
 dietro un'interfaccia e con il **profilo per fornitore** che la rende
 progressivamente superflua.
 
+> **Cosa può e cosa non può salvare l'IA.** Sono due guasti diversi e vanno
+> tenuti separati, perché hanno rimedi diversi:
+>
+> | Il PDF… | DeepSeek serve? |
+> | --- | --- |
+> | ha il testo, ma disordinato (colonne fuse, righe a capo, layout strano) | **Sì — è esattamente questo il suo lavoro.** Riceve il testo grezzo e ne ricava i campi |
+> | non ha testo (scansione, foto) | **No.** Un modello testuale riceverebbe una stringa vuota: non c'è niente da interpretare. Serve OCR o un modello che veda le immagini |
+>
+> Nessuno dei tre listini della gelateria è nel secondo caso, quindi oggi la
+> questione non si pone. Se un giorno arriva un fornitore che manda scansioni,
+> le strade sono due — vedi «Idee fuori perimetro» in fondo.
+
 **Cosa sviluppare**
 
 - `server/ai/provider.ts` (interfaccia) + `deepseek.ts` + `mock.ts`
@@ -986,7 +998,7 @@ attività.
 
 | Idea                                        | Quando ha senso                                                                      |
 | ------------------------------------------- | ------------------------------------------------------------------------------------ |
-| OCR per listini scansionati                 | non serve: nessuno dei listini veri è scansionato (Fase 0)                           |
+| OCR / lettura di listini scansionati        | non serve oggi: nessuno dei tre listini veri è scansionato (Fase 0). Se arriva un fornitore che manda scansioni, due strade — vedi sotto |
 | ~~Invio ordine al fornitore via email/PDF~~ | **promosso a Fasi 16–17, dentro l'MVP** (richiesta del 2026-08-07)                   |
 | Import da Excel/CSV oltre al PDF            | **da rimettere in Fase 7** se AD Beverage conta: manda `.xls` (vedi D15)             |
 | Ricezione merce e controllo bolle vs ordine | è il naturale passo successivo: scopre gli errori di fatturazione                    |
@@ -994,6 +1006,25 @@ attività.
 | Embeddings (pgvector) per l'abbinamento     | solo se trigram + LLM si rivelassero insufficienti; richiede installare l'estensione |
 | Suggerimenti d'ordine sui consumi storici   | dopo 6–12 mesi di dati veri                                                          |
 | App mobile / PWA offline                    | se l'ordine si fa girando per il magazzino                                           |
+
+### Se un giorno arriva un listino scansionato
+
+Un modello testuale come DeepSeek non può aiutare: senza livello di testo non
+c'è niente da dargli in pasto. Le alternative:
+
+| Strada | Costo | Qualità sulle tabelle |
+| --- | --- | --- |
+| **OCR con `tesseract`** (da installare, gratuito) | zero per pagina | mediocre: legge le parole ma perde le colonne, e su un listino le colonne *sono* il dato. Il testo che ne esce va comunque interpretato dall'IA |
+| **Modello con vista** (es. Claude, che legge i PDF nativamente come allegato) | qualche centesimo a pagina | nettamente migliore: vede il layout, quindi tiene insieme riga e colonna |
+
+Raccomandazione se il caso si presenta: **il modello con vista**, usato solo
+per quel fornitore. È l'unico caso in cui vale la pena spendere più dei
+centesimi di DeepSeek — e l'interfaccia `LlmProvider` della Fase 8 esiste
+apposta perché aggiungerlo sia un file nuovo, non una riscrittura.
+
+Nota tecnica: DeepSeek nella pipeline è il modello di chat testuale
+(`deepseek-v4-flash`) e non legge immagini. Il ripiego con vista è un provider
+diverso, non un'opzione dello stesso.
 
 ---
 
