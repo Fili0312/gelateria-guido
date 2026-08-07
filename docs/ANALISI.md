@@ -196,12 +196,31 @@ IVA esclusa, altri inclusa, e sbagliarlo falsa ogni confronto.
 id, organization_id, supplier_id, original_filename, storage_path,
 file_hash (sha256, UNIQUE con supplier_id), page_count, currency (EUR),
 valid_from?, valid_to?, status, uploaded_by_id, uploaded_at, applied_at?,
+document_type (LISTINO|PREVENTIVO|ORDINE_VENDITA|CATALOGO),
+scope_label? ("vini e spumanti", "generale"),  -- copertura dichiarata
 extractor_version, stats (jsonb), error?
 ```
 
 `status ∈ {UPLOADED, EXTRACTING, EXTRACTED, STRUCTURING, MATCHING, REVIEW, APPLYING, APPLIED, FAILED, DISCARDED}`
 `file_hash` unico per fornitore = protezione contro il doppio caricamento
 dello stesso file.
+
+> **Un fornitore manda più listini parziali — rilevato sui file veri.**
+> Cecconi ne manda due, «vini e spumanti» e «tutto il resto»: 187 codici in uno,
+> 33 nell'altro, **1 solo in comune**. Conseguenza diretta sul punto 4 della
+> specifica: i «prodotti spariti» **non** si calcolano sull'intero catalogo del
+> fornitore, o importare il listino dei vini farebbe sparire tutti gli alcolici.
+> Si calcolano solo fra listini con la **stessa copertura** — cioè fra un
+> listino e il precedente dello stesso `scope_label`, e in dubbio non si marca
+> niente come sparito: un falso «sparito» fa perdere un prodotto dal confronto,
+> un mancato «sparito» lascia solo un prezzo vecchio, che è il male minore.
+>
+> Nota sul `document_type`: i file veri non sono listini generici ma
+> **preventivi e ordini di vendita intestati alla gelateria** (Barzelli:
+> «PREVENTIVO n. 1108»; Cecconi: «Ordine di vendita» a GELATERIA GUIDO SNC).
+> È un bene — i prezzi sono già quelli riservati al cliente — ma hanno una
+> colonna `Q.tà` sempre a 1 che **non è la confezione**: un estrattore
+> distratto la scambierebbe per i pezzi per collo.
 
 **`price_list_row`** — la riga grezza, cuore della revisione
 
@@ -296,13 +315,31 @@ reason?, ai_call_id?, decided (bool), decided_by_id?, decided_at?, accepted (boo
 **`supplier_product_price`** — storico, **append-only**
 
 ```
-id, supplier_product_id, price_list_id?, price_net (decimal 12,4),
-vat_rate?, currency, discount_pct?,
-unit_price (decimal 12,6, CALCOLATO: prezzo per unità base),
+id, supplier_product_id, price_list_id?,
+price_list (decimal 12,4),          -- prezzo di listino, PRIMA degli sconti
+discounts (jsonb: [6, 10]),         -- sconti in cascata, in ordine
+price_net (decimal 12,4),           -- quello che si paga davvero
+vat_rate?, currency,
+unit_price (decimal 12,6, CALCOLATO: price_net per unità base),
 unit_price_basis (PER_PIECE|PER_KG|PER_L),
 valid_from (date), valid_to (date?),  -- NULL = prezzo corrente
 source (PRICE_LIST|MANUAL|ORDER), created_by_id?, created_at
 ```
+
+> **Sconti in cascata — rilevato sui listini veri (2026-08-07).** Entrambi i
+> fornitori applicano sconti percentuali **moltiplicativi in sequenza**, non un
+> singolo sconto: Barzelli ne ha due colonne (`SC.1%`, `SC.2%`), Cecconi cinque.
+> Esempio verificato: `4,61 × (1−0,06) × (1−0,10) = 3,90`. Un solo campo
+> `discount_pct` sarebbe stato sbagliato, e l'errore si sarebbe visto solo nei
+> totali.
+>
+> Si memorizzano **tutti e tre** i valori: listino, catena di sconti, netto.
+> Il netto è quello che entra in ogni confronto e in ogni totale — è il prezzo
+> che si paga. Il listino e gli sconti servono a capire *perché* un prezzo è
+> cambiato: un aumento del 5% con lo sconto invariato è un rincaro del
+> fornitore; lo stesso aumento con lo sconto sceso dal 10% al 6% è una
+> condizione commerciale peggiorata. Sono due problemi diversi e vanno
+> distinti.
 
 Regola ferrea: **non si aggiorna mai una riga di prezzo**. Un prezzo nuovo
 chiude il precedente (`valid_to`) e ne inserisce uno nuovo. Questo dà gratis:
@@ -523,6 +560,27 @@ Questa funzione è il pezzo di codice più importante del progetto dopo
 l'apply dell'import. Ha test unitari con decine di casi reali presi dai
 listini veri e vive in `server/domain/packaging/`.
 
+> **Vocabolario vero, dai listini della gelateria.** Il formato sta quasi
+> sempre **dentro la descrizione**, non in una colonna: `CL.50`, `LT.1`,
+> `CL.33X24`, `0.700`, `1/1`, `cl 70`, `ctx12`, `LATTINA CL.15`.
+> Due convenzioni di mestiere che il parser deve conoscere e che nessuna
+> libreria generica indovina:
+>
+> - **`1/1` significa un litro** (e `1/2` mezzo litro): è la vecchia notazione
+>   delle bottiglie. Compare 40+ volte da Barzelli.
+> - **`0.700`, `0.450`, `0.270`** sono litri scritti col punto decimale, non
+>   millilitri: `0.700` = 70 cl.
+>
+> Unità di vendita osservate: `BT`/`UN` (bottiglia, pezzo singolo),
+> `CO`/`CT` (collo, cartone), `PZ`, `conf`. **L'85% delle righe vende il
+> pezzo singolo**, quindi `pack_quantity = 1` e il prezzo unitario è diretto.
+> Il problema si concentra sul restante 15% venduto a collo, dove i pezzi per
+> confezione **non sono quasi mai dichiarati** (3% delle righe): lì il prezzo
+> per litro non è calcolabile e non va inventato. Si mostra il prezzo a collo,
+> si marca «confezione da definire», e l'utente la inserisce **una volta
+> sola** — poi resta sul `supplier_product` per sempre, esattamente come un
+> alias.
+
 ### 5.2 La cascata
 
 | #   | Metodo                          | Condizione                                                                                                               | Esito                                                                                                        |
@@ -539,6 +597,23 @@ listini veri e vive in `server/domain/packaging/`.
 "Birra XYZ 33cl" e "Birra XYZ 66cl" hanno similarity testuale altissima ma
 formati diversi, e senza quel filtro verrebbero fusi. Il testo da solo non
 basta mai.
+
+> **Il passo 1 non serve: non esistono codici a barre.** Nei listini veri
+> Cecconi stampa un campo `EAN:` che però **ripete il codice interno**
+> (5–7 caratteri: `EAN: 20561` per l'articolo `20561`), non un GTIN a 13 cifre;
+> Barzelli non ha nessun EAN. Su 187 righe, zero codici a barre reali.
+>
+> Il passo resta nel modello — un fornitore futuro potrebbe averli, e quando ci
+> sono sono la certezza assoluta — ma **il peso del riconoscimento cade tutto
+> sui passi 3–6**: alias appresi, trigram con filtro di formato, arbitrato IA.
+> Il che rende la schermata di revisione (Fase 10) e gli alias ancora più
+> centrali di quanto previsto: sono l'unico modo in cui il sistema diventa
+> preciso nel tempo.
+>
+> Attenzione a una trappola specifica: un campo chiamato `EAN` che non contiene
+> un EAN è peggio di un campo assente, perché invita a fidarsi. In fase di
+> estrazione va validato (13 cifre + checksum) e, se non lo è, **scartato** —
+> non salvato in `gtin`.
 
 ### 5.3 L'apprendimento
 

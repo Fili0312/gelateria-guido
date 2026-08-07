@@ -37,13 +37,44 @@ costringerebbero a riscrivere. Nessun codice applicativo.
 
 **→ La Fase 1 (setup e infrastruttura) è sbloccata e può partire.**
 
+## ✅ Listini analizzati (2026-08-07)
+
+Ricevuti 4 file da 3 fornitori. Report completo in `tests/fixtures/REPORT.md`.
+
+| File | Esito |
+| --- | --- |
+| `29.04.26 listino BARZELLI.pdf` | 6 pagine, 145 righe prezzo, 8 colonne — testo estraibile ✅ |
+| `Cecconi Listino prezzi al 28.02.25.pdf` | 9 pagine, 194 righe, 10 colonne — testo estraibile ✅ |
+| `Cecconi Listino Vini e Spumanti al 26.03.25.pdf` | 2 pagine, 37 righe, 9 colonne — testo estraibile ✅ |
+| `Listino prezzi AD Beverage dal 01.07.26.xls` | 485 articoli, **zero prezzi** → vedi D15 |
+
+**Cosa hanno risposto:**
+
+- **Niente OCR**: tutti i PDF hanno il livello di testo. `tesseract` non serve.
+- **D7 — niente scaglioni**, ma **sconti a cascata** (fino a 5 livelli,
+  moltiplicativi). Cambia `supplier_product_price`.
+- **D6 — prezzi al netto**, aliquota IVA per riga.
+- **D8 — nessuna foto di prodotto** su 331 articoli.
+- **Nessun codice a barre reale**: il campo `EAN:` di Cecconi ripete il codice
+  interno. Il riconoscimento poggia tutto su alias, trigram e IA.
+- **Descrizioni su più righe** (Cecconi): il caso più insidioso della Fase 7,
+  confermato presente nei dati veri.
+- **Un fornitore = più listini parziali disgiunti**: Cecconi ne manda due con
+  1 codice in comune su 220. I «prodotti spariti» vanno calcolati per copertura.
+- **Pezzi per collo quasi mai dichiarati** (3%) → D17.
+
+Dettagli e conseguenze sullo schema: [DECISIONI.md](DECISIONI.md) D6, D7, D8,
+D15, D16, D17 · [ANALISI.md](ANALISI.md) §3.2, §3.4, §5.1, §5.2.
+
 ## ⏳ Ancora in attesa
 
-- I **PDF dei listini reali** → `tests/fixtures/listini/`.
-  Bloccano la **Fase 2**: se contengono prezzi a scaglioni (D7) lo schema del
-  database cambia, e rifarlo dopo significa migrare dati.
+- Risposte a **D15** (AD Beverage ha una versione con i prezzi?), **D16**
+  (sconti contrattuali o per preventivo?), **D17** (pezzi per collo).
+  Nessuna blocca la Fase 2: le raccomandazioni scritte in DECISIONI.md
+  reggono anche senza risposta.
 - **Chiave DeepSeek e tetto di spesa** (D11) → serve alla Fase 8.
-- D6, D7, D8 → le risolve il report appena arrivano i PDF.
+- Listini di **altri fornitori**, quando arrivano: ogni fornitore nuovo è un
+  layout nuovo, e più ne vediamo prima, meglio è tarato l'estrattore.
 
 ---
 
@@ -96,12 +127,11 @@ possono emergere anche dai PDF:
 - [x] cartella fixtures pronta con istruzioni
 - [x] vincoli del server verificati e messi per iscritto
 - [x] D1, D2, D3, D4, D5, D12 decise e scritte in [DECISIONI.md](DECISIONI.md)
-- [ ] ≥3 PDF reali in `tests/fixtures/listini/`
-- [ ] `REPORT.md` generato e letto
-- [ ] D6, D7, D8 risolte dal report (o confermate a voce)
-- [ ] D11: chiave DeepSeek e tetto di spesa
-- [ ] elenco delle forme di confezione/unità osservate → test-set di Fase 2
+- [x] ≥3 PDF reali in `tests/fixtures/listini/` (3 PDF + 1 Excel, 3 fornitori)
+- [x] `REPORT.md` generato e letto
+- [x] D6, D7, D8 risolte
+- [x] elenco delle forme di confezione/unità osservate → test-set di Fase 2
+- [ ] D11: chiave DeepSeek e tetto di spesa (serve solo dalla Fase 8)
 
-La Fase 1 non aspetta questi punti: si può iniziare. Il primo vero blocco è la
-**Fase 2**, che ha bisogno della risposta su D7 (scaglioni) prima di fissare lo
-schema.
+**✅ FASE 0 COMPLETATA.** La Fase 2 è sbloccata: si sa che non servono gli
+scaglioni, che servono gli sconti a cascata e che i prezzi sono al netto.

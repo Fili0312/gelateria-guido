@@ -110,35 +110,69 @@ la revisione di ogni singola query. Il rapporto è schiacciante.
 
 ---
 
-## 🔴 D6 — IVA: i listini sono IVA inclusa o esclusa? (blocca la Fase 2)
+## ✅ D6 — IVA: i listini sono IVA inclusa o esclusa?
 
-**Stato:** APERTA · **Raccomandazione:** flag `prices_include_vat` per
-fornitore + `default_vat_rate`; confronti sempre sul **netto**.
+**Stato:** **DECISA (2026-08-07) sui listini veri: prezzi al NETTO (imponibile),
+aliquota indicata riga per riga.**
 
-Serve la risposta dai PDF reali. Una gelateria ha aliquote miste (4% / 10% /
-22%) e confrontare un prezzo lordo con uno netto falsa ogni confronto in modo
-plausibile — cioè difficile da accorgersene.
+Entrambi i fornitori hanno una colonna `IVA` con l'aliquota (22% ovunque nei
+file esaminati) accanto a un prezzo che la esclude. Quindi:
 
-Domande collegate: l'IVA compare riga per riga nei listini? Gli ordini vanno
-gestiti al netto o al lordo?
+- `supplier.prices_include_vat = false` per Barzelli e Cecconi;
+- `vat_rate` per riga resta necessario (una gelateria compra anche 4% e 10%:
+  qui non compaiono solo perché questi due fornitori vendono bevande e alcolici);
+- tutti i confronti e i totali si fanno **sul netto**, l'IVA si aggiunge solo
+  in fondo al riepilogo.
+
+Il flag `prices_include_vat` resta comunque nel modello: serve al primo
+fornitore che manderà un listino al lordo, e non costa nulla averlo.
+
+⚠️ Attenzione a un falso amico: in questi documenti **«netto» significa "dopo
+gli sconti", non "senza IVA"**. `IMPORTO NETTO` di Barzelli è il prezzo
+scontato, IVA comunque esclusa. Nel codice si useranno nomi non ambigui
+(`price_list`, `price_net`, `price_gross_vat`).
 
 ---
 
-## 🔴 D7 — Prezzi a scaglioni (blocca la Fase 2)
+## ✅ D7 — Prezzi a scaglioni
 
-**Stato:** APERTA · **Raccomandazione:** verificare sui PDF; se presenti,
-aggiungere una tabella `price_tier` **prima** della Fase 2.
+**Stato:** **DECISA (2026-08-07) sui listini veri: NIENTE SCAGLIONI.**
+Non serve la tabella `price_tier`. Un prezzo per prodotto basta.
 
-Se un listino dice "1-10 pz €12,00 / 11-50 pz €11,20 / 51+ €10,50", il modello
-"un prezzo per prodotto" non basta e cambierebbero schema, confronto e ordine.
-È molto meno costoso saperlo ora.
+Lo script aveva segnalato «sospetti scaglioni» su tutti e tre i PDF (99–100%
+di righe con 2+ prezzi), ma la verifica a mano dice altro: quei numeri sono
+**prezzo di listino → sconti → totale netto**, non fasce di quantità.
+
+**Scoperta al posto degli scaglioni: gli sconti sono a cascata.**
+
+| Fornitore | Colonne prezzo |
+| --- | --- |
+| Barzelli | `PREZZO UNITARIO · SC.1% · SC.2% · IMPORTO NETTO · IVA` |
+| Cecconi | `Prezzo · % · % · % · % · % · Tot. netto · IVA (%)` |
+
+Sono sconti **moltiplicativi in sequenza**, verificati sull'aritmetica:
+
+```
+Barzelli  4,61 × (1−0,06) × (1−0,10) = 3,90  ✓
+Barzelli 18,33 × (1−0,06) × (1−0,04) = 16,54 ✓
+Cecconi  10,30 × (1−0,24)            = 7,83  ✓
+```
+
+Conseguenza sullo schema (già recepita in ANALISI §3.4): `supplier_product_price`
+memorizza **listino + catena di sconti + netto**, non un solo `discount_pct`.
+Il netto entra in ogni confronto; listino e sconti servono a distinguere un
+rincaro del fornitore da un peggioramento delle condizioni commerciali.
 
 ---
 
-## D8 — Immagini dei prodotti
+## ✅ D8 — Immagini dei prodotti
 
-**Stato:** APERTA · **Raccomandazione:** v1 senza immagini automatiche; upload
-manuale opzionale per prodotto. Estrazione da PDF (`pdfimages`) valutata dopo.
+**Stato:** **DECISA (2026-08-07): v1 senza immagini.** Confermata dai file veri.
+
+Cecconi: zero immagini. Barzelli: 6 immagini su 6 pagine — cioè una per pagina,
+quindi intestazione/logo, non foto di prodotto. Su 331 articoli reali non
+esiste **nessuna** foto. L'interfaccia si progetta come lista densa, e le foto
+restano un di più eventuale con upload manuale.
 
 Associare in modo affidabile un'immagine estratta alla riga giusta di un PDF è
 un problema più difficile di quanto sembri (posizione ≠ appartenenza), e la
@@ -236,6 +270,58 @@ le preclude.
   capire se ne serve uno a livello di fornitore.
 - Import da Excel/CSV oltre al PDF → economico da aggiungere; alcuni fornitori
   mandano già file strutturati, e sarebbero i più facili da trattare.
+
+---
+
+## 🆕 Domande nate dai listini veri (2026-08-07)
+
+### 🔴 D15 — Il file di AD Beverage non ha prezzi (blocca l'uso di quel fornitore)
+
+`Listino prezzi AD Beverage dal 01.07.26.xls` contiene **485 articoli e zero
+prezzi**: la colonna «Prezzo u.» è vuota su tutte le righe, e in tutto il file
+non c'è **una sola cella numerica**. È un catalogo, non un listino.
+
+Ha però due cose preziose che agli altri mancano: una **categoria merceologica**
+per ogni articolo (30 categorie: ACQUA, AMARO, BIRRA, GIN…) e, spesso, i
+**pezzi per confezione** dentro la descrizione (`CL.33X24`, `LITRO PETX12`) —
+proprio il dato che manca a Cecconi e Barzelli.
+
+Serve sapere: esiste una versione con i prezzi? Arrivano a parte? Oppure quel
+file va usato come **catalogo di riferimento** e i prezzi si inseriscono a mano?
+
+Nota: è un `.xls`, non un PDF. L'import da Excel era «fuori perimetro» nella
+roadmap: se AD Beverage conta, va rimesso dentro — costa comunque molto meno
+dell'import da PDF, perché i dati sono già in celle.
+
+### D16 — Gli sconti sono contrattuali o legati al singolo preventivo?
+
+I due file non sono listini generici ma **documenti intestati alla gelateria**
+(un «PREVENTIVO» Barzelli, un «Ordine di vendita» Cecconi), con sconti già
+applicati riga per riga. Se quegli sconti sono le condizioni stabili del
+cliente, il prezzo netto è il prezzo vero e non c'è altro da sapere. Se invece
+cambiano da preventivo a preventivo, va deciso se confrontare i fornitori sul
+netto (condizioni attuali) o sul lordo (listino puro).
+
+**Raccomandazione:** confrontare sul netto in ogni caso — è quello che si paga —
+e tenere lordo e sconti a fianco per capire da dove viene una variazione.
+
+### D17 — Pezzi per collo, quando non sono scritti
+
+Nell'85% delle righe si compra il pezzo singolo (`BT`, `UN`) e il prezzo
+unitario è diretto. Nel restante 15% si compra a collo (`CO`, `CT`) e **i pezzi
+per confezione non sono quasi mai indicati** (3% delle righe): «ALISEA
+NATURALE CL.50 PET — CO — 5,25 €» non dice quante bottiglie ci sono.
+
+Senza quel numero il prezzo al litro non è calcolabile. Le opzioni:
+
+1. **(consigliata)** si mostra il prezzo a collo, si marca «confezione da
+   definire», e l'utente inserisce il numero **una volta sola**: resta sul
+   prodotto per sempre, come un alias. Sono ~35 prodotti sui due listini, cioè
+   mezz'ora di lavoro una tantum.
+2. Si prova a dedurlo dal catalogo AD Beverage, che spesso lo dichiara
+   (`CL.50 PET X24`) — ma è un'inferenza fra fornitori diversi e può sbagliare.
+3. Non si calcola il prezzo al litro per quei prodotti e si confrontano solo
+   colli con colli.
 
 ---
 
