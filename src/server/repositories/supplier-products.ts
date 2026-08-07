@@ -189,8 +189,8 @@ export function supplierProductsRepository(organizationId: string) {
     async update(id: string, patch: SupplierProductPatch): Promise<SupplierProductListItem> {
       const corrente = (await db.supplierProduct.findFirst({
         where: { id },
-        select: OFFER_INCLUDE.select,
-      })) as OfferRecord | null;
+        select: { ...OFFER_INCLUDE.select, _count: { select: { prices: true } } },
+      })) as (OfferRecord & { _count: { prices: number } }) | null;
       if (!corrente) throw new SupplierProductNotFoundError('Prodotto fornitore non trovato.');
 
       const fuso = {
@@ -222,6 +222,22 @@ export function supplierProductsRepository(organizationId: string) {
 
       const dati = completo.data;
       const derivati = derivatiOfferta(dati);
+
+      // Lo unitario nello storico e' una fotografia calcolata col contenuto
+      // della confezione al momento del prezzo. Cambiare dopo il denominatore
+      // o il fornitore farebbe apparire quel valore accanto a un formato che
+      // non lo ha prodotto. La futura correzione dovra' essere atomica e
+      // appendere un nuovo snapshot; finche' non esiste, il dato storico
+      // viene protetto invece di diventare plausibile ma falso.
+      const cambiaIdentitaPrezzo =
+        dati.supplierId !== corrente.supplierId ||
+        derivati.contentPerPack !== corrente.contentPerPack.toString() ||
+        derivati.baseUnit !== corrente.baseUnit;
+      if (corrente._count.prices > 0 && cambiaIdentitaPrezzo) {
+        throw new SupplierProductConflictError(
+          "L'offerta ha uno storico prezzi: fornitore o contenuto della confezione non si possono cambiare senza registrare un nuovo snapshot.",
+        );
+      }
 
       await db.supplierProduct.update({
         where: { id },

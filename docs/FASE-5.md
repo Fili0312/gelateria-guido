@@ -324,10 +324,10 @@ allineati alla convenzione già usata nel resto del progetto (senza estensione).
   (`MIN_PASSWORD_LENGTH`). Vale la pena allungarla prima che l'app contenga
   dati veri.
 
-## Prossimo passo
+## Fasi successive
 
-Prima della Fase 6 è stata inserita e completata la
-**Fase 5b — Reparti e categorie**, nata da un'esigenza reale durante gli
-ordini. È documentata in [FASE-5B.md](FASE-5B.md). Il passo successivo è ora la
-**Fase 6 — Storico prezzi**: servizio `setPrice` append-only, prezzo alla data,
-serie storica e grafico nella scheda prodotto.
+Dopo il catalogo sono state completate la
+**Fase 5b — Reparti e categorie**, documentata in
+[FASE-5B.md](FASE-5B.md), e la **Fase 6 — Storico prezzi**, documentata in
+[FASE-6.md](FASE-6.md). Il passo successivo è la **Fase 7 — Estrazione PDF
+deterministica**.

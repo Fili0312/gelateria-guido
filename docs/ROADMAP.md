@@ -313,6 +313,10 @@ Implementazione, migrazione, backup e smoke test sono documentati in
 **Obiettivo.** Il meccanismo append-only funzionante e visibile, alimentato a
 mano. Quando arriverà l'import, dovrà solo chiamare queste funzioni.
 
+**Stato (7 agosto 2026):** implementata e pronta al collaudo di rilascio. Le
+regole temporali, l'API, l'interfaccia e la procedura di verifica sono
+documentate in [FASE-6.md](FASE-6.md).
+
 **Cosa sviluppare**
 
 - Servizio `setPrice(supplierProductId, price, validFrom, source, priceListId?)`:

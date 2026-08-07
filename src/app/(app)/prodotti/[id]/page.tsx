@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { ProductPriceHistory } from '@/components/prices/product-price-history';
 import { ProductAliases } from '@/components/products/product-aliases';
 import { ProductOffers } from '@/components/products/product-offers';
 import { Badge } from '@/components/ui';
@@ -7,6 +8,7 @@ import { CategoryBadge } from '@/components/taxonomy/category-badge';
 import { formatoUnitario } from '@/features/products/format';
 import { getCurrentUser } from '@/server/auth';
 import { withBasePath } from '@/server/base-path';
+import { pricesRepository } from '@/server/repositories/prices';
 import { productsRepository } from '@/server/repositories/products';
 
 export const dynamic = 'force-dynamic';
@@ -27,6 +29,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const { id } = await params;
   const prodotto = await productsRepository(user.organizationId).get(id);
   if (!prodotto) notFound();
+  const storiciPrezzo = await pricesRepository(user.organizationId).forProduct(id);
 
   const daDefinire = prodotto.offersCount - prodotto.comparableOffersCount;
 
@@ -84,6 +87,21 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           </Link>
         </div>
         <ProductOffers offers={prodotto.offers} />
+      </section>
+
+      <section id="storico-prezzi" className="scroll-mt-6 space-y-3">
+        <div>
+          <h2 className="text-xl font-black text-neutral-950">Storico prezzi</h2>
+          <p className="mt-1 max-w-3xl text-sm text-neutral-500">
+            Ogni variazione resta visibile: il grafico segue il prezzo netto effettivo e la tabella
+            conserva listino, sconti e prezzo per unità. Puoi inserire anche una data passata o
+            correggere un prezzo registrato nello stesso giorno.
+          </p>
+        </div>
+        <ProductPriceHistory
+          histories={storiciPrezzo}
+          endpoint={withBasePath('/api/supplier-products')}
+        />
       </section>
 
       <section className="space-y-3">

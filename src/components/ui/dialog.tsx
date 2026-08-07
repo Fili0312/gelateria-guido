@@ -13,6 +13,8 @@ export interface DialogProps {
   footer?: ReactNode;
   closeLabel?: string;
   closeOnBackdrop?: boolean;
+  /** Impedisce le chiusure avviate dall'utente, ma non quella controllata via `open`. */
+  closeDisabled?: boolean;
   initialFocusRef?: RefObject<HTMLElement | null>;
   className?: string;
 }
@@ -26,6 +28,7 @@ export function Dialog({
   footer,
   closeLabel = 'Chiudi finestra',
   closeOnBackdrop = true,
+  closeDisabled = false,
   initialFocusRef,
   className,
 }: DialogProps) {
@@ -46,6 +49,7 @@ export function Dialog({
   }, [initialFocusRef, open]);
 
   function close() {
+    if (closeDisabled) return;
     const dialog = dialogRef.current;
     if (dialog?.open) {
       dialog.close();
@@ -90,9 +94,12 @@ export function Dialog({
           <button
             type="button"
             onClick={close}
+            disabled={closeDisabled}
+            aria-disabled={closeDisabled || undefined}
             className={cn(
               'hover:bg-neutral-100 -mr-2 inline-flex size-tap shrink-0 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:text-neutral-800',
               'focus-visible:ring-brand-600 focus-visible:ring-2 focus-visible:outline-none',
+              'disabled:cursor-not-allowed disabled:opacity-50',
             )}
             aria-label={closeLabel}
           >

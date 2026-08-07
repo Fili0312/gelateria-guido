@@ -204,5 +204,6 @@ live e il backup pre-deploy non sono stati toccati dalla pulizia.
 
 ## Passo successivo
 
-**Fase 6 — Storico prezzi.** Implementazione append-only del prezzo corrente,
-prezzo alla data, variazioni e grafico nella scheda prodotto.
+La **Fase 6 — Storico prezzi** è stata implementata ed è documentata in
+[FASE-6.md](FASE-6.md). Il passo successivo è la **Fase 7 — Estrazione PDF
+deterministica**, senza IA e con anteprima delle righe grezze.
