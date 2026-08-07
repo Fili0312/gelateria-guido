@@ -40,7 +40,8 @@ export function ProductAliases({
       if (!risposta.ok || !corpo?.ok) {
         toast({
           title: 'Operazione non riuscita',
-          description: corpo && !corpo.ok ? corpo.error : 'Il server non ha risposto correttamente.',
+          description:
+            corpo && !corpo.ok ? corpo.error : 'Il server non ha risposto correttamente.',
           tone: 'error',
         });
         return false;

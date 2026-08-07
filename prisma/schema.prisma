@@ -206,15 +206,17 @@ model Organization {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  users     User[]
-  suppliers Supplier[]
-  products  Product[]
-  priceLists PriceList[]
+  users            User[]
+  suppliers        Supplier[]
+  departments      Department[]
+  categories       Category[]
+  products         Product[]
+  priceLists       PriceList[]
   supplierProducts SupplierProduct[]
-  orders    Order[]
-  settings  Setting[]
-  aiCalls   AiCall[]
-  auditLogs AuditLog[]
+  orders           Order[]
+  settings         Setting[]
+  aiCalls          AiCall[]
+  auditLogs        AuditLog[]
 
   @@map("organization")
 }
@@ -224,25 +226,25 @@ model Organization {
 /// devono poter dire chi li ha creati — e il giorno che servissero account
 /// personali si aggiungono righe, senza migrare nulla.
 model User {
-  id             String   @id @default(cuid())
-  organizationId String   @map("organization_id")
+  id             String    @id @default(cuid())
+  organizationId String    @map("organization_id")
   name           String
   email          String?
-  passwordHash   String?  @map("password_hash")
-  role           UserRole @default(OWNER)
-  active         Boolean  @default(true)
+  passwordHash   String?   @map("password_hash")
+  role           UserRole  @default(OWNER)
+  active         Boolean   @default(true)
   lastLoginAt    DateTime? @map("last_login_at")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  priceListsUploaded PriceList[] @relation("caricatoDa")
-  ordersCreated     Order[]
-  documentsCreated  OrderDocument[]
-  pricesCreated     SupplierProductPrice[]
-  rowsReviewed      PriceListRow[]
-  matchesDecided    ProductMatchCandidate[]
-  auditLogs         AuditLog[]
+  organization       Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  priceListsUploaded PriceList[]             @relation("caricatoDa")
+  ordersCreated      Order[]
+  documentsCreated   OrderDocument[]
+  pricesCreated      SupplierProductPrice[]
+  rowsReviewed       PriceListRow[]
+  matchesDecided     ProductMatchCandidate[]
+  auditLogs          AuditLog[]
 
   @@unique([organizationId, email])
   @@index([organizationId])
@@ -264,7 +266,7 @@ model Supplier {
   /// Alcuni listini sono IVA esclusa, altri inclusa. Confrontare un netto
   /// con un lordo falsa ogni confronto in modo plausibile — cioè difficile
   /// da accorgersene. Barzelli e Cecconi sono entrambi al netto.
-  pricesIncludeVat Boolean @default(false) @map("prices_include_vat")
+  pricesIncludeVat Boolean  @default(false) @map("prices_include_vat")
   defaultVatRate   Decimal? @map("default_vat_rate") @db.Decimal(5, 2)
   minOrderValue    Decimal? @map("min_order_value") @db.Decimal(12, 2)
   deliveryDays     String?  @map("delivery_days")
@@ -272,16 +274,16 @@ model Supplier {
   /// Indirizzo a cui parte il PDF dell'ordine. Separato da `email` di
   /// proposito: l'ufficio ordini di un fornitore quasi mai coincide con il
   /// commerciale che manda i listini.
-  orderEmail        String?  @map("order_email")
-  orderEmailCc      String?  @map("order_email_cc")
-  sendOrdersByEmail Boolean  @default(false) @map("send_orders_by_email")
-  emailNote         String?  @map("email_note")
+  orderEmail        String? @map("order_email")
+  orderEmailCc      String? @map("order_email_cc")
+  sendOrdersByEmail Boolean @default(false) @map("send_orders_by_email")
+  emailNote         String? @map("email_note")
 
   active    Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization     Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   priceLists       PriceList[]
   supplierProducts SupplierProduct[]
   importProfiles   SupplierImportProfile[]
@@ -304,11 +306,11 @@ model PriceList {
   organizationId String @map("organization_id")
   supplierId     String @map("supplier_id")
 
-  originalFilename String  @map("original_filename")
-  storagePath      String  @map("storage_path")
+  originalFilename String @map("original_filename")
+  storagePath      String @map("storage_path")
   /// sha256 del file: protegge dal doppio caricamento dello stesso PDF.
-  fileHash         String  @map("file_hash")
-  pageCount        Int?    @map("page_count")
+  fileHash         String @map("file_hash")
+  pageCount        Int?   @map("page_count")
 
   documentType DocumentType @default(LISTINO) @map("document_type")
 
@@ -318,7 +320,7 @@ model PriceList {
   /// 220 — senza copertura, importare i vini farebbe sparire tutti i liquori.
   scopeLabel String @map("scope_label")
 
-  currency  String  @default("EUR")
+  currency  String    @default("EUR")
   validFrom DateTime? @map("valid_from") @db.Date
   validTo   DateTime? @map("valid_to") @db.Date
 
@@ -336,11 +338,11 @@ model PriceList {
   supplier     Supplier     @relation(fields: [supplierId], references: [id])
   uploadedBy   User?        @relation("caricatoDa", fields: [uploadedById], references: [id])
 
-  rows            PriceListRow[]
-  job             ImportJob?
-  prices          SupplierProductPrice[]
-  lastSeenBy      SupplierProduct[] @relation("ultimoListinoVisto")
-  aiCalls         AiCall[]
+  rows       PriceListRow[]
+  job        ImportJob?
+  prices     SupplierProductPrice[]
+  lastSeenBy SupplierProduct[]      @relation("ultimoListinoVisto")
+  aiCalls    AiCall[]
 
   @@unique([supplierId, fileHash])
   @@index([organizationId])
@@ -455,13 +457,83 @@ model ImportJob {
 /// Altrimenti "12 bottiglie a 9 €" e "24 bottiglie a 16 €" sarebbero due
 /// prodotti diversi e non si potrebbero confrontare, che è esattamente il
 /// confronto che serve.
+/// Il reparto: Bar, Gelateria, Cucina, Pulizia e consumo.
+///
+/// È il livello grosso, quello con cui si ragiona quando si ordina («oggi
+/// faccio il bar»). Sono pochi e cambiano quasi mai, quindi non serve una
+/// gerarchia libera: due livelli fissi, reparto e categoria, che è la forma
+/// in cui il magazzino è già organizzato nella testa di chi ordina.
+model Department {
+  id             String @id @default(cuid())
+  organizationId String @map("organization_id")
+
+  name  String
+  /// Colore della pastiglia nell'interfaccia, in esadecimale (`#7c3aed`).
+  /// Serve a distinguere i reparti a colpo d'occhio nella schermata ordine,
+  /// dove le righe sono tante e i nomi si leggono male di fretta.
+  color String?
+
+  /// L'ordine in cui compaiono, deciso da chi ordina e non alfabetico: si
+  /// gira il magazzino sempre nella stessa sequenza.
+  sortOrder Int     @default(0) @map("sort_order")
+  active    Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  categories   Category[]
+
+  @@index([organizationId, sortOrder])
+  @@map("department")
+}
+
+/// La categoria fine dentro un reparto: Amari, Birre, Coni e cialde.
+///
+/// È il livello che arriva dai listini — AD Beverage ne dichiara trenta — e
+/// quello su cui si filtra quando il reparto è troppo largo.
+model Category {
+  id             String @id @default(cuid())
+  organizationId String @map("organization_id")
+  departmentId   String @map("department_id")
+
+  name      String
+  sortOrder Int     @default(0) @map("sort_order")
+  active    Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// Un reparto con categorie non si cancella per errore: prima si svuota o
+  /// si disattiva. Il vincolo DB rende vera la regola anche fra due richieste
+  /// concorrenti, non soltanto dopo il conteggio mostrato dall'interfaccia.
+  department   Department   @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  products     Product[]
+
+  @@index([organizationId])
+  @@index([departmentId, sortOrder])
+  @@map("category")
+}
+
 model Product {
   id             String @id @default(cuid())
   organizationId String @map("organization_id")
 
-  name     String
-  brand    String?
-  category String?
+  name  String
+  brand String?
+
+  /// Il prodotto sta in **una** categoria, che sta in **un** reparto.
+  /// Nullable perché un prodotto appena importato da un PDF può non averla
+  /// ancora: obbligarla vorrebbe dire o rifiutare la riga o inventarle una
+  /// casa, e la coda «da classificare» è più onesta di entrambe.
+  categoryId String? @map("category_id")
+
+  /// Colonna testuale precedente alla tassonomia. Resta per un ciclo di
+  /// deploy come rete di rollback: la vecchia build continua a partire mentre
+  /// la nuova migrazione è già applicata. Non viene più letta né scritta dal
+  /// codice nuovo e verrà rimossa con una migrazione di pulizia successiva.
+  legacyCategory String? @map("category")
 
   unitSize      Decimal       @map("unit_size") @db.Decimal(12, 4)
   unitOfMeasure UnitOfMeasure @map("unit_of_measure")
@@ -479,7 +551,11 @@ model Product {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
-  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization     Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// `SetNull` e non `Cascade`: cancellare una categoria non deve cancellare
+  /// i prodotti che ci stavano dentro. Tornano «da classificare», che è un
+  /// inconveniente; sparire sarebbe una perdita di dati.
+  category         Category?               @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   supplierProducts SupplierProduct[]
   aliases          ProductAlias[]
   matchCandidates  ProductMatchCandidate[]
@@ -488,6 +564,7 @@ model Product {
   orderLines       OrderLine[]
 
   @@index([organizationId])
+  @@index([organizationId, categoryId])
   @@index([organizationId, normalizedName])
   /// Indici trigram per la ricerca fuzzy e per i candidati di abbinamento.
   /// Dichiarati qui e non solo in SQL: Prisma non li vedrebbe, e la prima
@@ -514,9 +591,15 @@ model SupplierProduct {
   /// (il trigram le ignora) ma non per gli accenti.
   normalizedName String @map("normalized_name")
 
-  description  String?
-  brand        String?
-  category     String?
+  description String?
+  brand       String?
+
+  /// La categoria **come l'ha scritta il fornitore** nel suo listino, testo
+  /// libero e non normalizzato. Non è la tassonomia della gelateria: quella
+  /// vive su `product.categoryId`. Questa resta perché è la prova di cosa
+  /// diceva il documento, e perché dalla Fase 7 è l'indizio con cui l'import
+  /// propone il reparto giusto senza indovinare.
+  category String?
 
   /// Pezzi per confezione. Nei listini veri è dichiarato solo nel 3% delle
   /// righe — ma l'85% vende il pezzo singolo (BT/UN), quindi il default 1 è
@@ -562,11 +645,11 @@ model SupplierProduct {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  supplier           Supplier     @relation(fields: [supplierId], references: [id])
-  product            Product?     @relation(fields: [productId], references: [id])
-  lastSeenPriceList  PriceList?   @relation("ultimoListinoVisto", fields: [lastSeenPriceListId], references: [id])
-  currentPrice       SupplierProductPrice? @relation("prezzoCorrente", fields: [currentPriceId], references: [id])
+  organization      Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier          Supplier              @relation(fields: [supplierId], references: [id])
+  product           Product?              @relation(fields: [productId], references: [id])
+  lastSeenPriceList PriceList?            @relation("ultimoListinoVisto", fields: [lastSeenPriceListId], references: [id])
+  currentPrice      SupplierProductPrice? @relation("prezzoCorrente", fields: [currentPriceId], references: [id])
 
   prices          SupplierProductPrice[]  @relation("storicoPrezzi")
   matchCandidates ProductMatchCandidate[]
@@ -728,9 +811,9 @@ model Order {
   totalVat   Decimal @default(0) @map("total_vat") @db.Decimal(12, 2)
   totalGross Decimal @default(0) @map("total_gross") @db.Decimal(12, 2)
 
-  createdById String   @map("created_by_id")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdById String    @map("created_by_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
   confirmedAt DateTime? @map("confirmed_at")
   cancelledAt DateTime? @map("cancelled_at")
 
@@ -762,15 +845,15 @@ model OrderLine {
   quantityPacks Int @map("quantity_packs")
 
   // — snapshot al momento della conferma —
-  nameSnapshot          String        @map("name_snapshot")
-  supplierNameSnapshot  String        @map("supplier_name_snapshot")
-  supplierCodeSnapshot  String?       @map("supplier_code_snapshot")
-  packQuantitySnapshot  Int           @map("pack_quantity_snapshot")
-  unitSizeSnapshot      Decimal       @map("unit_size_snapshot") @db.Decimal(12, 4)
-  uomSnapshot           UnitOfMeasure @map("uom_snapshot")
-  unitPriceNetSnapshot  Decimal       @map("unit_price_net_snapshot") @db.Decimal(12, 4)
-  vatRateSnapshot       Decimal?      @map("vat_rate_snapshot") @db.Decimal(5, 2)
-  unitPriceBasisSnapshot PriceBasis   @map("unit_price_basis_snapshot")
+  nameSnapshot           String        @map("name_snapshot")
+  supplierNameSnapshot   String        @map("supplier_name_snapshot")
+  supplierCodeSnapshot   String?       @map("supplier_code_snapshot")
+  packQuantitySnapshot   Int           @map("pack_quantity_snapshot")
+  unitSizeSnapshot       Decimal       @map("unit_size_snapshot") @db.Decimal(12, 4)
+  uomSnapshot            UnitOfMeasure @map("uom_snapshot")
+  unitPriceNetSnapshot   Decimal       @map("unit_price_net_snapshot") @db.Decimal(12, 4)
+  vatRateSnapshot        Decimal?      @map("vat_rate_snapshot") @db.Decimal(5, 2)
+  unitPriceBasisSnapshot PriceBasis    @map("unit_price_basis_snapshot")
 
   lineTotalNet   Decimal @map("line_total_net") @db.Decimal(12, 2)
   lineTotalGross Decimal @map("line_total_gross") @db.Decimal(12, 2)

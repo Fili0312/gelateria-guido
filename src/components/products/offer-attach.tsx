@@ -72,7 +72,8 @@ export function OfferAttach({
       if (!risposta.ok || !corpo?.ok) {
         toast({
           title: 'Collegamento non riuscito',
-          description: corpo && !corpo.ok ? corpo.error : 'Il server non ha risposto correttamente.',
+          description:
+            corpo && !corpo.ok ? corpo.error : 'Il server non ha risposto correttamente.',
           tone: 'error',
         });
         return;
@@ -111,17 +112,24 @@ export function OfferAttach({
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(analizzato.data),
       });
-      const corpo = (await risposta.json().catch(() => null)) as ProductApiBody<SupplierProductListItem> | null;
+      const corpo = (await risposta
+        .json()
+        .catch(() => null)) as ProductApiBody<SupplierProductListItem> | null;
       if (!risposta.ok || !corpo?.ok) {
         if (corpo && !corpo.ok && corpo.fields) setCampi(corpo.fields);
         toast({
           title: 'Creazione non riuscita',
-          description: corpo && !corpo.ok ? corpo.error : 'Il server non ha risposto correttamente.',
+          description:
+            corpo && !corpo.ok ? corpo.error : 'Il server non ha risposto correttamente.',
           tone: 'error',
         });
         return;
       }
-      toast({ title: 'Offerta creata e collegata', description: corpo.data.rawName, tone: 'success' });
+      toast({
+        title: 'Offerta creata e collegata',
+        description: corpo.data.rawName,
+        tone: 'success',
+      });
       router.push(`/prodotti/${productId}`);
       router.refresh();
     } catch {
@@ -131,7 +139,10 @@ export function OfferAttach({
     }
   }
 
-  function cambia<K extends keyof SupplierProductInput>(chiave: K, valore: SupplierProductInput[K]) {
+  function cambia<K extends keyof SupplierProductInput>(
+    chiave: K,
+    valore: SupplierProductInput[K],
+  ) {
     setNuova((precedente) => ({ ...precedente, [chiave]: valore }));
   }
 
@@ -160,15 +171,14 @@ export function OfferAttach({
                   <span className="block text-xs text-neutral-500">
                     {offerta.supplierName}
                     {offerta.supplierCode ? ` · ${offerta.supplierCode}` : ''} ·{' '}
-                    {formatoConfezione(offerta.unitSize, offerta.unitOfMeasure, offerta.packQuantity)}
+                    {formatoConfezione(
+                      offerta.unitSize,
+                      offerta.unitOfMeasure,
+                      offerta.packQuantity,
+                    )}
                   </span>
                 </span>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={attesa}
-                  onClick={() => collega(offerta)}
-                >
+                <Button type="button" size="sm" disabled={attesa} onClick={() => collega(offerta)}>
                   Collega
                 </Button>
               </li>

@@ -6,11 +6,13 @@ import { Button, Input, Select, useToast } from '@/components/ui';
 import type { ProductApiBody, ProductDetail } from '@/features/products/dto';
 import { productInputSchema, UNITA_DI_MISURA, type ProductInput } from '@/features/products/schema';
 import { etichettaUnita } from '@/features/products/format';
+import { CategorySelect } from '@/components/taxonomy/category-select';
+import type { DepartmentItem } from '@/features/taxonomy/dto';
 
 const VUOTO: ProductInput = {
   name: '',
   brand: null,
-  category: null,
+  categoryId: null,
   unitSize: '1',
   unitOfMeasure: 'PIECE',
   gtin: null,
@@ -29,10 +31,12 @@ export function ProductForm({
   mode,
   endpoint,
   iniziale,
+  reparti,
 }: {
   mode: 'create' | 'edit';
   endpoint: string;
   iniziale?: ProductInput;
+  reparti: readonly DepartmentItem[];
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -71,13 +75,16 @@ export function ProductForm({
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(analizzato.data),
       });
-      const corpo = (await risposta.json().catch(() => null)) as ProductApiBody<ProductDetail> | null;
+      const corpo = (await risposta
+        .json()
+        .catch(() => null)) as ProductApiBody<ProductDetail> | null;
 
       if (!risposta.ok || !corpo?.ok) {
         if (corpo && !corpo.ok && corpo.fields) setCampi(corpo.fields);
         toast({
           title: mode === 'create' ? 'Creazione non riuscita' : 'Modifica non riuscita',
-          description: corpo && !corpo.ok ? corpo.error : 'Il server non ha risposto correttamente.',
+          description:
+            corpo && !corpo.ok ? corpo.error : 'Il server non ha risposto correttamente.',
           tone: 'error',
         });
         return;
@@ -151,12 +158,12 @@ export function ProductForm({
           onChange={(e) => cambia('brand', e.target.value || null)}
           error={campi.brand?.[0]}
         />
-        <Input
-          name="category"
-          label="Categoria"
-          value={valori.category ?? ''}
-          onChange={(e) => cambia('category', e.target.value || null)}
-          error={campi.category?.[0]}
+        <CategorySelect
+          reparti={reparti}
+          value={valori.categoryId}
+          onChange={(id) => cambia('categoryId', id)}
+          error={campi.categoryId?.[0]}
+          hint="Serve a raggruppare l'ordine per reparto. Si può lasciare vuota e assegnare dopo."
         />
       </div>
 

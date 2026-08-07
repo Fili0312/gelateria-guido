@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui';
 import { getCurrentUser } from '@/server/auth';
 import { withBasePath } from '@/server/base-path';
 import { productsRepository } from '@/server/repositories/products';
+import { taxonomyRepository } from '@/server/repositories/taxonomy';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,13 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const prodotto = await productsRepository(user.organizationId).get(id);
   if (!prodotto) notFound();
+
+  const { departments } = await taxonomyRepository(user.organizationId).tree({
+    // La categoria corrente può essere stata disattivata dopo la creazione
+    // del prodotto. Va mostrata (ma non resa nuovamente selezionabile),
+    // altrimenti il controllo appare vuoto pur conservando un id nascosto.
+    includiInattivi: true,
+  });
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -31,17 +39,21 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
       <ProductForm
         mode="edit"
         endpoint={withBasePath(`/api/products/${prodotto.id}`)}
+        reparti={departments}
         iniziale={{
           name: prodotto.name,
           brand: prodotto.brand,
-          category: prodotto.category,
+          categoryId: prodotto.category?.id ?? null,
           unitSize: prodotto.unitSize,
           unitOfMeasure: prodotto.unitOfMeasure,
           gtin: prodotto.gtin,
         }}
       />
 
-      <Link href={`/prodotti/${prodotto.id}`} className="inline-block text-sm text-neutral-500 hover:underline">
+      <Link
+        href={`/prodotti/${prodotto.id}`}
+        className="inline-block text-sm text-neutral-500 hover:underline"
+      >
         ← Torna alla scheda
       </Link>
     </div>

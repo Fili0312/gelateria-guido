@@ -57,24 +57,26 @@ export default async function DashboardPage() {
   if (!user) return null;
 
   const db = prismaForOrganization(user.organizationId);
-  const [fornitori, prodotti, listini, confezioniIncerte, ultimiFornitori] = await Promise.all([
-    db.supplier.count({ where: { active: true } }),
-    db.product.count(),
-    db.priceList.count(),
-    db.supplierProduct.count({ where: { active: true, packQuantityConfirmed: false } }),
-    db.supplier.findMany({
-      where: { active: true },
-      orderBy: { updatedAt: 'desc' },
-      take: 5,
-      select: {
-        id: true,
-        name: true,
-        pricesIncludeVat: true,
-        defaultVatRate: true,
-        updatedAt: true,
-      },
-    }),
-  ]);
+  const [fornitori, prodotti, categorie, daClassificare, confezioniIncerte, ultimiFornitori] =
+    await Promise.all([
+      db.supplier.count({ where: { active: true } }),
+      db.product.count(),
+      db.category.count({ where: { active: true } }),
+      db.product.count({ where: { categoryId: null } }),
+      db.supplierProduct.count({ where: { active: true, packQuantityConfirmed: false } }),
+      db.supplier.findMany({
+        where: { active: true },
+        orderBy: { updatedAt: 'desc' },
+        take: 5,
+        select: {
+          id: true,
+          name: true,
+          pricesIncludeVat: true,
+          defaultVatRate: true,
+          updatedAt: true,
+        },
+      }),
+    ]);
 
   const formatter = new Intl.DateTimeFormat('it-IT', {
     day: '2-digit',
@@ -88,16 +90,18 @@ export default async function DashboardPage() {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="brand" dot>
-              Fase 4 attiva
+              Fase 5 completata
             </Badge>
-            <span className="text-xs font-medium text-neutral-400">Gestione fornitori</span>
+            <span className="text-xs font-medium text-neutral-400">
+              Catalogo e tassonomia operativi
+            </span>
           </div>
           <h1 className="mt-3 text-3xl font-black tracking-[-0.035em] text-neutral-950 sm:text-4xl">
             Buongiorno, {user.name}
           </h1>
           <p className="mt-2 max-w-2xl leading-6 text-neutral-500">
-            Le anagrafiche fornitori sono operative. Qui trovi lo stato dei dati e il punto esatto
-            da cui continuare il lavoro.
+            Fornitori, prodotti, offerte, reparti e categorie sono operativi. Qui trovi lo stato dei
+            dati e il punto esatto da cui continuare il lavoro.
           </p>
         </div>
         <NewListDialog />
@@ -107,7 +111,7 @@ export default async function DashboardPage() {
         <h2 id="riepilogo-title" className="sr-only">
           Riepilogo
         </h2>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <StatCard
             label="Fornitori attivi"
             value={fornitori}
@@ -121,11 +125,17 @@ export default async function DashboardPage() {
             icon="products"
           />
           <StatCard
-            label="Listini importati"
-            value={listini}
-            note="La pipeline arriva nella Fase 7"
+            label="Categorie attive"
+            value={categorie}
+            note="Raggruppate per reparto"
             icon="lists"
-            tone="neutral"
+          />
+          <StatCard
+            label="Da classificare"
+            value={daClassificare}
+            note="Prodotti ancora senza categoria"
+            icon="warning"
+            tone={daClassificare > 0 ? 'amber' : 'neutral'}
           />
           <StatCard
             label="Confezioni da verificare"
@@ -194,17 +204,17 @@ export default async function DashboardPage() {
             <AppIcon name="sparkles" className="h-5 w-5" />
           </span>
           <div className="relative mt-6">
-            <Badge variant="brand">Prossima: Fase 5</Badge>
-            <h2 className="mt-3 text-2xl font-black tracking-tight">Catalogo prodotti</h2>
+            <Badge variant="brand">Prossima: Fase 6</Badge>
+            <h2 className="mt-3 text-2xl font-black tracking-tight">Storico prezzi</h2>
             <p className="mt-3 text-sm leading-6 text-white/65">
-              Prodotti normalizzati, offerte dei fornitori, alias e ricerca veloce in un unico
-              catalogo.
+              Prezzo corrente, variazioni e serie storica append-only per ogni offerta, senza
+              sovrascrivere il passato.
             </p>
             <Link
               href="/prodotti"
               className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-neutral-950 transition-colors hover:bg-lime-50"
             >
-              Vai ai prodotti
+              Apri il catalogo
               <AppIcon name="arrow-right" className="h-4 w-4" />
             </Link>
           </div>

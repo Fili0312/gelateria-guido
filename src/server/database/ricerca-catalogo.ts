@@ -152,14 +152,28 @@ export function costruisciSqlRicerca(
     SELECT p.id,
            p.name,
            p.brand,
-           p.category,
            p.unit_size::text  AS unit_size,
            p.unit_of_measure::text AS unit_of_measure,
+           c.id   AS category_id,
+           c.name AS category_name,
+           d.id   AS department_id,
+           d.name AS department_name,
+           d.color AS department_color,
            (SELECT count(*) FROM supplier_product s2 WHERE s2.product_id = p.id)::int AS offers_count,
            m.score,
            m.via
       FROM migliori m
       JOIN product p ON p.id = m.product_id
+      -- LEFT JOIN e non JOIN: un prodotto senza categoria deve comparire
+      -- nella ricerca esattamente come gli altri. Un INNER JOIN lo farebbe
+      -- sparire dalla barra, cioe' renderebbe invisibile proprio la coda di
+      -- lavoro che la categoria serve a smaltire.
+      LEFT JOIN category c
+        ON c.id = p.category_id
+       AND c.organization_id = p.organization_id
+      LEFT JOIN department d
+        ON d.id = c.department_id
+       AND d.organization_id = p.organization_id
      ORDER BY m.score DESC, p.name ASC
   `;
 }
@@ -168,9 +182,13 @@ export interface RigaRicerca {
   id: string;
   name: string;
   brand: string | null;
-  category: string | null;
   unit_size: string;
   unit_of_measure: string;
+  category_id: string | null;
+  category_name: string | null;
+  department_id: string | null;
+  department_name: string | null;
+  department_color: string | null;
   offers_count: number;
   score: number;
   via: string;

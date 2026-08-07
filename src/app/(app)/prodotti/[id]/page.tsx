@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { ProductAliases } from '@/components/products/product-aliases';
 import { ProductOffers } from '@/components/products/product-offers';
 import { Badge } from '@/components/ui';
+import { CategoryBadge } from '@/components/taxonomy/category-badge';
 import { formatoUnitario } from '@/features/products/format';
 import { getCurrentUser } from '@/server/auth';
 import { withBasePath } from '@/server/base-path';
@@ -42,7 +43,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-neutral-500">
             <span>{formatoUnitario(prodotto.unitSize, prodotto.unitOfMeasure)}</span>
             {prodotto.brand && <span>· {prodotto.brand}</span>}
-            {prodotto.category && <span>· {prodotto.category}</span>}
+            <CategoryBadge categoria={prodotto.category} />
             {prodotto.createdBy === 'AI' && <Badge variant="neutral">creato dall’IA</Badge>}
           </p>
         </div>

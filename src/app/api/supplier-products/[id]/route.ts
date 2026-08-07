@@ -20,7 +20,9 @@ type Contesto = { params: Promise<{ id: string }> };
  * "campo non passato". Uno schema separato lo rende esplicito.
  */
 const azioneSchema = z.union([
-  z.object({ azione: z.literal('collega'), productId: z.string().trim().max(64).nullable() }).strict(),
+  z
+    .object({ azione: z.literal('collega'), productId: z.string().trim().max(64).nullable() })
+    .strict(),
   z.object({ azione: z.literal('attiva'), active: z.boolean() }).strict(),
 ]);
 

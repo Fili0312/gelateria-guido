@@ -23,21 +23,17 @@ const FIELD_LIMITS = {
  * e non importate dal client generato di proposito: questo modulo gira anche
  * nel browser, e il client Prisma non deve arrivarci.
  */
-export const UNITA_DI_MISURA = [
-  'PIECE',
-  'MG',
-  'G',
-  'HG',
-  'KG',
-  'ML',
-  'CL',
-  'DL',
-  'L',
-] as const;
+export const UNITA_DI_MISURA = ['PIECE', 'MG', 'G', 'HG', 'KG', 'ML', 'CL', 'DL', 'L'] as const;
 
 const unitOfMeasureSchema = z.enum(UNITA_DI_MISURA);
 
 const productStatusSchema = z.enum(['all', 'linked', 'orphan']);
+/**
+ * Separato da `status` di proposito: «senza offerte» e «senza categoria» sono
+ * due code di lavoro diverse, e un prodotto può stare in entrambe. Fonderle in
+ * un unico filtro renderebbe impossibile cercarne una sola.
+ */
+const productClassificationSchema = z.enum(['all', 'classified', 'unclassified']);
 const productSortSchema = z.enum(['name-asc', 'name-desc', 'updated-desc', 'offers-desc']);
 
 /** Fino a 50 kg o 50 L: sopra, in una gelateria, è quasi sempre un errore. */
@@ -51,7 +47,10 @@ const vatRateSchema = nullableDecimal(10_000n, "L'aliquota IVA");
  * bloccherebbe l'inserimento manuale senza proteggere da niente.
  */
 const gtinSchema = nullableTrimmedString(FIELD_LIMITS.gtin, 'Il codice a barre').pipe(
-  z.union([z.string().regex(/^\d{8,14}$/, 'Il codice a barre deve avere da 8 a 14 cifre.'), z.null()]),
+  z.union([
+    z.string().regex(/^\d{8,14}$/, 'Il codice a barre deve avere da 8 a 14 cifre.'),
+    z.null(),
+  ]),
 );
 
 const productFields = {
@@ -61,7 +60,13 @@ const productFields = {
     .min(1, 'Il nome del prodotto è obbligatorio.')
     .max(FIELD_LIMITS.name, `Il nome può contenere al massimo ${FIELD_LIMITS.name} caratteri.`),
   brand: nullableTrimmedString(FIELD_LIMITS.brand, 'La marca'),
-  category: nullableTrimmedString(FIELD_LIMITS.category, 'La categoria'),
+  /**
+   * L'identificativo di una categoria della tassonomia, non il suo nome.
+   * Accettare il nome vorrebbe dire creare categorie per errore di battitura
+   * — «Amari», «amari», «Amari ` + '`' + `» — che è esattamente la situazione da cui
+   * questa fase esce.
+   */
+  categoryId: nullableTrimmedString(64, 'La categoria'),
   unitSize: unitSizeSchema,
   unitOfMeasure: unitOfMeasureSchema,
   gtin: gtinSchema,
@@ -71,7 +76,7 @@ export const productInputSchema = z
   .object({
     ...productFields,
     brand: productFields.brand.default(null),
-    category: productFields.category.default(null),
+    categoryId: productFields.categoryId.default(null),
     gtin: productFields.gtin.default(null),
   })
   .strict();
@@ -87,7 +92,10 @@ export const productPatchSchema = z
 export const productListQuerySchema = z
   .object({
     q: z.string().trim().max(MAX_QUERY_LENGTH).default(''),
-    category: z.string().trim().max(FIELD_LIMITS.category).default(''),
+    /** Filtro per reparto: comprende tutte le sue categorie. */
+    departmentId: z.string().trim().max(64).default(''),
+    categoryId: z.string().trim().max(64).default(''),
+    classification: productClassificationSchema.default('all'),
     status: productStatusSchema.default('all'),
     sort: productSortSchema.default('name-asc'),
   })
@@ -115,7 +123,10 @@ const supplierProductFields = {
     .string()
     .trim()
     .min(1, 'La descrizione del fornitore è obbligatoria.')
-    .max(FIELD_LIMITS.rawName, `La descrizione può contenere al massimo ${FIELD_LIMITS.rawName} caratteri.`),
+    .max(
+      FIELD_LIMITS.rawName,
+      `La descrizione può contenere al massimo ${FIELD_LIMITS.rawName} caratteri.`,
+    ),
   description: nullableTrimmedString(FIELD_LIMITS.description, 'La descrizione estesa'),
   brand: nullableTrimmedString(FIELD_LIMITS.brand, 'La marca'),
   category: nullableTrimmedString(FIELD_LIMITS.category, 'La categoria'),
@@ -177,7 +188,10 @@ export const aliasInputSchema = z
       .string()
       .trim()
       .min(2, 'Il sinonimo è troppo corto.')
-      .max(FIELD_LIMITS.alias, `Il sinonimo può contenere al massimo ${FIELD_LIMITS.alias} caratteri.`),
+      .max(
+        FIELD_LIMITS.alias,
+        `Il sinonimo può contenere al massimo ${FIELD_LIMITS.alias} caratteri.`,
+      ),
     /** Un alias negativo registra un «non sono lo stesso prodotto». */
     negative: z.boolean().default(false),
   })

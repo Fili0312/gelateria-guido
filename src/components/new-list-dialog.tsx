@@ -19,7 +19,7 @@ export function NewListDialog() {
         open={open}
         onOpenChange={setOpen}
         title="L’importazione arriva nella Fase 7"
-        description="Anagrafiche e nucleo dati sono pronti; prima completiamo catalogo e storico manuale, così l’estrattore non diventa un punto unico di blocco."
+        description="Anagrafiche e catalogo sono pronti; prima completiamo lo storico manuale, così l’estrattore non diventa un punto unico di blocco."
         footer={
           <Button onClick={() => setOpen(false)} fullWidth>
             Ho capito
@@ -34,11 +34,11 @@ export function NewListDialog() {
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-bold text-neutral-900">Il prossimo passo</p>
-                <Badge variant="brand">Fase 5</Badge>
+                <Badge variant="brand">Fase 6</Badge>
               </div>
               <p className="mt-1 text-sm leading-6 text-neutral-600">
-                Costruire il catalogo prodotti e collegare le offerte dei fornitori. La sezione è
-                già predisposta nel menu.
+                Rendere operativo lo storico prezzi append-only, con prezzo alla data e variazioni.
+                Subito dopo, la Fase 7 abiliterà il caricamento dei listini.
               </p>
             </div>
           </div>

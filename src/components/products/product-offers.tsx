@@ -1,5 +1,13 @@
 import Link from 'next/link';
-import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui';
+import {
+  Badge,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui';
 import type { SupplierOffer } from '@/features/products/dto';
 import {
   catenaSconti,
@@ -85,7 +93,11 @@ export function ProductOffers({ offers }: { offers: SupplierOffer[] }) {
                 </TableCell>
                 <TableCell className="tabellare">
                   <span className="block">
-                    {formatoConfezione(offerta.unitSize, offerta.unitOfMeasure, offerta.packQuantity)}
+                    {formatoConfezione(
+                      offerta.unitSize,
+                      offerta.unitOfMeasure,
+                      offerta.packQuantity,
+                    )}
                   </span>
                   {offerta.packQuantityConfirmed ? (
                     <span className="block text-xs text-neutral-500">

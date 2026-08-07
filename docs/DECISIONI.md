@@ -224,18 +224,40 @@ attesa delle credenziali Aruba, quindi la questione andrebbe risolta lì prima.
 
 ---
 
-## D11 — Budget IA
+## ✅ D11 — Budget IA
 
-**Stato:** APERTA · **Raccomandazione:** DeepSeek `deepseek-v4-flash`, tetto
-mensile configurabile (ordine di grandezza previsto: **pochi euro al mese**).
+**Stato:** **DECISA (2026-08-07)** — DeepSeek `deepseek-v4-flash`, chiave presa
+dal progetto `china`, **tetto 5 al mese**.
+
+Configurato in `/etc/gelateria/gelateria.env`:
+
+```
+DEEPSEEK_API_KEY   copiata da /var/www/china/.env (voce DEEP_SEEK_API)
+DEEPSEEK_MODEL     deepseek-v4-flash
+AI_MONTHLY_BUDGET_USD  5
+```
+
+Chiave verificata il 2026-08-07: risponde, ed espone i modelli
+`deepseek-v4-flash` e `deepseek-v4-pro`.
 
 A ~$0,14/$0,28 per milione di token, un listino da 150 righe costa nell'ordine
-dei centesimi, e dal secondo import dello stesso fornitore scende ancora
-grazie al profilo salvato. Serve: chiave API DeepSeek e cifra del tetto oltre
-la quale il sistema si ferma e chiede conferma.
+dei centesimi, e dal secondo import dello stesso fornitore scende ancora grazie
+al profilo salvato. Il tetto di 5 basta ampiamente.
 
-Domanda collegata: vuoi poter confrontare DeepSeek con Claude sulla stessa
-importazione (come fatto in `china`)? Se sì si implementano due provider
+**Due avvertenze che restano.**
+
+*Il tetto è in dollari, il credito pure.* La variabile si chiama
+`AI_MONTHLY_BUDGET_USD` perché DeepSeek fattura in USD. 5 $ sono circa 4,60 €,
+quindi il tetto configurato sta **sotto** i 5 € autorizzati, non sopra.
+
+*Il credito vero sul conto è 1,84 $*, non 5. È il vincolo che conta per primo,
+ed è **condiviso con il progetto `china`**: quando si esaurisce si fermano
+entrambi. Da ricaricare prima di lanciare l'import di un listino intero
+(Fase 7). Il contatore di spesa dell'applicazione va quindi letto come «quanto
+ho speso io», non come «quanto resta».
+
+Domanda ancora aperta, minore: vuoi poter confrontare DeepSeek con Claude sulla
+stessa importazione (come fatto in `china`)? Se sì si implementano due provider
 dall'inizio, il costo aggiuntivo è basso.
 
 ---
@@ -295,7 +317,14 @@ le preclude.
 
 ## 🆕 Domande nate dai listini veri (2026-08-07)
 
-### 🔴 D15 — Il file di AD Beverage non ha prezzi (blocca l'uso di quel fornitore)
+### ✅ D15 — Il file di AD Beverage non ha prezzi
+
+**Stato:** **CHIUSA (2026-08-07): si lascia così.** Filippo caricherà lui i
+listini quando li avrà. AD Beverage non è un fornitore bloccante e non guida
+nessuna scelta tecnica: l'import da Excel resta fuori perimetro finché non
+arriva un file che vale la pena importare.
+
+Resta valido quanto segue come descrizione del file esaminato.
 
 `Listino prezzi AD Beverage dal 01.07.26.xls` contiene **485 articoli e zero
 prezzi**: la colonna «Prezzo u.» è vuota su tutte le righe, e in tutto il file

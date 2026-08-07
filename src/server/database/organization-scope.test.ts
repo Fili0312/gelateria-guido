@@ -74,6 +74,68 @@ describe('scope Prisma per organizzazione', () => {
     );
   });
 
+  it('applica lo scope alle letture di reparti e categorie', () => {
+    assert.deepEqual(
+      applyOrganizationScope('Department', 'findMany', { where: { active: true } }, ORG),
+      {
+        where: { active: true, organizationId: ORG },
+      },
+    );
+    assert.deepEqual(
+      applyOrganizationScope('Category', 'findUnique', { where: { id: 'cat-bar' } }, ORG),
+      {
+        where: { id: 'cat-bar', organizationId: ORG },
+      },
+    );
+  });
+
+  it('applica lo scope alle scritture di reparti e categorie', () => {
+    assert.deepEqual(
+      applyOrganizationScope('Department', 'create', { data: { name: 'Bar' } }, ORG),
+      {
+        data: { name: 'Bar', organizationId: ORG },
+      },
+    );
+    assert.deepEqual(
+      applyOrganizationScope(
+        'Category',
+        'update',
+        { where: { id: 'cat-liquori' }, data: { name: 'Liquori e distillati' } },
+        ORG,
+      ),
+      {
+        where: { id: 'cat-liquori', organizationId: ORG },
+        data: { name: 'Liquori e distillati' },
+      },
+    );
+  });
+
+  it('rifiuta scritture cross-tenant su reparti e categorie', () => {
+    assert.throws(
+      () =>
+        applyOrganizationScope(
+          'Department',
+          'create',
+          { data: { name: 'Altro reparto', organizationId: 'org-altra' } },
+          ORG,
+        ),
+      OrganizationScopeError,
+    );
+    assert.throws(
+      () =>
+        applyOrganizationScope(
+          'Category',
+          'update',
+          {
+            where: { id: 'cat-altra' },
+            data: { organizationId: { set: 'org-altra' } },
+          },
+          ORG,
+        ),
+      OrganizationScopeError,
+    );
+  });
+
   it('rifiuta scritture esplicitamente assegnate a un altro tenant', () => {
     assert.throws(
       () =>

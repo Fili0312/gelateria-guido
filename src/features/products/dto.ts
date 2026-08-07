@@ -1,3 +1,4 @@
+import type { ProductCategoryRef } from '@/features/taxonomy/dto';
 import type { UnitOfMeasureValue } from './schema';
 
 export type BaseUnitValue = 'PIECE' | 'KG' | 'L';
@@ -14,6 +15,8 @@ export interface SupplierOffer {
   rawName: string;
   description: string | null;
   brand: string | null;
+  /** La categoria **come la scrive il fornitore**: testo grezzo del listino,
+   *  non la nostra tassonomia. Serve da indizio, non da classificazione. */
   category: string | null;
   packagingType: string | null;
   packQuantity: number;
@@ -52,7 +55,8 @@ export interface ProductListItem {
   id: string;
   name: string;
   brand: string | null;
-  category: string | null;
+  /** `null` significa «da classificare», che è una coda di lavoro visibile. */
+  category: ProductCategoryRef | null;
   unitSize: string;
   unitOfMeasure: UnitOfMeasureValue;
   baseUnit: BaseUnitValue;
@@ -76,14 +80,15 @@ export interface ProductListResult {
   total: number;
   linked: number;
   orphan: number;
-  categories: string[];
+  /** Prodotti senza categoria nell'intero catalogo: la coda «da classificare». */
+  unclassified: number;
 }
 
 export interface ProductSearchHit {
   id: string;
   name: string;
   brand: string | null;
-  category: string | null;
+  category: ProductCategoryRef | null;
   unitSize: string;
   unitOfMeasure: UnitOfMeasureValue;
   offersCount: number;

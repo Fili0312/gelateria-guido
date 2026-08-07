@@ -3,12 +3,17 @@ import { ProductForm } from '@/components/products/product-form';
 import { Badge } from '@/components/ui';
 import { getCurrentUser } from '@/server/auth';
 import { withBasePath } from '@/server/base-path';
+import { taxonomyRepository } from '@/server/repositories/taxonomy';
 
 export const dynamic = 'force-dynamic';
 
 export default async function NewProductPage() {
   const user = await getCurrentUser();
   if (!user) return null;
+
+  const { departments } = await taxonomyRepository(user.organizationId).tree({
+    includiInattivi: false,
+  });
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -25,7 +30,7 @@ export default async function NewProductPage() {
         </p>
       </header>
 
-      <ProductForm mode="create" endpoint={withBasePath('/api/products')} />
+      <ProductForm mode="create" endpoint={withBasePath('/api/products')} reparti={departments} />
 
       <Link href="/prodotti" className="inline-block text-sm text-neutral-500 hover:underline">
         ← Torna al catalogo

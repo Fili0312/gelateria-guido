@@ -218,7 +218,7 @@ pathname applicativi.
 
 | Metodo | Endpoint | Esito |
 |---|---|---|
-| `GET` | `/api/products?q=&category=&status=&sort=` | elenco filtrato, `200` |
+| `GET` | `/api/products?q=&departmentId=&categoryId=&classification=&status=&sort=` | elenco filtrato, `200` |
 | `POST` | `/api/products` | crea un prodotto canonico, `201` |
 | `GET` | `/api/products/[id]` | scheda con offerte e alias, `200` o `404` |
 | `PATCH` | `/api/products/[id]` | modifica parziale, `200` |
@@ -315,8 +315,10 @@ allineati alla convenzione già usata nel resto del progetto (senza estensione).
 
 ## Aperto
 
-- **D11** — chiave DeepSeek e budget mensile: serve alla Fase 7.
-- **D15** — AD Beverage ha una versione del listino con i prezzi?
+- **D11 chiusa** — DeepSeek Flash configurato; tetto applicativo mensile
+  impostato a 5 USD. La chiave resta nel file root-only del servizio.
+- **D15 chiusa per ora** — AD Beverage resta com'è; i listini verranno aggiunti
+  quando saranno disponibili.
 - **D18** — autorizzazione SMTP e casella mittente: serve alla Fase 17.
 - La password condivisa attualmente in uso è di 7 caratteri
   (`MIN_PASSWORD_LENGTH`). Vale la pena allungarla prima che l'app contenga
@@ -324,7 +326,8 @@ allineati alla convenzione già usata nel resto del progetto (senza estensione).
 
 ## Prossimo passo
 
-**Fase 6 — Storico prezzi.** Il servizio `setPrice` append-only, il prezzo alla
-data, la serie storica e il grafico nella scheda prodotto. È la fase che rende
-utili i due criteri appena verificati: `content_per_pack` e `base_unit` esistono
-per diventare il divisore del prezzo unitario.
+Prima della Fase 6 è stata inserita la **Fase 5b — Reparti e categorie**, nata
+da un'esigenza reale durante gli ordini. È documentata in
+[FASE-5B.md](FASE-5B.md). Dopo la sua chiusura, il passo successivo resta la
+**Fase 6 — Storico prezzi**: servizio `setPrice` append-only, prezzo alla data,
+serie storica e grafico nella scheda prodotto.

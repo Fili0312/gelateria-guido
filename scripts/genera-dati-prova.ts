@@ -47,7 +47,11 @@ const CATEGORIE = [
   { nome: 'Whisky', parola: 'WHISKY', formati: ['0.700', '1/1'] },
   { nome: 'Bibite', parola: 'BIBITA', formati: ['0.200', 'CL.33 X24', '1/5 VP'] },
   { nome: 'Succhi', parola: 'SUCCO', formati: ['200 ml x 24', 'CL.20 VAP'] },
-  { nome: 'Semilavorati', parola: 'PASTA', formati: ['secchiello 5 kg', 'cart. 4 x 2,5 kg', 'KG 3'] },
+  {
+    nome: 'Semilavorati',
+    parola: 'PASTA',
+    formati: ['secchiello 5 kg', 'cart. 4 x 2,5 kg', 'KG 3'],
+  },
   { nome: 'Coni e cialde', parola: 'CONI', formati: ['n.120', 'conf. 200 pz', 'box 500 pezzi'] },
   { nome: 'Topping', parola: 'TOPPING', formati: ['ml 950', 'KG 1', 'conf. 6 pz'] },
   { nome: 'Latte e panna', parola: 'PANNA', formati: ['500ml x 6', 'LT.1 X12'] },
@@ -57,16 +61,57 @@ const CATEGORIE = [
 ];
 
 const MARCHE = [
-  'SAN BENEDETTO', 'ALISEA', 'RECOARO', 'GOLDBERG', 'POLARA', 'SAN PELLEGRINO',
-  'MONTENEGRO', 'BRAULIO', 'AVERNA', 'VARNELLI', 'CAFFO', 'LUXARDO', 'BORGHETTI',
-  'BOMBAY', 'BEEFEATER', 'BULLDOG', 'HAVANA CLUB', 'BACARDI', 'JACK DANIELS',
-  'GLENALLACHIE', 'BERTAGNOLLI', 'GIFFARD', 'FABBRI', 'LEAGEL', 'PERNIGOTTI',
-  'CALLEBAUT', 'ELENKA', 'IRCA', 'MEC3', 'COMPRITAL', 'RUBICONE', 'PREGEL',
+  'SAN BENEDETTO',
+  'ALISEA',
+  'RECOARO',
+  'GOLDBERG',
+  'POLARA',
+  'SAN PELLEGRINO',
+  'MONTENEGRO',
+  'BRAULIO',
+  'AVERNA',
+  'VARNELLI',
+  'CAFFO',
+  'LUXARDO',
+  'BORGHETTI',
+  'BOMBAY',
+  'BEEFEATER',
+  'BULLDOG',
+  'HAVANA CLUB',
+  'BACARDI',
+  'JACK DANIELS',
+  'GLENALLACHIE',
+  'BERTAGNOLLI',
+  'GIFFARD',
+  'FABBRI',
+  'LEAGEL',
+  'PERNIGOTTI',
+  'CALLEBAUT',
+  'ELENKA',
+  'IRCA',
+  'MEC3',
+  'COMPRITAL',
+  'RUBICONE',
+  'PREGEL',
 ];
 
 const QUALIFICATORI = [
-  '', 'CLASSICO', 'RISERVA', 'EXTRA', 'PREMIUM', 'BIO', 'ARTIGIANALE', 'SELEZIONE',
-  'ORO', 'DOPPIO', 'INTENSO', 'DELICATO', 'ANTICA RICETTA', 'GRAN', 'ROSSO', 'BIANCO',
+  '',
+  'CLASSICO',
+  'RISERVA',
+  'EXTRA',
+  'PREMIUM',
+  'BIO',
+  'ARTIGIANALE',
+  'SELEZIONE',
+  'ORO',
+  'DOPPIO',
+  'INTENSO',
+  'DELICATO',
+  'ANTICA RICETTA',
+  'GRAN',
+  'ROSSO',
+  'BIANCO',
 ];
 
 /** Generatore deterministico: due esecuzioni producono lo stesso catalogo. */
@@ -112,6 +157,32 @@ async function main() {
     );
   }
 
+  // La tassonomia: la migrazione la crea per le organizzazioni esistenti al
+  // momento in cui gira, e quella di prova nasce dopo. Serve davvero, non e'
+  // una formalita': la ricerca fa due LEFT JOIN su categoria e reparto, e
+  // misurarla su un catalogo tutto senza categoria misurerebbe un caso che
+  // non capita.
+  const reparto = await prisma.department.upsert({
+    where: { id: `${org}-reparto-prova` },
+    update: {},
+    create: { id: `${org}-reparto-prova`, organizationId: org, name: 'Prova', sortOrder: 0 },
+  });
+  const categorieDb = new Map<string, string>();
+  for (const [indice, c] of CATEGORIE.entries()) {
+    const riga = await prisma.category.upsert({
+      where: { id: `${org}-cat-${indice}` },
+      update: {},
+      create: {
+        id: `${org}-cat-${indice}`,
+        organizationId: org,
+        departmentId: reparto.id,
+        name: c.nome,
+        sortOrder: indice * 10,
+      },
+    });
+    categorieDb.set(c.nome, riga.id);
+  }
+
   const fornitori = [];
   for (const nome of ['Barzelli', 'Cecconi', 'AD Beverage', 'Dolciaria Rossi', 'Gelmar']) {
     fornitori.push(
@@ -140,7 +211,7 @@ async function main() {
       organizationId: org,
       name: nome,
       brand: marca,
-      category: categoria.nome,
+      categoryId: categorieDb.get(categoria.nome) ?? null,
       unitSize: f.unitSize.toString(),
       unitOfMeasure: f.unitOfMeasure,
       baseUnit: f.baseUnit,
@@ -159,9 +230,11 @@ async function main() {
 
   const creati = await prisma.product.findMany({
     where: { organizationId: org },
-    select: { id: true, name: true, category: true },
+    select: { id: true, name: true, category: { select: { name: true } } },
   });
-  prodotti.push(...creati.map((p) => ({ id: p.id, nome: p.name, categoria: p.category ?? '' })));
+  prodotti.push(
+    ...creati.map((p) => ({ id: p.id, nome: p.name, categoria: p.category?.name ?? '' })),
+  );
 
   console.log('→ Genero le offerte dei fornitori (da 1 a 3 per prodotto)');
   const offerte: Prisma.SupplierProductCreateManyInput[] = [];
@@ -205,7 +278,12 @@ async function main() {
   }
   console.log();
 
-  await prisma.$executeRawUnsafe('ANALYZE product, supplier_product, product_alias');
+  // Le tabelle della tassonomia stanno in questa lista perche' senza le loro
+  // statistiche la stessa ricerca misura 45 ms invece di 20: il pianificatore
+  // sbaglia i LEFT JOIN, e la misura direbbe una cosa falsa sul codice.
+  await prisma.$executeRawUnsafe(
+    'ANALYZE product, supplier_product, product_alias, category, department',
+  );
 
   console.log(
     `\n✓ ${prodotti.length} prodotti e ${offerte.length} offerte in "${new URL(connectionString!).pathname.slice(1)}"`,
@@ -226,7 +304,13 @@ async function misura(org: string) {
   await eseguiRicerca(org, preparaTermine('riscaldamento'), 20);
 
   console.log('\n→ Misura della ricerca');
-  console.log('  termine'.padEnd(20), 'strategia'.padEnd(14), 'risultati'.padStart(10), 'mediana'.padStart(10), 'max'.padStart(9));
+  console.log(
+    '  termine'.padEnd(20),
+    'strategia'.padEnd(14),
+    'risultati'.padStart(10),
+    'mediana'.padStart(10),
+    'max'.padStart(9),
+  );
 
   let peggiore = 0;
   for (const q of termini) {

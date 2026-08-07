@@ -77,14 +77,20 @@ describe('costruisciSqlRicerca', () => {
   });
 
   it('usa il trigram sopra i tre caratteri e il prefisso sotto', () => {
-    assert.ok(testo(costruisciSqlRicerca(ORG, preparaTermine('birra'), 20)).includes('word_similarity'));
-    assert.ok(!testo(costruisciSqlRicerca(ORG, preparaTermine('bi'), 20)).includes('word_similarity'));
+    assert.ok(
+      testo(costruisciSqlRicerca(ORG, preparaTermine('birra'), 20)).includes('word_similarity'),
+    );
+    assert.ok(
+      !testo(costruisciSqlRicerca(ORG, preparaTermine('bi'), 20)).includes('word_similarity'),
+    );
   });
 
   it('cerca il codice articolo a prefisso in entrambe le strategie', () => {
     for (const termine of ['birra', 'bi']) {
       assert.ok(
-        testo(costruisciSqlRicerca(ORG, preparaTermine(termine), 20)).includes('lower(sp.supplier_code) LIKE'),
+        testo(costruisciSqlRicerca(ORG, preparaTermine(termine), 20)).includes(
+          'lower(sp.supplier_code) LIKE',
+        ),
         `il codice deve essere cercato anche col termine "${termine}"`,
       );
     }
@@ -92,5 +98,11 @@ describe('costruisciSqlRicerca', () => {
 
   it('porta il limite come parametro', () => {
     assert.ok(valori(costruisciSqlRicerca(ORG, preparaTermine('birra'), 7)).includes(7));
+  });
+
+  it('difende anche i join di categoria e reparto con organization_id', () => {
+    const sql = testo(costruisciSqlRicerca(ORG, preparaTermine('birra'), 20));
+    assert.ok(sql.includes('c.organization_id = p.organization_id'));
+    assert.ok(sql.includes('d.organization_id = p.organization_id'));
   });
 });

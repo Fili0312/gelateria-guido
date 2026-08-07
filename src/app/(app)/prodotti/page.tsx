@@ -6,6 +6,7 @@ import { productListQuerySchema } from '@/features/products/schema';
 import { getCurrentUser } from '@/server/auth';
 import { withBasePath } from '@/server/base-path';
 import { productsRepository } from '@/server/repositories/products';
+import { taxonomyRepository } from '@/server/repositories/taxonomy';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,13 +25,23 @@ export default async function ProductsPage({
   const query = await searchParams;
   const analizzato = productListQuerySchema.safeParse({
     q: primo(query.q),
-    category: primo(query.category),
+    departmentId: primo(query.departmentId),
+    categoryId: primo(query.categoryId),
+    classification: primo(query.classification),
     status: primo(query.status),
     sort: primo(query.sort),
   });
   const filtri = analizzato.success ? analizzato.data : productListQuerySchema.parse({});
-  const risultato = await productsRepository(user.organizationId).list(filtri);
-  const conFiltri = filtri.q !== '' || filtri.category !== '' || filtri.status !== 'all';
+  const [risultato, tassonomia] = await Promise.all([
+    productsRepository(user.organizationId).list(filtri),
+    taxonomyRepository(user.organizationId).tree({ includiInattivi: false }),
+  ]);
+  const conFiltri =
+    filtri.q !== '' ||
+    filtri.departmentId !== '' ||
+    filtri.categoryId !== '' ||
+    filtri.classification !== 'all' ||
+    filtri.status !== 'all';
 
   return (
     <div className="space-y-7">
@@ -48,21 +59,30 @@ export default async function ProductsPage({
             diverse dello stesso articolo.
           </p>
         </div>
-        <Link
-          href="/prodotti/nuovo"
-          className="bg-brand-600 hover:bg-brand-700 focus-visible:ring-brand-600 inline-flex min-h-11 w-full items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:w-auto"
-        >
-          Nuovo prodotto
-        </Link>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Link
+            href="/prodotti/reparti"
+            className="focus-visible:ring-brand-600 inline-flex min-h-11 items-center justify-center rounded-lg border border-neutral-300 bg-white px-4 text-sm font-semibold text-neutral-800 hover:border-neutral-400 focus-visible:ring-2 focus-visible:outline-none"
+          >
+            Reparti e categorie
+          </Link>
+          <Link
+            href="/prodotti/nuovo"
+            className="bg-brand-600 hover:bg-brand-700 focus-visible:ring-brand-600 inline-flex min-h-11 w-full items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:w-auto"
+          >
+            Nuovo prodotto
+          </Link>
+        </div>
       </header>
 
       <ProductSearch endpoint={withBasePath('/api/products/search')} />
 
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { etichetta: 'Prodotti', valore: risultato.total },
           { etichetta: 'Con almeno un’offerta', valore: risultato.linked },
           { etichetta: 'Senza offerte', valore: risultato.orphan },
+          { etichetta: 'Da classificare', valore: risultato.unclassified },
         ].map((riquadro) => (
           <div
             key={riquadro.etichetta}
@@ -76,20 +96,40 @@ export default async function ProductsPage({
         ))}
       </dl>
 
-      <form className="grid gap-3 sm:grid-cols-4" role="search">
+      <form className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5" role="search">
         <Input
           name="q"
           label="Filtra l’elenco"
           defaultValue={filtri.q}
           placeholder="Nome del prodotto"
         />
-        <Select name="category" label="Categoria" defaultValue={filtri.category}>
-          <option value="">Tutte</option>
-          {risultato.categories.map((categoria) => (
-            <option key={categoria} value={categoria}>
-              {categoria}
+        <Select name="departmentId" label="Reparto" defaultValue={filtri.departmentId}>
+          <option value="">Tutti</option>
+          {tassonomia.departments.map((reparto) => (
+            <option key={reparto.id} value={reparto.id}>
+              {reparto.name} ({reparto.productsCount})
             </option>
           ))}
+        </Select>
+        {/* La categoria puntuale, con i reparti come gruppi: chi sa già cosa
+            cerca la sceglie qui e salta il filtro per reparto, che è meno
+            preciso ma più veloce da usare. */}
+        <Select name="categoryId" label="Categoria" defaultValue={filtri.categoryId}>
+          <option value="">Tutte</option>
+          {tassonomia.departments.map((reparto) => (
+            <optgroup key={reparto.id} label={reparto.name}>
+              {reparto.categories.map((categoria) => (
+                <option key={categoria.id} value={categoria.id}>
+                  {categoria.name} ({categoria.productsCount})
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </Select>
+        <Select name="classification" label="Classificazione" defaultValue={filtri.classification}>
+          <option value="all">Tutti</option>
+          <option value="classified">Con categoria</option>
+          <option value="unclassified">Da classificare</option>
         </Select>
         <Select name="status" label="Offerte" defaultValue={filtri.status}>
           <option value="all">Tutti</option>
@@ -102,7 +142,7 @@ export default async function ProductsPage({
           <option value="updated-desc">Modificati di recente</option>
           <option value="offers-desc">Più offerte</option>
         </Select>
-        <div className="sm:col-span-4">
+        <div className="sm:col-span-3 lg:col-span-5">
           <button
             type="submit"
             className="focus-visible:ring-brand-600 min-h-11 rounded-lg border border-neutral-300 bg-white px-4 text-sm font-semibold text-neutral-800 hover:border-neutral-400 focus-visible:ring-2 focus-visible:outline-none"

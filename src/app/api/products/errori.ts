@@ -15,6 +15,14 @@ export const ERRORI_CATALOGO: readonly ErroreMappato[] = [
     status: 400,
     fields: (errore) => (errore as { fields?: Record<string, string[]> }).fields,
   },
+  {
+    // Arriva da create/update quando il browser invia una categoria rimossa,
+    // inesistente o appartenente a un'altra organizzazione. E' un dato di
+    // input non più valido, non un guasto del server.
+    nome: 'TaxonomyNotFoundError',
+    status: 400,
+    fields: () => ({ categoryId: ['La categoria indicata non esiste più.'] }),
+  },
   { nome: 'SupplierProductNotFoundError', status: 404 },
   { nome: 'SupplierProductConflictError', status: 409 },
   {

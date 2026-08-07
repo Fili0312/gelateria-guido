@@ -79,7 +79,10 @@ describe('prezzoUnitario', () => {
     // E' il caso che il modello prevede: il prezzo al litro di un collo di
     // cui non si sa quante bottiglie contenga sarebbe un'ipotesi travestita
     // da dato.
-    assert.equal(prezzoUnitario(offerta({ packQuantityConfirmed: false })), 'confezione da definire');
+    assert.equal(
+      prezzoUnitario(offerta({ packQuantityConfirmed: false })),
+      'confezione da definire',
+    );
   });
 });
 

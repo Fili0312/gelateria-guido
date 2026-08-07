@@ -4,6 +4,8 @@ const DIRECTLY_SCOPED_MODELS = new Set([
   'User',
   'Supplier',
   'PriceList',
+  'Department',
+  'Category',
   'Product',
   'SupplierProduct',
   'Order',

@@ -6,6 +6,7 @@ import { improntaDaDescrizione } from '../src/server/domain/packaging/fingerprin
 import { applicaSconti } from '../src/server/domain/pricing/discounts.js';
 import { prezzoPerUnita } from '../src/server/domain/pricing/unit-price.js';
 import { basePerPrezzo } from '../src/server/domain/packaging/units.js';
+import { categoriaSuggerita, TASSONOMIA_INIZIALE } from '../src/server/domain/catalog/categorie.js';
 
 /**
  * Popola il database con quanto basta per lavorare.
@@ -285,7 +286,51 @@ async function main() {
     },
   });
 
+  console.log('→ Reparti e categorie');
+
+  // Durante un aggiornamento la migrazione crea la tassonomia per le
+  // organizzazioni già presenti. Su un database nuovo, invece, questa
+  // organizzazione nasce *dopo* `migrate deploy`: il seed deve quindi fare il
+  // bootstrap. Se esiste già almeno un reparto non cambia niente, così le
+  // personalizzazioni fatte dall'interfaccia restano dell'utente.
+  if ((await prisma.department.count({ where: { organizationId: organizzazione.id } })) === 0) {
+    await prisma.$transaction(async (tx) => {
+      for (const reparto of TASSONOMIA_INIZIALE) {
+        const creato = await tx.department.create({
+          data: {
+            organizationId: organizzazione.id,
+            name: reparto.name,
+            color: reparto.color,
+            sortOrder: reparto.sortOrder,
+          },
+        });
+        await tx.category.createMany({
+          data: reparto.categories.map((name, indice) => ({
+            organizationId: organizzazione.id,
+            departmentId: creato.id,
+            name,
+            sortOrder: (indice + 1) * 10,
+          })),
+        });
+      }
+    });
+  }
+
   console.log('→ Prodotti e prezzi');
+
+  const categorie = new Map(
+    (
+      await prisma.category.findMany({
+        where: { organizationId: organizzazione.id },
+        select: { id: true, name: true },
+      })
+    ).map((c) => [c.name, c.id]),
+  );
+
+  const categoriaDi = (testoFornitore: string | undefined): string | null => {
+    const nome = categoriaSuggerita(testoFornitore);
+    return nome ? (categorie.get(nome) ?? null) : null;
+  };
 
   const oggi = new Date().toISOString().slice(0, 10);
   let creati = 0;
@@ -317,7 +362,7 @@ async function main() {
           data: {
             organizationId: organizzazione.id,
             name: riga.descrizione,
-            category: riga.categoria,
+            categoryId: categoriaDi(riga.categoria),
             unitSize: formato.unitSize.toString(),
             unitOfMeasure: formato.unitOfMeasure,
             baseUnit: formato.baseUnit,

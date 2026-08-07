@@ -229,6 +229,10 @@ sottile e decisivo.
 con ricerca veloce. Rende l'app utile **prima** dell'import PDF e fornisce il
 terreno su cui l'import atterrerà.
 
+**Stato (7 agosto 2026):** completata, pubblicata e collaudata in produzione.
+Implementazione, benchmark e collaudo sono documentati in
+[FASE-5.md](FASE-5.md).
+
 **Cosa sviluppare**
 
 - CRUD `product` (normalizzato) e `supplier_product`, con collegamento
@@ -259,6 +263,47 @@ caratteri: prefisso invece di trigram).
       peggiore su 5.000 prodotti e 9.973 offerte
 - [x] `content_per_pack` e `base_unit` sono calcolati e corretti
 - [x] la ricerca ignora accenti, maiuscole e punteggiatura
+
+---
+
+# FASE 5b — Reparti e categorie
+
+**Obiettivo.** Organizzare il catalogo in due livelli fissi — reparto →
+categoria — così filtri e futuri ordini seguono lo stesso giro fisico del
+magazzino.
+
+**Stato (7 agosto 2026):** codice, test, build e prove di migrazione completati;
+pronta al backup e al deploy. Dettagli in [FASE-5B.md](FASE-5B.md).
+
+**Cosa sviluppare**
+
+- CRUD di reparti e categorie con nome, colore, ordine e stato attivo.
+- Categoria strutturata sul prodotto; categoria testuale del fornitore
+  conservata soltanto come indizio del listino.
+- Coda «da classificare» e filtri per reparto/categoria.
+- Tassonomia iniziale per Bar, Gelateria, Cucina, Pulizia e consumo.
+- Backfill sicuro dei prodotti esistenti e suggerimento deterministico dalle
+  categorie dei fornitori.
+- Isolamento per organizzazione anche sui nuovi modelli e sui join SQL della
+  ricerca.
+
+**Tabelle** — `department`, `category`; `product.category_id`.
+**API** — `GET /api/taxonomy`, CRUD sotto
+`/api/taxonomy/departments` e `/api/taxonomy/categories`.
+**Frontend** — `/prodotti/reparti`, form e filtri del catalogo.
+
+**Completata quando**
+
+- [x] ogni prodotto può essere classificato in una categoria e quindi in un
+      reparto
+- [x] reparti e categorie si creano, rinominano, ordinano, spostano,
+      disattivano e cancellano con regole comprensibili
+- [x] i 19 prodotti esistenti vengono migrati senza perdita e senza elementi
+      «da classificare» inattesi
+- [x] una installazione da zero crea 4 reparti e 29 categorie tramite il seed
+- [x] scope organizzazione, API, schema, ricerca e migrazione sono coperti dai
+      test e dalla rehearsal su copia del live
+- [ ] backup immediatamente precedente, deploy e smoke test live completati
 
 ---
 

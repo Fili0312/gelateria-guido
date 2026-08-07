@@ -1,10 +1,5 @@
 import { Decimal } from 'decimal.js';
-import {
-  basePerPrezzo,
-  confrontabili,
-  type BaseUnit,
-  type PriceBasis,
-} from '../packaging/units';
+import { basePerPrezzo, confrontabili, type BaseUnit, type PriceBasis } from '../packaging/units';
 
 /**
  * Prezzo per unita' base.

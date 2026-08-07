@@ -1,12 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import {
-  prezzoAllaData,
-  prezzoCorrente,
-  prezzoStantio,
-  serieStorica,
-  variazione,
-} from './history';
+import { prezzoAllaData, prezzoCorrente, prezzoStantio, serieStorica, variazione } from './history';
 
 /**
  * Lo storico dell'esempio del punto 4 della specifica:

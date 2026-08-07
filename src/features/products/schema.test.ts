@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
   aliasInputSchema,
   productInputSchema,
+  productListQuerySchema,
   productSearchQuerySchema,
   supplierProductInputSchema,
 } from './schema';
@@ -51,8 +52,12 @@ describe('productInputSchema', () => {
 
   it('accetta un codice a barre di sole cifre e rifiuta il resto', () => {
     assert.equal(
-      productInputSchema.parse({ name: 'X', unitSize: '1', unitOfMeasure: 'L', gtin: '8001234567890' })
-        .gtin,
+      productInputSchema.parse({
+        name: 'X',
+        unitSize: '1',
+        unitOfMeasure: 'L',
+        gtin: '8001234567890',
+      }).gtin,
       '8001234567890',
     );
     const storto = productInputSchema.safeParse({
@@ -140,5 +145,47 @@ describe('aliasInputSchema', () => {
 
   it('di default un sinonimo e positivo', () => {
     assert.equal(aliasInputSchema.parse({ text: 'birra xyz' }).negative, false);
+  });
+});
+
+describe('la categoria del prodotto è un identificativo, non un testo', () => {
+  const base = { name: 'Birra XYZ', unitSize: '0.33', unitOfMeasure: 'L' } as const;
+
+  it('senza categoria il prodotto è valido: resta «da classificare»', () => {
+    assert.equal(productInputSchema.parse(base).categoryId, null);
+  });
+
+  it('accetta un identificativo di categoria', () => {
+    assert.equal(productInputSchema.parse({ ...base, categoryId: 'abc123' }).categoryId, 'abc123');
+  });
+
+  it('rifiuta il vecchio campo di testo libero invece di ignorarlo', () => {
+    // È il punto della fase: se `category: 'Amari'` passasse in silenzio, un
+    // client non aggiornato continuerebbe a inviarlo e nessuno se ne
+    // accorgerebbe finché non manca la categoria in ordine.
+    assert.equal(productInputSchema.safeParse({ ...base, category: 'Amari' }).success, false);
+  });
+
+  it('una stringa vuota diventa nessuna categoria', () => {
+    assert.equal(productInputSchema.parse({ ...base, categoryId: '   ' }).categoryId, null);
+  });
+});
+
+describe('i filtri dell’elenco prodotti', () => {
+  it('senza parametri non filtra niente', () => {
+    const q = productListQuerySchema.parse({});
+    assert.equal(q.departmentId, '');
+    assert.equal(q.categoryId, '');
+    assert.equal(q.classification, 'all');
+  });
+
+  it('«da classificare» è un filtro a sé, separato da «senza offerte»', () => {
+    const q = productListQuerySchema.parse({ classification: 'unclassified', status: 'orphan' });
+    assert.equal(q.classification, 'unclassified');
+    assert.equal(q.status, 'orphan');
+  });
+
+  it('rifiuta una classificazione inventata', () => {
+    assert.equal(productListQuerySchema.safeParse({ classification: 'boh' }).success, false);
   });
 });

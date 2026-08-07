@@ -1,7 +1,16 @@
 import Link from 'next/link';
-import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui';
+import {
+  Badge,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui';
 import type { ProductListItem } from '@/features/products/dto';
 import { formatoUnitario } from '@/features/products/format';
+import { CategoryBadge } from '@/components/taxonomy/category-badge';
 
 function Vuoto({ conFiltri }: { conFiltri: boolean }) {
   return (
@@ -40,7 +49,10 @@ function Offerte({ prodotto }: { prodotto: ProductListItem }) {
     <span className="inline-flex items-center gap-2">
       <span className="font-semibold text-neutral-900">{prodotto.offersCount}</span>
       {incomplete > 0 && (
-        <Badge variant="warning" title="Confezione non dichiarata: il prezzo per unità non è calcolabile">
+        <Badge
+          variant="warning"
+          title="Confezione non dichiarata: il prezzo per unità non è calcolabile"
+        >
           {incomplete} da definire
         </Badge>
       )}
@@ -71,7 +83,9 @@ export function ProductList({
               <span className="block font-semibold text-neutral-950">{prodotto.name}</span>
               <span className="mt-1 block text-sm text-neutral-500">
                 {formatoUnitario(prodotto.unitSize, prodotto.unitOfMeasure)}
-                {prodotto.category ? ` · ${prodotto.category}` : ''}
+              </span>
+              <span className="mt-2 block">
+                <CategoryBadge categoria={prodotto.category} />
               </span>
               <span className="mt-3 flex items-center gap-2 text-sm">
                 <Offerte prodotto={prodotto} />
@@ -112,7 +126,9 @@ export function ProductList({
                 <TableCell className="tabellare">
                   {formatoUnitario(prodotto.unitSize, prodotto.unitOfMeasure)}
                 </TableCell>
-                <TableCell>{prodotto.category ?? '—'}</TableCell>
+                <TableCell>
+                  <CategoryBadge categoria={prodotto.category} />
+                </TableCell>
                 <TableCell>{prodotto.brand ?? '—'}</TableCell>
                 <TableCell>
                   <Offerte prodotto={prodotto} />

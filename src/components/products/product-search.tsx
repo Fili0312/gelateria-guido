@@ -57,7 +57,9 @@ export function ProductSearch({ endpoint }: { endpoint: string }) {
           headers: { Accept: 'application/json' },
           signal: controller.signal,
         });
-        const corpo = (await risposta.json().catch(() => null)) as ProductApiBody<ProductSearchResult> | null;
+        const corpo = (await risposta
+          .json()
+          .catch(() => null)) as ProductApiBody<ProductSearchResult> | null;
         if (!risposta.ok || !corpo?.ok) {
           setErrore(corpo && !corpo.ok ? corpo.error : 'La ricerca non è riuscita.');
           setEsito(null);
@@ -141,7 +143,10 @@ export function ProductSearch({ endpoint }: { endpoint: string }) {
                   <span className="block truncate font-medium text-neutral-900">{hit.name}</span>
                   <span className="block text-xs text-neutral-500">
                     {formatoUnitario(hit.unitSize, hit.unitOfMeasure)}
-                    {hit.category ? ` · ${hit.category}` : ''} · {hit.offersCount} offerte
+                    {hit.category
+                      ? ` · ${hit.category.departmentName} · ${hit.category.name}`
+                      : ''}{' '}
+                    · {hit.offersCount} offerte
                   </span>
                 </span>
                 <span className="shrink-0 text-xs text-neutral-400">{hit.via}</span>

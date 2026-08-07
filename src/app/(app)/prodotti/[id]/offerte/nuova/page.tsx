@@ -17,7 +17,11 @@ export default async function AttachOfferPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const [prodotto, orfane, fornitori] = await Promise.all([
     productsRepository(user.organizationId).get(id),
-    supplierProductsRepository(user.organizationId).list({ q: '', supplierId: '', status: 'orphan' }),
+    supplierProductsRepository(user.organizationId).list({
+      q: '',
+      supplierId: '',
+      status: 'orphan',
+    }),
     suppliersRepository(user.organizationId).list({ q: '', status: 'active', sort: 'name-asc' }),
   ]);
   if (!prodotto) notFound();
@@ -25,7 +29,10 @@ export default async function AttachOfferPage({ params }: { params: Promise<{ id
   return (
     <div className="max-w-3xl space-y-6">
       <header>
-        <Link href={`/prodotti/${prodotto.id}`} className="text-sm text-neutral-500 hover:underline">
+        <Link
+          href={`/prodotti/${prodotto.id}`}
+          className="text-sm text-neutral-500 hover:underline"
+        >
           ← {prodotto.name}
         </Link>
         <Badge variant="brand" dot className="mt-3 block w-fit">

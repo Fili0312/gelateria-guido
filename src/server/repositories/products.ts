@@ -23,6 +23,7 @@ import { nucleoDescrizione } from '@/server/domain/packaging/parse';
 import { normalizzaTesto } from '@/server/domain/packaging/normalize';
 import { baseDi, type UnitOfMeasure } from '@/server/domain/packaging/units';
 import { mapOffer, OFFER_INCLUDE, type OfferRecord } from './offers';
+import { CATEGORY_REF_SELECT, mapCategoryRef, taxonomyRepository } from './taxonomy';
 
 export class ProductNotFoundError extends Error {
   override readonly name = 'ProductNotFoundError';
@@ -46,7 +47,7 @@ const LIST_SELECT = {
   id: true,
   name: true,
   brand: true,
-  category: true,
+  category: { select: CATEGORY_REF_SELECT },
   unitSize: true,
   unitOfMeasure: true,
   baseUnit: true,
@@ -61,7 +62,12 @@ interface ProductRecord {
   id: string;
   name: string;
   brand: string | null;
-  category: string | null;
+  category: {
+    id: string;
+    name: string;
+    departmentId: string;
+    department: { name: string; color: string | null };
+  } | null;
   unitSize: { toString(): string };
   unitOfMeasure: string;
   baseUnit: string;
@@ -77,7 +83,7 @@ function mapList(record: ProductRecord, offers: SupplierOffer[]): ProductListIte
     id: record.id,
     name: record.name,
     brand: record.brand,
-    category: record.category,
+    category: mapCategoryRef(record.category),
     unitSize: record.unitSize.toString(),
     unitOfMeasure: record.unitOfMeasure as ProductListItem['unitOfMeasure'],
     baseUnit: record.baseUnit as ProductListItem['baseUnit'],
@@ -106,8 +112,11 @@ function derivati(input: { name: string; unitOfMeasure: string }) {
 
 export function productsRepository(organizationId: string) {
   const db = prismaForOrganization(organizationId);
+  const tassonomia = taxonomyRepository(organizationId);
 
-  async function caricaOfferte(productIds: readonly string[]): Promise<Map<string, SupplierOffer[]>> {
+  async function caricaOfferte(
+    productIds: readonly string[],
+  ): Promise<Map<string, SupplierOffer[]>> {
     if (productIds.length === 0) return new Map();
     const offerte = (await db.supplierProduct.findMany({
       where: { productId: { in: [...productIds] } },
@@ -128,9 +137,23 @@ export function productsRepository(organizationId: string) {
   return {
     async list(query: ProductListQuery): Promise<ProductListResult> {
       const termine = normalizzaTesto(query.q);
+      const filtroTassonomia =
+        query.classification === 'unclassified'
+          ? { categoryId: null }
+          : query.categoryId
+            ? { categoryId: query.categoryId }
+            : query.departmentId
+              ? { category: { departmentId: query.departmentId } }
+              : query.classification === 'classified'
+                ? { categoryId: { not: null } }
+                : {};
+
       const where = {
         ...(termine ? { normalizedName: { contains: termine } } : {}),
-        ...(query.category ? { category: query.category } : {}),
+        // «Da classificare» non può appartenere anche a un reparto: quando
+        // arriva insieme a un filtro tassonomico vince e mostra tutta la coda.
+        // Negli altri casi la categoria puntuale vince sul reparto.
+        ...filtroTassonomia,
         ...(query.status === 'linked' ? { supplierProducts: { some: {} } } : {}),
         ...(query.status === 'orphan' ? { supplierProducts: { none: {} } } : {}),
       };
@@ -142,16 +165,11 @@ export function productsRepository(organizationId: string) {
             ? [{ updatedAt: 'desc' as const }]
             : [{ name: 'asc' as const }];
 
-      const [records, total, linked, categorie] = await Promise.all([
+      const [records, total, linked, nonClassificati] = await Promise.all([
         db.product.findMany({ where, select: LIST_SELECT, orderBy: ordine, take: 200 }),
         db.product.count({}),
         db.product.count({ where: { supplierProducts: { some: {} } } }),
-        db.product.findMany({
-          where: { category: { not: null } },
-          select: { category: true },
-          distinct: ['category'],
-          orderBy: { category: 'asc' },
-        }),
+        db.product.count({ where: { categoryId: null } }),
       ]);
 
       const offerte = await caricaOfferte(records.map((r) => r.id));
@@ -170,7 +188,7 @@ export function productsRepository(organizationId: string) {
         total,
         linked,
         orphan: total - linked,
-        categories: categorie.map((c) => c.category).filter((c): c is string => Boolean(c)),
+        unclassified: nonClassificati,
       };
     },
 
@@ -205,7 +223,9 @@ export function productsRepository(organizationId: string) {
         }),
       ]);
 
-      const offers = ((offerteRaw?.supplierProducts ?? []) as unknown as OfferRecord[]).map(mapOffer);
+      const offers = ((offerteRaw?.supplierProducts ?? []) as unknown as OfferRecord[]).map(
+        mapOffer,
+      );
       const aliases: ProductAliasItem[] = (aliasRaw?.aliases ?? []).map((a) => ({
         id: a.id,
         text: a.text,
@@ -244,7 +264,15 @@ export function productsRepository(organizationId: string) {
           id: r.id,
           name: r.name,
           brand: r.brand,
-          category: r.category,
+          category: r.category_id
+            ? {
+                id: r.category_id,
+                name: r.category_name ?? '',
+                departmentId: r.department_id ?? '',
+                departmentName: r.department_name ?? '',
+                departmentColor: r.department_color,
+              }
+            : null,
           unitSize: r.unit_size,
           unitOfMeasure: r.unit_of_measure as ProductListItem['unitOfMeasure'],
           offersCount: r.offers_count,
@@ -259,6 +287,10 @@ export function productsRepository(organizationId: string) {
 
     async create(input: ProductInput): Promise<ProductDetail> {
       const dati = { ...input, ...derivati(input) };
+      // Una categoria di un'altra organizzazione non esiste, per costruzione
+      // dello scope: l'API la traduce in un errore del campo invece di
+      // arrivare alla foreign key e uscire come errore 500.
+      const categoryId = await tassonomia.assertCategoryBelongs(dati.categoryId);
       const gemello = await db.product.findFirst({
         where: {
           normalizedName: dati.normalizedName,
@@ -280,7 +312,7 @@ export function productsRepository(organizationId: string) {
           organizationId,
           name: dati.name,
           brand: dati.brand,
-          category: dati.category,
+          categoryId,
           gtin: dati.gtin,
           unitSize: dati.unitSize,
           unitOfMeasure: dati.unitOfMeasure,
@@ -306,7 +338,8 @@ export function productsRepository(organizationId: string) {
       const fuso = {
         name: patch.name ?? corrente.name,
         brand: patch.brand !== undefined ? patch.brand : corrente.brand,
-        category: patch.category !== undefined ? patch.category : corrente.category,
+        categoryId:
+          patch.categoryId !== undefined ? patch.categoryId : (corrente.category?.id ?? null),
         gtin: patch.gtin !== undefined ? patch.gtin : corrente.gtin,
         unitSize: patch.unitSize ?? corrente.unitSize.toString(),
         unitOfMeasure: patch.unitOfMeasure ?? corrente.unitOfMeasure,
@@ -323,12 +356,13 @@ export function productsRepository(organizationId: string) {
       }
 
       const dati = { ...completo.data, ...derivati(completo.data) };
+      const categoryId = await tassonomia.assertCategoryBelongs(dati.categoryId);
       await db.product.update({
         where: { id },
         data: {
           name: dati.name,
           brand: dati.brand,
-          category: dati.category,
+          categoryId,
           gtin: dati.gtin,
           unitSize: dati.unitSize,
           unitOfMeasure: dati.unitOfMeasure,
@@ -359,7 +393,10 @@ export function productsRepository(organizationId: string) {
     },
 
     async addAlias(productId: string, input: AliasInput): Promise<ProductAliasItem[]> {
-      const prodotto = await db.product.findFirst({ where: { id: productId }, select: { id: true } });
+      const prodotto = await db.product.findFirst({
+        where: { id: productId },
+        select: { id: true },
+      });
       if (!prodotto) throw new ProductNotFoundError('Prodotto non trovato.');
 
       const normalizedText = normalizzaTesto(input.text);

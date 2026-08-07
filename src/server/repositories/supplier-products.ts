@@ -1,9 +1,6 @@
 import 'server-only';
 
-import type {
-  SupplierProductListItem,
-  SupplierProductListResult,
-} from '@/features/products/dto';
+import type { SupplierProductListItem, SupplierProductListResult } from '@/features/products/dto';
 import type {
   SupplierProductInput,
   SupplierProductPatch,
@@ -209,7 +206,8 @@ export function supplierProductsRepository(organizationId: string) {
         packQuantityConfirmed: patch.packQuantityConfirmed ?? corrente.packQuantityConfirmed,
         unitSize: patch.unitSize ?? corrente.unitSize.toString(),
         unitOfMeasure: patch.unitOfMeasure ?? corrente.unitOfMeasure,
-        vatRate: patch.vatRate !== undefined ? patch.vatRate : (corrente.vatRate?.toString() ?? null),
+        vatRate:
+          patch.vatRate !== undefined ? patch.vatRate : (corrente.vatRate?.toString() ?? null),
         gtin: patch.gtin !== undefined ? patch.gtin : corrente.gtin,
         productId: patch.productId !== undefined ? patch.productId : corrente.productId,
       };
@@ -256,9 +254,10 @@ export function supplierProductsRepository(organizationId: string) {
           where: { id: productId },
           select: { id: true },
         });
-        if (!prodotto) throw new SupplierProductValidationError('Prodotto non trovato.', {
-          productId: ['Prodotto non trovato.'],
-        });
+        if (!prodotto)
+          throw new SupplierProductValidationError('Prodotto non trovato.', {
+            productId: ['Prodotto non trovato.'],
+          });
       }
 
       const aggiornati = await db.supplierProduct.updateMany({
