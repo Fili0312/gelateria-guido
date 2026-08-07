@@ -1,9 +1,19 @@
 // Schema del database — Gelateria Guido
 //
-// FASE 1: qui c'è solo la configurazione. Le entità (fornitori, listini,
-// prodotti, prezzi, ordini) arrivano tutte insieme in FASE 2, quando i PDF
-// reali avranno chiarito se servono i prezzi a scaglioni (decisione D7).
-// Vedi docs/ANALISI.md §3 per il modello già progettato.
+// Tutte le entità arrivano insieme, di proposito: farne otto migrazioni
+// incrementali con dati veri dentro costa molto più che scriverle ora.
+// Il ragionamento dietro ogni scelta sta in docs/ANALISI.md §3.
+//
+// Tre regole che valgono ovunque e che spiegano metà delle colonne:
+//
+//  1. `organizationId` su ogni tabella di dominio. Oggi c'è una sola
+//     gelateria; il giorno che ce ne fosse un'altra, la colonna c'è già.
+//  2. I prezzi non si aggiornano mai: si chiude il precedente e se ne
+//     inserisce uno nuovo. È ciò che rende possibili storico, variazioni e
+//     l'annullamento di un import sbagliato.
+//  3. Niente si cancella. Un prodotto sparito da un listino diventa
+//     `active = false`: cancellarlo porterebbe via con sé lo storico prezzi
+//     e le righe degli ordini già fatti.
 
 generator client {
   provider     = "prisma-client"
@@ -13,4 +23,901 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  ENUM
+// ═══════════════════════════════════════════════════════════════════════
+
+enum UserRole {
+  OWNER
+  MANAGER
+  OPERATOR
+}
+
+/// Unità di misura come le scrive il fornitore. Si conserva la forma
+/// originale (`CL`, `GR`) e si converte alla base solo per i confronti:
+/// ri-mostrare "0,33 L" dove il listino diceva "cl.33" confonde.
+enum UnitOfMeasure {
+  PIECE
+  MG
+  G
+  HG
+  KG
+  ML
+  CL
+  DL
+  L
+}
+
+/// Le tre unità canoniche del confronto. Fra dimensioni diverse non si
+/// converte mai: kg ↔ L richiederebbe una densità che non abbiamo.
+enum BaseUnit {
+  PIECE
+  KG
+  L
+}
+
+enum PriceBasis {
+  PER_PIECE
+  PER_KG
+  PER_L
+}
+
+/// Che tipo di documento è il file caricato. I listini veri della gelateria
+/// non sono listini generici ma preventivi e ordini di vendita intestati:
+/// hanno una colonna "Q.tà" sempre a 1 che NON è la confezione.
+enum DocumentType {
+  LISTINO
+  PREVENTIVO
+  ORDINE_VENDITA
+  CATALOGO
+}
+
+enum PriceListStatus {
+  UPLOADED
+  EXTRACTING
+  EXTRACTED
+  STRUCTURING
+  MATCHING
+  REVIEW
+  APPLYING
+  APPLIED
+  FAILED
+  DISCARDED
+  REVERTED
+}
+
+enum ImportPhase {
+  QUEUED
+  EXTRACTING
+  SEGMENTING
+  STRUCTURING
+  VALIDATING
+  MATCHING
+  DONE
+  FAILED
+  CANCELLED
+}
+
+/// Da dove vengono i campi di una riga: dal profilo del fornitore
+/// (deterministico), dall'IA, o dalla mano dell'operatore in revisione.
+enum RowSource {
+  PROFILE
+  AI
+  MANUAL
+}
+
+enum MatchStatus {
+  AUTO
+  PENDING
+  NEW
+  CONFIRMED
+  REJECTED
+  IGNORED
+}
+
+/// Cosa il sistema propone di fare con una riga. `PACKAGING_CHANGED` è il
+/// caso che non si decide mai da soli: stesso codice, confezione diversa.
+/// Applicarlo in automatico farebbe sembrare un dimezzamento di prezzo
+/// quello che è un dimezzamento di confezione.
+enum ProposedAction {
+  CREATE
+  UPDATE_PRICE
+  UNCHANGED
+  PACKAGING_CHANGED
+  AMBIGUOUS
+  IGNORE
+}
+
+enum MatchMethod {
+  GTIN
+  CODE
+  ALIAS
+  TRIGRAM
+  LLM
+  MANUAL
+}
+
+enum AliasSource {
+  SUPPLIER
+  USER
+  AI
+}
+
+/// Chi ha creato un prodotto canonico. Un prodotto nato da un'inferenza
+/// dell'IA merita più diffidenza di uno inserito a mano: la colonna esiste
+/// per poterli distinguere in revisione.
+enum CreatedBy {
+  USER
+  AI
+  IMPORT
+}
+
+enum PriceSource {
+  PRICE_LIST
+  MANUAL
+  ORDER
+}
+
+enum OrderStatus {
+  DRAFT
+  CONFIRMED
+  SENT
+  RECEIVED
+  CANCELLED
+}
+
+enum DocumentFormat {
+  PDF
+  XLSX
+  CSV
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+/// Come è stata spedita (o non spedita) un'email. Si registra perché un
+/// domani si possa distinguere "mandata davvero" da "simulata su file".
+enum MailMode {
+  LOG
+  SMTP
+}
+
+enum AiPurpose {
+  INFER_PROFILE
+  EXTRACT_ROWS
+  MATCH_PRODUCT
+  ANOMALY
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  ANAGRAFICHE
+// ═══════════════════════════════════════════════════════════════════════
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users     User[]
+  suppliers Supplier[]
+  products  Product[]
+  priceLists PriceList[]
+  supplierProducts SupplierProduct[]
+  orders    Order[]
+  settings  Setting[]
+  aiCalls   AiCall[]
+  auditLogs AuditLog[]
+
+  @@map("organization")
+}
+
+/// Si entra con una password unica condivisa (decisione D4), quindi qui
+/// c'è una riga sola. La tabella esiste comunque perché ordini e listini
+/// devono poter dire chi li ha creati — e il giorno che servissero account
+/// personali si aggiungono righe, senza migrare nulla.
+model User {
+  id             String   @id @default(cuid())
+  organizationId String   @map("organization_id")
+  name           String
+  email          String?
+  passwordHash   String?  @map("password_hash")
+  role           UserRole @default(OWNER)
+  active         Boolean  @default(true)
+  lastLoginAt    DateTime? @map("last_login_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  priceListsUploaded PriceList[] @relation("caricatoDa")
+  ordersCreated     Order[]
+  documentsCreated  OrderDocument[]
+  pricesCreated     SupplierProductPrice[]
+  rowsReviewed      PriceListRow[]
+  matchesDecided    ProductMatchCandidate[]
+  auditLogs         AuditLog[]
+
+  @@unique([organizationId, email])
+  @@index([organizationId])
+  @@map("user")
+}
+
+model Supplier {
+  id             String  @id @default(cuid())
+  organizationId String  @map("organization_id")
+  name           String
+  code           String?
+  vatNumber      String? @map("vat_number")
+  email          String?
+  phone          String?
+  contactName    String? @map("contact_name")
+  address        String?
+  notes          String?
+
+  /// Alcuni listini sono IVA esclusa, altri inclusa. Confrontare un netto
+  /// con un lordo falsa ogni confronto in modo plausibile — cioè difficile
+  /// da accorgersene. Barzelli e Cecconi sono entrambi al netto.
+  pricesIncludeVat Boolean @default(false) @map("prices_include_vat")
+  defaultVatRate   Decimal? @map("default_vat_rate") @db.Decimal(5, 2)
+  minOrderValue    Decimal? @map("min_order_value") @db.Decimal(12, 2)
+  deliveryDays     String?  @map("delivery_days")
+
+  /// Indirizzo a cui parte il PDF dell'ordine. Separato da `email` di
+  /// proposito: l'ufficio ordini di un fornitore quasi mai coincide con il
+  /// commerciale che manda i listini.
+  orderEmail        String?  @map("order_email")
+  orderEmailCc      String?  @map("order_email_cc")
+  sendOrdersByEmail Boolean  @default(false) @map("send_orders_by_email")
+  emailNote         String?  @map("email_note")
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  priceLists       PriceList[]
+  supplierProducts SupplierProduct[]
+  importProfiles   SupplierImportProfile[]
+  orderLines       OrderLine[]
+  orderDocuments   OrderDocument[]
+  emailDeliveries  EmailDelivery[]
+  aliases          ProductAlias[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("supplier")
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  LISTINI E IMPORTAZIONE (staging)
+// ═══════════════════════════════════════════════════════════════════════
+
+model PriceList {
+  id             String @id @default(cuid())
+  organizationId String @map("organization_id")
+  supplierId     String @map("supplier_id")
+
+  originalFilename String  @map("original_filename")
+  storagePath      String  @map("storage_path")
+  /// sha256 del file: protegge dal doppio caricamento dello stesso PDF.
+  fileHash         String  @map("file_hash")
+  pageCount        Int?    @map("page_count")
+
+  documentType DocumentType @default(LISTINO) @map("document_type")
+
+  /// Che cosa copre questo listino ("liquori", "vini e spumanti", "gelato").
+  /// Non è un'etichetta cosmetica: è il perimetro entro cui si calcolano i
+  /// "prodotti spariti". Cecconi manda due listini con 1 codice in comune su
+  /// 220 — senza copertura, importare i vini farebbe sparire tutti i liquori.
+  scopeLabel String @map("scope_label")
+
+  currency  String  @default("EUR")
+  validFrom DateTime? @map("valid_from") @db.Date
+  validTo   DateTime? @map("valid_to") @db.Date
+
+  status           PriceListStatus @default(UPLOADED)
+  extractorVersion String?         @map("extractor_version")
+  stats            Json?
+  error            String?
+
+  uploadedById String?   @map("uploaded_by_id")
+  uploadedAt   DateTime  @default(now()) @map("uploaded_at")
+  appliedAt    DateTime? @map("applied_at")
+  revertedAt   DateTime? @map("reverted_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier     Supplier     @relation(fields: [supplierId], references: [id])
+  uploadedBy   User?        @relation("caricatoDa", fields: [uploadedById], references: [id])
+
+  rows            PriceListRow[]
+  job             ImportJob?
+  prices          SupplierProductPrice[]
+  lastSeenBy      SupplierProduct[] @relation("ultimoListinoVisto")
+  aiCalls         AiCall[]
+
+  @@unique([supplierId, fileHash])
+  @@index([organizationId])
+  @@index([supplierId, scopeLabel, appliedAt])
+  @@map("price_list")
+}
+
+/// La riga grezza del PDF: è ciò che rende tracciabile ogni prezzo in
+/// produzione fino alla pagina e al testo da cui è stato ricavato.
+model PriceListRow {
+  id          String @id @default(cuid())
+  priceListId String @map("price_list_id")
+
+  pageNumber Int    @map("page_number")
+  lineNumber Int    @map("line_number")
+  rawText    String @map("raw_text")
+  rawCells   Json?  @map("raw_cells")
+  bbox       Json?
+
+  source RowSource @default(PROFILE)
+
+  /// I campi ricavati dalla riga: codice, nome, marca, formato, prezzo,
+  /// sconti, IVA. Restano JSON finché non sono validati e applicati — è la
+  /// zona in cui l'IA può scrivere senza toccare le tabelle di dominio.
+  extracted        Json?
+  confidence       Decimal? @db.Decimal(4, 3)
+  validationErrors Json?    @map("validation_errors")
+
+  matchStatus    MatchStatus    @default(PENDING) @map("match_status")
+  proposedAction ProposedAction @default(AMBIGUOUS) @map("proposed_action")
+
+  supplierProductId String? @map("supplier_product_id")
+  productId         String? @map("product_id")
+  aiCallId          String? @map("ai_call_id")
+
+  reviewedById String?   @map("reviewed_by_id")
+  reviewedAt   DateTime? @map("reviewed_at")
+  excluded     Boolean   @default(false)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  priceList       PriceList        @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+  supplierProduct SupplierProduct? @relation(fields: [supplierProductId], references: [id])
+  product         Product?         @relation(fields: [productId], references: [id])
+  reviewedBy      User?            @relation(fields: [reviewedById], references: [id])
+
+  @@unique([priceListId, pageNumber, lineNumber])
+  @@index([priceListId, matchStatus])
+  @@index([priceListId, proposedAction])
+  @@map("price_list_row")
+}
+
+/// Il "template" appreso per fornitore. Al primo listino l'IA deduce la
+/// mappatura delle colonne; dai successivi il parsing è deterministico e
+/// l'IA vede solo le righe che il profilo non spiega. È la leva su costo,
+/// velocità e ripetibilità.
+model SupplierImportProfile {
+  id         String  @id @default(cuid())
+  supplierId String  @map("supplier_id")
+  scopeLabel String? @map("scope_label")
+  version    Int     @default(1)
+  active     Boolean @default(true)
+
+  columnMapping  Json    @map("column_mapping")
+  rowRegex       String? @map("row_regex")
+  headerPatterns Json?   @map("header_patterns")
+  unitHints      Json?   @map("unit_hints")
+
+  createdBy    RowSource @default(AI) @map("created_by")
+  sampleRowIds Json?     @map("sample_row_ids")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierId, scopeLabel, version])
+  @@index([supplierId, active])
+  @@map("supplier_import_profile")
+}
+
+model ImportJob {
+  id          String @id @default(cuid())
+  priceListId String @unique @map("price_list_id")
+
+  phase           ImportPhase @default(QUEUED)
+  progressCurrent Int         @default(0) @map("progress_current")
+  progressTotal   Int         @default(0) @map("progress_total")
+
+  /// Da dove ripartire se il processo si riavvia a metà.
+  checkpoint Json?
+
+  startedAt   DateTime? @map("started_at")
+  finishedAt  DateTime? @map("finished_at")
+  heartbeatAt DateTime? @map("heartbeat_at")
+  error       String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  priceList PriceList @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+
+  @@index([phase])
+  @@map("import_job")
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  PRODOTTI
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Il prodotto canonico: articolo + formato unitario (Birra XYZ, 33 cl).
+/// La confezione NON fa parte dell'identità — sta su SupplierProduct.
+/// Altrimenti "12 bottiglie a 9 €" e "24 bottiglie a 16 €" sarebbero due
+/// prodotti diversi e non si potrebbero confrontare, che è esattamente il
+/// confronto che serve.
+model Product {
+  id             String @id @default(cuid())
+  organizationId String @map("organization_id")
+
+  name     String
+  brand    String?
+  category String?
+
+  unitSize      Decimal       @map("unit_size") @db.Decimal(12, 4)
+  unitOfMeasure UnitOfMeasure @map("unit_of_measure")
+  baseUnit      BaseUnit      @map("base_unit")
+
+  gtin      String?
+  imagePath String? @map("image_path")
+
+  /// Testo normalizzato per la ricerca e per il confronto trigram:
+  /// minuscolo, senza accenti, senza punteggiatura, senza i token di
+  /// formato (che vivono nelle colonne accanto).
+  normalizedName String @map("normalized_name")
+
+  createdBy CreatedBy @default(USER) @map("created_by")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplierProducts SupplierProduct[]
+  aliases          ProductAlias[]
+  matchCandidates  ProductMatchCandidate[]
+  bestOffer        ProductBestOffer?
+  priceListRows    PriceListRow[]
+  orderLines       OrderLine[]
+
+  @@index([organizationId])
+  @@index([organizationId, normalizedName])
+  @@map("product")
+}
+
+/// Il prodotto così come lo vende quel fornitore, con la sua confezione.
+model SupplierProduct {
+  id             String @id @default(cuid())
+  organizationId String @map("organization_id")
+  supplierId     String @map("supplier_id")
+
+  supplierCode String? @map("supplier_code")
+  rawName      String  @map("raw_name")
+  description  String?
+  brand        String?
+  category     String?
+
+  /// Pezzi per confezione. Nei listini veri è dichiarato solo nel 3% delle
+  /// righe — ma l'85% vende il pezzo singolo (BT/UN), quindi il default 1 è
+  /// giusto quasi sempre. `packQuantityConfirmed` distingue "so che è 1" da
+  /// "non lo so e ho messo 1": senza quella distinzione il prezzo al litro
+  /// di un collo verrebbe calcolato su un numero inventato.
+  packQuantity          Int     @default(1) @map("pack_quantity")
+  packQuantityConfirmed Boolean @default(false) @map("pack_quantity_confirmed")
+
+  unitSize      Decimal       @map("unit_size") @db.Decimal(12, 4)
+  unitOfMeasure UnitOfMeasure @map("unit_of_measure")
+  packagingType String?       @map("packaging_type")
+
+  /// Calcolati alla scrittura dal modulo packaging: quanto prodotto c'è in
+  /// una confezione, espresso nell'unità base. È il denominatore di ogni
+  /// confronto di prezzo.
+  contentPerPack Decimal  @map("content_per_pack") @db.Decimal(14, 6)
+  baseUnit       BaseUnit @map("base_unit")
+
+  vatRate   Decimal? @map("vat_rate") @db.Decimal(5, 2)
+  gtin      String?
+  imagePath String?  @map("image_path")
+
+  /// Identità della riga quando il fornitore non dà un codice: hash di
+  /// nome normalizzato + formato + confezione.
+  fingerprint String
+
+  productId       String?     @map("product_id")
+  matchStatus     MatchStatus @default(PENDING) @map("match_status")
+  matchConfidence Decimal?    @map("match_confidence") @db.Decimal(4, 3)
+
+  /// Denormalizzato: la schermata ordine non può permettersi una subquery
+  /// sullo storico per ogni riga di risultato.
+  currentPriceId String? @unique @map("current_price_id")
+
+  firstSeenAt         DateTime  @default(now()) @map("first_seen_at")
+  lastSeenAt          DateTime  @default(now()) @map("last_seen_at")
+  lastSeenPriceListId String?   @map("last_seen_price_list_id")
+  /// false = sparito dall'ultimo listino di quella copertura. Mai cancellato.
+  active              Boolean   @default(true)
+  disappearedAt       DateTime? @map("disappeared_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier           Supplier     @relation(fields: [supplierId], references: [id])
+  product            Product?     @relation(fields: [productId], references: [id])
+  lastSeenPriceList  PriceList?   @relation("ultimoListinoVisto", fields: [lastSeenPriceListId], references: [id])
+  currentPrice       SupplierProductPrice? @relation("prezzoCorrente", fields: [currentPriceId], references: [id])
+
+  prices          SupplierProductPrice[]  @relation("storicoPrezzi")
+  matchCandidates ProductMatchCandidate[]
+  priceListRows   PriceListRow[]
+  orderLines      OrderLine[]
+  bestOfferOf     ProductBestOffer[]
+
+  @@unique([supplierId, supplierCode])
+  @@unique([supplierId, fingerprint])
+  @@index([organizationId])
+  @@index([supplierId, active])
+  @@index([productId])
+  @@map("supplier_product")
+}
+
+/// Sinonimi appresi. Ogni conferma umana in revisione ne scrive uno: dal
+/// listino successivo quel prodotto si abbina senza chiamare l'IA.
+/// `negative = true` registra un "non sono lo stesso prodotto", per non
+/// farsi riproporre lo stesso errore.
+model ProductAlias {
+  id             String      @id @default(cuid())
+  productId      String      @map("product_id")
+  supplierId     String?     @map("supplier_id")
+  text           String
+  normalizedText String      @map("normalized_text")
+  source         AliasSource @default(USER)
+  negative       Boolean     @default(false)
+  createdAt      DateTime    @default(now()) @map("created_at")
+
+  product  Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  supplier Supplier? @relation(fields: [supplierId], references: [id])
+
+  @@unique([productId, normalizedText])
+  @@index([normalizedText])
+  @@map("product_alias")
+}
+
+/// Proposte di abbinamento: staging più traccia di chi ha deciso cosa.
+model ProductMatchCandidate {
+  id                String      @id @default(cuid())
+  supplierProductId String      @map("supplier_product_id")
+  productId         String      @map("product_id")
+  score             Decimal     @db.Decimal(4, 3)
+  method            MatchMethod
+  reason            String?
+  aiCallId          String?     @map("ai_call_id")
+
+  decided     Boolean   @default(false)
+  accepted    Boolean?
+  decidedById String?   @map("decided_by_id")
+  decidedAt   DateTime? @map("decided_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  supplierProduct SupplierProduct @relation(fields: [supplierProductId], references: [id], onDelete: Cascade)
+  product         Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  decidedBy       User?           @relation(fields: [decidedById], references: [id])
+
+  @@unique([supplierProductId, productId])
+  @@index([supplierProductId, decided])
+  @@map("product_match_candidate")
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  PREZZI (append-only)
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Storico prezzi. Non si aggiorna MAI una riga: un prezzo nuovo chiude il
+/// precedente (`validTo`) e ne inserisce uno nuovo.
+model SupplierProductPrice {
+  id                String  @id @default(cuid())
+  supplierProductId String  @map("supplier_product_id")
+  priceListId       String? @map("price_list_id")
+
+  /// Prezzo di listino, PRIMA degli sconti.
+  priceList Decimal @map("price_list") @db.Decimal(12, 4)
+
+  /// Sconti percentuali in cascata, in ordine: [6, 10] significa
+  /// prezzo × 0,94 × 0,90. Barzelli ne ha due colonne, Cecconi cinque.
+  /// Un solo campo `discountPct` sarebbe stato sbagliato, e l'errore si
+  /// sarebbe visto solo nei totali.
+  discounts Json @default("[]")
+
+  /// Quello che si paga davvero. Entra in ogni confronto e in ogni totale.
+  priceNet Decimal @map("price_net") @db.Decimal(12, 4)
+
+  vatRate  Decimal? @map("vat_rate") @db.Decimal(5, 2)
+  currency String   @default("EUR")
+
+  /// Prezzo per unità base, calcolato: priceNet / contentPerPack.
+  unitPrice      Decimal    @map("unit_price") @db.Decimal(14, 6)
+  unitPriceBasis PriceBasis @map("unit_price_basis")
+
+  validFrom DateTime  @map("valid_from") @db.Date
+  /// NULL = è il prezzo corrente.
+  validTo   DateTime? @map("valid_to") @db.Date
+
+  source      PriceSource @default(PRICE_LIST)
+  createdById String?     @map("created_by_id")
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  supplierProduct SupplierProduct  @relation("storicoPrezzi", fields: [supplierProductId], references: [id], onDelete: Cascade)
+  priceListRef    PriceList?       @relation(fields: [priceListId], references: [id])
+  createdBy       User?            @relation(fields: [createdById], references: [id])
+  currentOf       SupplierProduct? @relation("prezzoCorrente")
+  orderLines      OrderLine[]
+
+  @@index([supplierProductId, validTo])
+  @@index([supplierProductId, validFrom])
+  @@index([priceListId])
+  @@map("supplier_product_price")
+}
+
+/// Cache del confronto: proiezione deterministica dello storico, tenuta
+/// materializzata perché la schermata ordine deve rispondere in millisecondi.
+model ProductBestOffer {
+  productId String @id @map("product_id")
+
+  bestSupplierProductId String  @map("best_supplier_product_id")
+  bestUnitPrice         Decimal @map("best_unit_price") @db.Decimal(14, 6)
+  bestPriceNet          Decimal @map("best_price_net") @db.Decimal(12, 4)
+  offersCount           Int     @map("offers_count")
+
+  /// Quanto si risparmierebbe per unità rispetto all'offerta peggiore.
+  spreadPct Decimal? @map("spread_pct") @db.Decimal(6, 2)
+
+  /// true = le offerte hanno unità base diverse (kg contro L) e non sono
+  /// confrontabili. Meglio nessun confronto che un numero falso.
+  comparable Boolean @default(true)
+
+  computedAt DateTime @default(now()) @map("computed_at")
+
+  product             Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  bestSupplierProduct SupplierProduct @relation(fields: [bestSupplierProductId], references: [id])
+
+  @@index([bestUnitPrice])
+  @@map("product_best_offer")
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  ORDINI
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Il carrello È un ordine in stato DRAFT: così sopravvive a refresh,
+/// cambio dispositivo e riavvii, senza inventare un secondo modello.
+model Order {
+  id             String      @id @default(cuid())
+  organizationId String      @map("organization_id")
+  code           String?
+  status         OrderStatus @default(DRAFT)
+
+  note     String?
+  currency String  @default("EUR")
+
+  totalNet   Decimal @default(0) @map("total_net") @db.Decimal(12, 2)
+  totalVat   Decimal @default(0) @map("total_vat") @db.Decimal(12, 2)
+  totalGross Decimal @default(0) @map("total_gross") @db.Decimal(12, 2)
+
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  confirmedAt DateTime? @map("confirmed_at")
+  cancelledAt DateTime? @map("cancelled_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation(fields: [createdById], references: [id])
+
+  lines      OrderLine[]
+  documents  OrderDocument[]
+  deliveries EmailDelivery[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId, status])
+  @@index([organizationId, confirmedAt])
+  @@map("order")
+}
+
+/// Riga d'ordine con snapshot integrale. Lo snapshot è ciò che rende lo
+/// storico leggibile fra due anni, anche se nel frattempo prodotti, prezzi
+/// e fornitori sono cambiati o spariti.
+model OrderLine {
+  id      String @id @default(cuid())
+  orderId String @map("order_id")
+
+  supplierProductId String  @map("supplier_product_id")
+  productId         String? @map("product_id")
+  supplierId        String  @map("supplier_id")
+  priceId           String? @map("price_id")
+
+  quantityPacks Int @map("quantity_packs")
+
+  // — snapshot al momento della conferma —
+  nameSnapshot          String        @map("name_snapshot")
+  supplierNameSnapshot  String        @map("supplier_name_snapshot")
+  supplierCodeSnapshot  String?       @map("supplier_code_snapshot")
+  packQuantitySnapshot  Int           @map("pack_quantity_snapshot")
+  unitSizeSnapshot      Decimal       @map("unit_size_snapshot") @db.Decimal(12, 4)
+  uomSnapshot           UnitOfMeasure @map("uom_snapshot")
+  unitPriceNetSnapshot  Decimal       @map("unit_price_net_snapshot") @db.Decimal(12, 4)
+  vatRateSnapshot       Decimal?      @map("vat_rate_snapshot") @db.Decimal(5, 2)
+  unitPriceBasisSnapshot PriceBasis   @map("unit_price_basis_snapshot")
+
+  lineTotalNet   Decimal @map("line_total_net") @db.Decimal(12, 2)
+  lineTotalGross Decimal @map("line_total_gross") @db.Decimal(12, 2)
+
+  /// Cosa diceva il confronto quando la riga è stata aggiunta, e perché
+  /// l'operatore ha eventualmente scelto il fornitore più caro.
+  bestAlternativeSnapshot Json?   @map("best_alternative_snapshot")
+  overrideReason          String? @map("override_reason")
+
+  position Int
+  note     String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  order           Order                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  supplierProduct SupplierProduct       @relation(fields: [supplierProductId], references: [id])
+  product         Product?              @relation(fields: [productId], references: [id])
+  supplier        Supplier              @relation(fields: [supplierId], references: [id])
+  price           SupplierProductPrice? @relation(fields: [priceId], references: [id])
+
+  @@unique([orderId, supplierProductId])
+  @@index([orderId])
+  @@index([supplierProductId])
+  @@index([productId])
+  @@map("order_line")
+}
+
+/// I file generati dall'ordine: un PDF per ciascun fornitore coinvolto
+/// (`supplierId` valorizzato) più l'Excel riepilogativo interno (NULL).
+/// Si conservano invece di rigenerarli: a mesi di distanza, con i prezzi
+/// cambiati, una rigenerazione direbbe cose diverse da quelle spedite.
+model OrderDocument {
+  id         String  @id @default(cuid())
+  orderId    String  @map("order_id")
+  supplierId String? @map("supplier_id")
+
+  format      DocumentFormat
+  templateKey String         @map("template_key")
+  filePath    String         @map("file_path")
+  fileName    String         @map("file_name")
+  sizeBytes   Int            @map("size_bytes")
+
+  createdById String?  @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  order      Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  supplier   Supplier?       @relation(fields: [supplierId], references: [id])
+  createdBy  User?           @relation(fields: [createdById], references: [id])
+  deliveries EmailDelivery[]
+
+  @@index([orderId])
+  @@map("order_document")
+}
+
+/// Traccia di ogni invio. Serve a rispondere a "l'ordine a Cecconi è
+/// partito?" mesi dopo, a impedire il doppio invio, e a ritentare solo ciò
+/// che è fallito. `mode` registra se l'email è uscita davvero o è finita su
+/// file: senza, un domani non si distinguerebbe "mandato" da "simulato".
+model EmailDelivery {
+  id         String  @id @default(cuid())
+  orderId    String  @map("order_id")
+  supplierId String  @map("supplier_id")
+  documentId String? @map("document_id")
+
+  toAddress String  @map("to_address")
+  cc        String?
+  subject   String
+
+  status   DeliveryStatus @default(PENDING)
+  attempts Int            @default(0)
+  error    String?
+  mode     MailMode       @default(LOG)
+
+  sentAt    DateTime? @map("sent_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  order    Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  supplier Supplier       @relation(fields: [supplierId], references: [id])
+  document OrderDocument? @relation(fields: [documentId], references: [id])
+
+  @@unique([orderId, supplierId])
+  @@index([status])
+  @@map("email_delivery")
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  SUPPORTO IA E SISTEMA
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Una riga per chiamata all'IA. Risponde a "quanto mi è costato quel
+/// listino" e permette di spegnere il rubinetto al superamento del budget.
+model AiCall {
+  id             String @id @default(cuid())
+  organizationId String @map("organization_id")
+
+  provider      String
+  model         String
+  purpose       AiPurpose
+  promptVersion String    @map("prompt_version")
+
+  inputTokens  Int     @default(0) @map("input_tokens")
+  outputTokens Int     @default(0) @map("output_tokens")
+  costUsd      Decimal @default(0) @map("cost_usd") @db.Decimal(10, 6)
+  latencyMs    Int?    @map("latency_ms")
+  cacheHit     Boolean @default(false) @map("cache_hit")
+
+  priceListId String? @map("price_list_id")
+  ok          Boolean @default(true)
+  error       String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  priceList    PriceList?   @relation(fields: [priceListId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@index([priceListId])
+  @@map("ai_call")
+}
+
+/// Ricaricare lo stesso PDF, o rilanciare un import dopo un errore, costa
+/// zero. La chiave contiene la versione del prompt: cambiare il prompt
+/// invalida solo ciò che da quel prompt dipende.
+model AiCache {
+  key       String   @id
+  provider  String
+  response  Json
+  hits      Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("ai_cache")
+}
+
+model Setting {
+  organizationId String   @map("organization_id")
+  key            String
+  value          Json
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@id([organizationId, key])
+  @@map("setting")
+}
+
+model AuditLog {
+  id             String  @id @default(cuid())
+  organizationId String  @map("organization_id")
+  userId         String? @map("user_id")
+
+  action     String
+  entityType String  @map("entity_type")
+  entityId   String? @map("entity_id")
+  detail     Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_log")
 }

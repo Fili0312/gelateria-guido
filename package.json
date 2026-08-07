@@ -11,19 +11,20 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test --experimental-strip-types \"src/**/*.test.ts\"",
+    "test": "tsx --test \"src/**/*.test.ts\"",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
+    "db:migrate": "./scripts/nuova-migrazione.sh",
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "db:seed": "node --experimental-strip-types prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts"
   },
   "prisma": {
-    "seed": "node --experimental-strip-types prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.8.0",
+    "decimal.js": "^10.6.0",
     "dotenv": "^17.4.2",
     "next": "^16.2.10",
     "react": "^19.2.7",
@@ -41,6 +42,7 @@
     "prettier": "^3.4.2",
     "prisma": "^7.8.0",
     "tailwindcss": "^4.1.0",
+    "tsx": "^4.23.10",
     "typescript": "^5.7.0"
   }
 }
