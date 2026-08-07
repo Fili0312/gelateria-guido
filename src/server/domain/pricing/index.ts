@@ -1,3 +1,3 @@
-export * from './discounts.js';
-export * from './unit-price.js';
-export * from './history.js';
+export * from './discounts';
+export * from './unit-price';
+export * from './history';

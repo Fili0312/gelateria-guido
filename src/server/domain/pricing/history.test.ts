@@ -6,7 +6,7 @@ import {
   prezzoStantio,
   serieStorica,
   variazione,
-} from './history.js';
+} from './history';
 
 /**
  * Lo storico dell'esempio del punto 4 della specifica:

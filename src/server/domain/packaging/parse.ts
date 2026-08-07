@@ -6,8 +6,8 @@ import {
   unitaDaSinonimo,
   type BaseUnit,
   type UnitOfMeasure,
-} from './units.js';
-import { normalizzaTesto } from './normalize.js';
+} from './units';
+import { normalizzaTesto } from './normalize';
 
 /**
  * Estrazione di formato e confezione dalla descrizione.

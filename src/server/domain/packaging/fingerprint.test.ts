@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { improntaDaDescrizione } from './fingerprint.js';
+import { improntaDaDescrizione } from './fingerprint';
 
 /**
  * L'impronta e' l'identita' di ripiego quando il fornitore non da' un

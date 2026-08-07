@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { analizzaFormato } from '../packaging/parse.js';
+import { analizzaFormato } from '../packaging/parse';
 import {
   confezioniEquivalenti,
   confrontaOfferte,
   prezzoPerPezzo,
   prezzoPerUnita,
-} from './unit-price.js';
+} from './unit-price';
 
 describe('prezzoPerUnita — il caso del punto 5 della specifica', () => {
   it('12 bottiglie a 9 euro contro 24 a 16: vince il secondo', () => {

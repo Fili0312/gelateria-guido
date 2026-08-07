@@ -17,7 +17,8 @@
     "db:deploy": "./scripts/con-variabili.sh pnpm exec prisma migrate deploy",
     "db:studio": "./scripts/con-variabili.sh pnpm exec prisma studio",
     "db:seed": "./scripts/con-variabili.sh tsx prisma/seed.ts",
-    "auth:hash": "tsx scripts/genera-hash-password.ts"
+    "auth:hash": "tsx scripts/genera-hash-password.ts",
+    "ricalcola-normalizzati": "./scripts/con-variabili.sh tsx scripts/ricalcola-normalizzati.ts"
   },
   "prisma": {
     "seed": "./scripts/con-variabili.sh tsx prisma/seed.ts"

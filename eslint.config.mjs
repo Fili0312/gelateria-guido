@@ -66,9 +66,16 @@ export default [
     },
   },
   {
+    // I soli file autorizzati a toccare il client Prisma grezzo. Tenere
+    // l'elenco qui, e corto, e' cio' che rende una deroga visibile in review
+    // invece che nascosta dentro un import qualsiasi.
     files: [
       'src/server/db.ts',
       'src/server/database/system-client.ts',
+      // La ricerca trigram non e' esprimibile con l'API di Prisma e usa
+      // `Prisma.sql`. Il filtro per organizzazione, che qui l'estensione non
+      // puo' applicare, e' garantito dai test di ricerca-catalogo.test.ts.
+      'src/server/database/ricerca-catalogo.ts',
       'src/server/health.ts',
       'src/app/api/auth/login/route.ts',
     ],

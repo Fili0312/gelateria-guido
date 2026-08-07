@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { analizzaDescrizione, analizzaFormato } from './parse.js';
-import { CASI_FORMATO } from '../../../../tests/fixtures/formati.js';
+import { analizzaDescrizione, analizzaFormato } from './parse';
+import { CASI_FORMATO } from '../../../../tests/fixtures/formati';
 
 /**
  * Il parser misurato sul vocabolario vero dei listini della gelateria.

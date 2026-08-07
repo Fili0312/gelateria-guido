@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { applicaSconti, scontiPuliti, scontoEquivalente, verificaNetto } from './discounts.js';
+import { applicaSconti, scontiPuliti, scontoEquivalente, verificaNetto } from './discounts';
 
 /**
  * L'aritmetica degli sconti, verificata contro i listini veri.

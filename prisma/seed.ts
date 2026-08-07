@@ -336,6 +336,7 @@ async function main() {
           supplierId: fornitore.id,
           supplierCode: riga.codice,
           rawName: riga.descrizione,
+          normalizedName: nucleo,
           category: riga.categoria,
           packQuantity: formato.packQuantity,
           packQuantityConfirmed: formato.packQuantityConfirmed,

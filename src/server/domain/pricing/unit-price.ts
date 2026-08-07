@@ -4,7 +4,7 @@ import {
   confrontabili,
   type BaseUnit,
   type PriceBasis,
-} from '../packaging/units.js';
+} from '../packaging/units';
 
 /**
  * Prezzo per unita' base.

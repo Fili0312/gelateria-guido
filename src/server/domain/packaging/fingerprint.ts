@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
-import { analizzaDescrizione, type OpzioniAnalisi } from './parse.js';
-import { ordinaParole } from './normalize.js';
-import { inUnitaBase, type UnitOfMeasure } from './units.js';
+import { analizzaDescrizione, type OpzioniAnalisi } from './parse';
+import { ordinaParole } from './normalize';
+import { inUnitaBase, type UnitOfMeasure } from './units';
 
 /**
  * L'impronta di un prodotto fornitore.

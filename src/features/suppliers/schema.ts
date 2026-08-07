@@ -1,7 +1,10 @@
 import { z } from 'zod';
-
-const MAX_QUERY_LENGTH = 100;
-const MAX_DECIMAL_INPUT_LENGTH = 32;
+import {
+  MAX_QUERY_LENGTH,
+  nullableDecimal,
+  nullableEmail,
+  nullableTrimmedString,
+} from '@/features/shared/campi';
 
 const FIELD_LIMITS = {
   name: 160,
@@ -19,72 +22,6 @@ const FIELD_LIMITS = {
 const supplierStatusSchema = z.enum(['all', 'active', 'inactive']);
 const supplierSortSchema = z.enum(['name-asc', 'name-desc', 'updated-desc', 'updated-asc']);
 
-/**
- * I campi opzionali arrivano dai form come stringhe vuote. Nel dominio una
- * stringa vuota non porta informazione, quindi viene sempre salvata come NULL.
- */
-const trimmedStringOrNull = z.union([z.string(), z.null()]).transform((value) => {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return trimmed === '' ? null : trimmed;
-});
-
-function nullableTrimmedString(maxLength: number, label: string) {
-  return trimmedStringOrNull.pipe(
-    z.union([
-      z.string().max(maxLength, `${label} può contenere al massimo ${maxLength} caratteri.`),
-      z.null(),
-    ]),
-  );
-}
-
-function nullableEmail(label: string) {
-  return trimmedStringOrNull.pipe(
-    z.union([
-      z
-        .email({ error: `${label} non è valida.` })
-        .max(FIELD_LIMITS.email, `${label} è troppo lunga.`),
-      z.null(),
-    ]),
-  );
-}
-
-function canonicalDecimal(value: string): string {
-  const normalized = value.trim().replace(',', '.');
-  const [rawInteger = '', rawFraction = ''] = normalized.split('.');
-  const integer = rawInteger.replace(/^0+(?=\d)/, '');
-  const fraction = rawFraction.replace(/0+$/, '');
-  return fraction === '' ? integer : `${integer}.${fraction}`;
-}
-
-function nullableDecimal(maximumCents: bigint, label: string) {
-  return z.union([z.string(), z.null()]).transform((value, context): string | null => {
-    if (value === null || value.trim() === '') return null;
-
-    const normalized = value.trim().replace(',', '.');
-    if (normalized.length > MAX_DECIMAL_INPUT_LENGTH || !/^\d+(?:\.\d{1,2})?$/.test(normalized)) {
-      context.addIssue({
-        code: 'custom',
-        message: `${label} deve essere un numero decimale non negativo con al massimo due cifre decimali.`,
-      });
-      return z.NEVER;
-    }
-
-    const canonical = canonicalDecimal(normalized);
-    const [integer = '0', fraction = ''] = canonical.split('.');
-    const cents = BigInt(integer) * 100n + BigInt(fraction.padEnd(2, '0'));
-    if (cents > maximumCents) {
-      context.addIssue({
-        code: 'custom',
-        message: `${label} supera il valore massimo consentito.`,
-      });
-      return z.NEVER;
-    }
-
-    return canonical;
-  });
-}
-
 const defaultVatRateSchema = nullableDecimal(10_000n, "L'aliquota IVA");
 const minOrderValueSchema = nullableDecimal(999_999_999_999n, "L'importo minimo");
 
@@ -96,7 +33,7 @@ const supplierFields = {
     .max(FIELD_LIMITS.name, `Il nome può contenere al massimo ${FIELD_LIMITS.name} caratteri.`),
   code: nullableTrimmedString(FIELD_LIMITS.code, 'Il codice'),
   vatNumber: nullableTrimmedString(FIELD_LIMITS.vatNumber, 'La partita IVA'),
-  email: nullableEmail("L'email commerciale"),
+  email: nullableEmail("L'email commerciale", FIELD_LIMITS.email),
   phone: nullableTrimmedString(FIELD_LIMITS.phone, 'Il telefono'),
   contactName: nullableTrimmedString(FIELD_LIMITS.contactName, 'Il referente'),
   address: nullableTrimmedString(FIELD_LIMITS.address, "L'indirizzo"),
@@ -105,8 +42,8 @@ const supplierFields = {
   defaultVatRate: defaultVatRateSchema,
   minOrderValue: minOrderValueSchema,
   deliveryDays: nullableTrimmedString(FIELD_LIMITS.deliveryDays, 'I giorni di consegna'),
-  orderEmail: nullableEmail("L'email ordini"),
-  orderEmailCc: nullableEmail("L'email in copia"),
+  orderEmail: nullableEmail("L'email ordini", FIELD_LIMITS.email),
+  orderEmailCc: nullableEmail("L'email in copia", FIELD_LIMITS.email),
   sendOrdersByEmail: z.boolean(),
   emailNote: nullableTrimmedString(FIELD_LIMITS.emailNote, 'Le note per le email'),
   active: z.boolean(),

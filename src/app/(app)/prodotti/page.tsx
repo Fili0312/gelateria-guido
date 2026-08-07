@@ -1,95 +1,118 @@
-import {
-  Badge,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui';
+import Link from 'next/link';
+import { ProductList } from '@/components/products/product-list';
+import { ProductSearch } from '@/components/products/product-search';
+import { Badge, Input, Select } from '@/components/ui';
+import { productListQuerySchema } from '@/features/products/schema';
 import { getCurrentUser } from '@/server/auth';
-import { prismaForOrganization } from '@/server/db';
+import { withBasePath } from '@/server/base-path';
+import { productsRepository } from '@/server/repositories/products';
 
 export const dynamic = 'force-dynamic';
 
-const UNIT_LABEL: Record<string, string> = {
-  LITER: 'L',
-  CENTILITER: 'cl',
-  MILLILITER: 'ml',
-  KILOGRAM: 'kg',
-  GRAM: 'g',
-  PIECE: 'pz',
-};
+function primo(valore: string | string[] | undefined): string | undefined {
+  return Array.isArray(valore) ? valore[0] : valore;
+}
 
-export default async function ProductsPage() {
+export default async function ProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const db = prismaForOrganization(user.organizationId);
-  const [products, total] = await Promise.all([
-    db.product.findMany({
-      orderBy: { normalizedName: 'asc' },
-      take: 100,
-      select: {
-        id: true,
-        name: true,
-        category: true,
-        unitSize: true,
-        unitOfMeasure: true,
-        _count: { select: { supplierProducts: true } },
-      },
-    }),
-    db.product.count(),
-  ]);
+  const query = await searchParams;
+  const analizzato = productListQuerySchema.safeParse({
+    q: primo(query.q),
+    category: primo(query.category),
+    status: primo(query.status),
+    sort: primo(query.sort),
+  });
+  const filtri = analizzato.success ? analizzato.data : productListQuerySchema.parse({});
+  const risultato = await productsRepository(user.organizationId).list(filtri);
+  const conFiltri = filtri.q !== '' || filtri.category !== '' || filtri.status !== 'all';
 
   return (
     <div className="space-y-7">
-      <header>
-        <div className="flex items-center gap-2">
-          <Badge variant="brand">Anteprima dati</Badge>
-          <span className="text-xs text-neutral-400">Ricerca e schede nella Fase 5</span>
+      <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <div>
+          <Badge variant="brand" dot>
+            Catalogo
+          </Badge>
+          <h1 className="mt-3 text-3xl font-black tracking-[-0.035em] text-neutral-950 sm:text-4xl">
+            Prodotti
+          </h1>
+          <p className="mt-2 max-w-2xl leading-6 text-neutral-500">
+            Un prodotto è l’articolo con il suo formato — «Birra XYZ, 33 cl» — e le offerte dei
+            fornitori gli si collegano sopra. È questo che permette di confrontare confezioni
+            diverse dello stesso articolo.
+          </p>
         </div>
-        <h1 className="mt-3 text-3xl font-black tracking-[-0.035em] text-neutral-950 sm:text-4xl">
-          Prodotti
-        </h1>
-        <p className="mt-2 max-w-2xl leading-6 text-neutral-500">
-          Il catalogo canonico: lo stesso articolo può avere più offerte e confezioni fornitore.
-        </p>
+        <Link
+          href="/prodotti/nuovo"
+          className="bg-brand-600 hover:bg-brand-700 focus-visible:ring-brand-600 inline-flex min-h-11 w-full items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:w-auto"
+        >
+          Nuovo prodotto
+        </Link>
       </header>
 
-      <Table scrollLabel="Catalogo prodotti">
-        <TableHeader>
-          <TableRow>
-            <TableHead>Prodotto</TableHead>
-            <TableHead>Categoria</TableHead>
-            <TableHead>Formato</TableHead>
-            <TableHead numeric>Offerte</TableHead>
-            <TableHead>Stato</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {products.map((product) => (
-            <TableRow key={product.id}>
-              <TableCell className="max-w-xl font-bold text-neutral-950">{product.name}</TableCell>
-              <TableCell className="text-neutral-500">{product.category ?? '—'}</TableCell>
-              <TableCell className="whitespace-nowrap">
-                {product.unitSize.toString()}{' '}
-                {UNIT_LABEL[product.unitOfMeasure] ?? product.unitOfMeasure}
-              </TableCell>
-              <TableCell numeric>{product._count.supplierProducts}</TableCell>
-              <TableCell>
-                <Badge variant="brand">Canonico</Badge>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <ProductSearch endpoint={withBasePath('/api/products/search')} />
 
-      {total > products.length && (
-        <p className="text-center text-xs text-neutral-500">
-          Mostrati i primi {products.length} prodotti su {total}.
-        </p>
-      )}
+      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {[
+          { etichetta: 'Prodotti', valore: risultato.total },
+          { etichetta: 'Con almeno un’offerta', valore: risultato.linked },
+          { etichetta: 'Senza offerte', valore: risultato.orphan },
+        ].map((riquadro) => (
+          <div
+            key={riquadro.etichetta}
+            className="rounded-xl border border-neutral-200 bg-white px-4 py-3"
+          >
+            <dt className="text-xs text-neutral-500">{riquadro.etichetta}</dt>
+            <dd className="tabellare mt-1 text-2xl font-black text-neutral-950">
+              {riquadro.valore}
+            </dd>
+          </div>
+        ))}
+      </dl>
+
+      <form className="grid gap-3 sm:grid-cols-4" role="search">
+        <Input
+          name="q"
+          label="Filtra l’elenco"
+          defaultValue={filtri.q}
+          placeholder="Nome del prodotto"
+        />
+        <Select name="category" label="Categoria" defaultValue={filtri.category}>
+          <option value="">Tutte</option>
+          {risultato.categories.map((categoria) => (
+            <option key={categoria} value={categoria}>
+              {categoria}
+            </option>
+          ))}
+        </Select>
+        <Select name="status" label="Offerte" defaultValue={filtri.status}>
+          <option value="all">Tutti</option>
+          <option value="linked">Con offerte</option>
+          <option value="orphan">Senza offerte</option>
+        </Select>
+        <Select name="sort" label="Ordina" defaultValue={filtri.sort}>
+          <option value="name-asc">Nome (A→Z)</option>
+          <option value="name-desc">Nome (Z→A)</option>
+          <option value="updated-desc">Modificati di recente</option>
+          <option value="offers-desc">Più offerte</option>
+        </Select>
+        <div className="sm:col-span-4">
+          <button
+            type="submit"
+            className="focus-visible:ring-brand-600 min-h-11 rounded-lg border border-neutral-300 bg-white px-4 text-sm font-semibold text-neutral-800 hover:border-neutral-400 focus-visible:ring-2 focus-visible:outline-none"
+          >
+            Applica i filtri
+          </button>
+        </div>
+      </form>
+
+      <ProductList items={risultato.items} conFiltri={conFiltri} />
     </div>
   );
 }

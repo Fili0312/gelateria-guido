@@ -506,6 +506,14 @@ model SupplierProduct {
 
   supplierCode String? @map("supplier_code")
   rawName      String  @map("raw_name")
+
+  /// Il nome ripulito dai token di formato e normalizzato (minuscolo, senza
+  /// accenti, abbreviazioni espanse) dal modulo packaging. E' cio' su cui
+  /// gira la ricerca e, dalla Fase 9, la generazione dei candidati di
+  /// abbinamento: cercare sul nome grezzo funzionerebbe per le maiuscole
+  /// (il trigram le ignora) ma non per gli accenti.
+  normalizedName String @map("normalized_name")
+
   description  String?
   brand        String?
   category     String?
@@ -571,7 +579,7 @@ model SupplierProduct {
   @@index([organizationId])
   @@index([supplierId, active])
   @@index([productId])
-  @@index([rawName(ops: raw("gin_trgm_ops"))], type: Gin, map: "supplier_product_raw_name_trgm_idx")
+  @@index([normalizedName(ops: raw("gin_trgm_ops"))], type: Gin, map: "supplier_product_normalized_name_trgm_idx")
   @@index([supplierCode(ops: raw("gin_trgm_ops"))], type: Gin, map: "supplier_product_code_trgm_idx")
   @@map("supplier_product")
 }

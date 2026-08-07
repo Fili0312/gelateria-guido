@@ -1,5 +1,5 @@
 import { Decimal } from 'decimal.js';
-import { MODO_ARROTONDAMENTO } from './discounts.js';
+import { MODO_ARROTONDAMENTO } from './discounts';
 
 /**
  * Storico prezzi: variazioni e lettura alla data.

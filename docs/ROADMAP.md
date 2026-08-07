@@ -253,11 +253,12 @@ caratteri: prefisso invece di trigram).
 
 **Completata quando**
 
-- [ ] si crea un prodotto normalizzato e vi si collegano 2+ offerte fornitore
-- [ ] cercando "birra" compaiono i prodotti giusti in <100 ms su dati di prova
-      realistici (≥5.000 righe generate)
-- [ ] `content_per_pack` e `base_unit` sono calcolati e corretti
-- [ ] la ricerca ignora accenti, maiuscole e punteggiatura
+- [x] si crea un prodotto normalizzato e vi si collegano 2+ offerte fornitore
+- [x] cercando "birra" compaiono i prodotti giusti in <100 ms su dati di prova
+      realistici (≥5.000 righe generate) — 15,6 ms mediana, 26,9 ms nel caso
+      peggiore su 5.000 prodotti e 9.973 offerte
+- [x] `content_per_pack` e `base_unit` sono calcolati e corretti
+- [x] la ricerca ignora accenti, maiuscole e punteggiatura
 
 ---
 
