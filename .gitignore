@@ -1,0 +1,24 @@
+# Dati riservati — i listini contengono i prezzi d'acquisto della gelateria.
+# Questo file esiste già ora, prima del `git init` di Fase 1, così i PDF non
+# possono finire nel primo commit per distrazione.
+tests/fixtures/listini/*
+!tests/fixtures/listini/README.md
+tests/fixtures/REPORT.md
+storage/
+
+# Segreti
+.env
+.env.local
+
+# Build e dipendenze
+node_modules/
+.next/
+dist/
+*.tsbuildinfo
+# Client Prisma: si rigenera a ogni deploy (`prisma generate` in deploy.sh).
+src/generated/
+
+# Sistema
+.DS_Store
+*.log
+__pycache__/

@@ -1,0 +1,12 @@
+.next
+node_modules
+src/generated
+prisma/migrations
+pnpm-lock.yaml
+storage
+tests/fixtures
+
+# I documenti sono prosa formattata a mano: riformattarli a ogni `pnpm format`
+# produce solo rumore nei diff.
+docs
+*.md

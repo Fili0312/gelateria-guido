@@ -1,0 +1,49 @@
+@import 'tailwindcss';
+
+/*
+ * Fondamenta del sistema visivo.
+ *
+ * Poco, ma deciso ora: sono i valori che la Fase 3 userà per costruire i
+ * componenti veri, e cambiarli dopo significa ritoccare ogni schermata.
+ */
+@theme {
+  /* Verde pistacchio: è una gelateria, e serve un accento che regga il
+     contrasto sia sul bianco sia sul testo scuro. */
+  --color-brand-50: oklch(0.97 0.03 145);
+  --color-brand-100: oklch(0.93 0.06 145);
+  --color-brand-300: oklch(0.8 0.12 145);
+  --color-brand-500: oklch(0.62 0.14 145);
+  --color-brand-600: oklch(0.54 0.13 145);
+  --color-brand-700: oklch(0.45 0.11 145);
+  --color-brand-900: oklch(0.28 0.07 145);
+
+  /* Segnali: aumento di prezzo, diminuzione, attenzione. Ricorrono in tutta
+     l'app (storico prezzi, riepilogo import, avviso miglior prezzo) e devono
+     significare sempre la stessa cosa. */
+  --color-aumento: oklch(0.55 0.19 27);
+  --color-diminuzione: oklch(0.55 0.14 155);
+  --color-attenzione: oklch(0.68 0.16 75);
+
+  /* L'app si usa anche col dito, su un tablet in magazzino (decisione D12):
+     44px è il bersaglio minimo sotto cui non si scende. */
+  --spacing-tap: 2.75rem;
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* I numeri delle tabelle prezzi vanno incolonnati. */
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-neutral-50 text-neutral-900 antialiased;
+  font-family: var(--font-sans);
+}
+
+/* Le cifre nelle tabelle si leggono solo se incolonnate. */
+.tabellare {
+  font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,16 @@
+// Schema del database — Gelateria Guido
+//
+// FASE 1: qui c'è solo la configurazione. Le entità (fornitori, listini,
+// prodotti, prezzi, ordini) arrivano tutte insieme in FASE 2, quando i PDF
+// reali avranno chiarito se servono i prezzi a scaglioni (decisione D7).
+// Vedi docs/ANALISI.md §3 per il modello già progettato.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
