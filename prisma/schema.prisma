@@ -489,6 +489,12 @@ model Product {
 
   @@index([organizationId])
   @@index([organizationId, normalizedName])
+  /// Indici trigram per la ricerca fuzzy e per i candidati di abbinamento.
+  /// Dichiarati qui e non solo in SQL: Prisma non li vedrebbe, e la prima
+  /// migrazione generata dopo li cancellerebbe in silenzio — trasformando
+  /// la ricerca prodotti in una scansione sequenziale senza che nulla
+  /// smetta di funzionare, che e' il modo peggiore di rompersi.
+  @@index([normalizedName(ops: raw("gin_trgm_ops"))], type: Gin, map: "product_normalized_name_trgm_idx")
   @@map("product")
 }
 
@@ -565,6 +571,8 @@ model SupplierProduct {
   @@index([organizationId])
   @@index([supplierId, active])
   @@index([productId])
+  @@index([rawName(ops: raw("gin_trgm_ops"))], type: Gin, map: "supplier_product_raw_name_trgm_idx")
+  @@index([supplierCode(ops: raw("gin_trgm_ops"))], type: Gin, map: "supplier_product_code_trgm_idx")
   @@map("supplier_product")
 }
 
@@ -587,6 +595,7 @@ model ProductAlias {
 
   @@unique([productId, normalizedText])
   @@index([normalizedText])
+  @@index([normalizedText(ops: raw("gin_trgm_ops"))], type: Gin, map: "product_alias_normalized_text_trgm_idx")
   @@map("product_alias")
 }
 

@@ -14,13 +14,13 @@
     "test": "tsx --test \"src/**/*.test.ts\"",
     "db:generate": "prisma generate",
     "db:migrate": "./scripts/nuova-migrazione.sh",
-    "db:deploy": "prisma migrate deploy",
-    "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts",
+    "db:deploy": "./scripts/con-variabili.sh pnpm exec prisma migrate deploy",
+    "db:studio": "./scripts/con-variabili.sh pnpm exec prisma studio",
+    "db:seed": "./scripts/con-variabili.sh tsx prisma/seed.ts",
     "auth:hash": "tsx scripts/genera-hash-password.ts"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "./scripts/con-variabili.sh tsx prisma/seed.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",

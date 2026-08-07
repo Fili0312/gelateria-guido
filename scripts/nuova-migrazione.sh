@@ -28,15 +28,20 @@ cartella="prisma/migrations/$(date +%Y%m%d%H%M%S)_${nome}"
 cd "$(dirname "$0")/.."
 
 mkdir -p "$cartella"
-pnpm exec prisma migrate diff \
+./scripts/con-variabili.sh pnpm exec prisma migrate diff \
   --from-config-datasource \
   --to-schema prisma/schema.prisma \
   --script >"$cartella/migration.sql"
 
 righe=$(grep -cve '^\s*$' "$cartella/migration.sql" || true)
 
-if ((righe == 0)); then
+# Quando non c'e' deriva, Prisma non produce un file vuoto ma un file con
+# dentro il commento "-- This is an empty migration.". Contare le righe non
+# basta: senza questo controllo si accumulerebbero migrazioni che non fanno
+# nulla, e ognuna e' una riga in piu' da leggere per capire cosa e' successo.
+if ((righe == 0)) || grep -qi 'empty migration' "$cartella/migration.sql"; then
   echo "Nessuna differenza fra schema e database: non serve una migrazione."
+  rm -f "$cartella/migration.sql"
   rmdir "$cartella"
   exit 0
 fi
