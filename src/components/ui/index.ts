@@ -1,5 +1,6 @@
 export { Badge, type BadgeProps, type BadgeSize, type BadgeVariant } from './badge';
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from './button';
+export { Checkbox, type CheckboxProps } from './checkbox';
 export { Dialog, type DialogProps } from './dialog';
 export {
   AlertTriangleIcon,
@@ -13,6 +14,7 @@ export {
   type IconProps,
 } from './icons';
 export { Input, type InputProps } from './input';
+export { Select, type SelectProps } from './select';
 export { Stepper, type StepperProps } from './stepper';
 export {
   Table,
@@ -37,3 +39,4 @@ export {
   type ToastProviderProps,
   type ToastTone,
 } from './toast';
+export { Textarea, type TextareaProps } from './textarea';

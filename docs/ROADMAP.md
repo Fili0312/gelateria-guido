@@ -185,6 +185,10 @@ prima o poi qualcuno scrive una query senza filtro.
 
 **Obiettivo.** Anagrafica fornitori completa. Prima cosa realmente usabile.
 
+**Stato (7 agosto 2026):** pronta al collaudo/deploy. Funzionalità, regole e
+procedura di verifica sono documentate in [FASE-4.md](FASE-4.md); la
+pubblicazione in produzione non è ancora dichiarata completata.
+
 **Cosa sviluppare**
 
 - CRUD fornitore con validazione zod condivisa client/server.
@@ -210,11 +214,11 @@ sottile e decisivo.
 
 **Completata quando**
 
-- [ ] si crea, modifica, disattiva un fornitore
-- [ ] la scheda mostra i tab (vuoti) senza errori
-- [ ] la cancellazione di un fornitore con dati collegati è impedita con
+- [x] si crea, modifica, disattiva un fornitore
+- [x] la scheda mostra i tab (vuoti) senza errori
+- [x] la cancellazione di un fornitore con dati collegati è impedita con
       messaggio comprensibile
-- [ ] l'email d'ordine è validata come indirizzo, e un fornitore con
+- [x] l'email d'ordine è validata come indirizzo, e un fornitore con
       «invia ordini per email» attivo non si salva senza indirizzo
 
 ---

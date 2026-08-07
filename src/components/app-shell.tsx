@@ -154,7 +154,7 @@ export function AppShell({
             Ambiente protetto
           </div>
           <p className="mt-2 text-xs leading-5 text-neutral-600">
-            Fase 3 · Accesso e fondamenta dell&apos;applicazione.
+            Fase 4 · Anagrafiche fornitori operative.
           </p>
         </div>
         <LogoutButton endpoint={logoutEndpoint} loginPath={loginPath} />

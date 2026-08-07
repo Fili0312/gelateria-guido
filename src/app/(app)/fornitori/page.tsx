@@ -1,85 +1,117 @@
-import {
-  Badge,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui';
+import Link from 'next/link';
+import { SupplierList } from '@/components/suppliers/supplier-list';
+import { Badge, Button, Input, Select } from '@/components/ui';
+import { supplierListQuerySchema } from '@/features/suppliers/schema';
 import { getCurrentUser } from '@/server/auth';
-import { prismaForOrganization } from '@/server/db';
+import { suppliersRepository } from '@/server/repositories/suppliers';
 
 export const dynamic = 'force-dynamic';
 
-export default async function SuppliersPage() {
+function firstValue(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function SuppliersPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const suppliers = await prismaForOrganization(user.organizationId).supplier.findMany({
-    orderBy: [{ active: 'desc' }, { name: 'asc' }],
-    select: {
-      id: true,
-      name: true,
-      active: true,
-      pricesIncludeVat: true,
-      defaultVatRate: true,
-      deliveryDays: true,
-      _count: { select: { supplierProducts: true, priceLists: true } },
-    },
+  const query = await searchParams;
+  const parsed = supplierListQuerySchema.safeParse({
+    q: firstValue(query.q),
+    status: firstValue(query.status),
+    sort: firstValue(query.sort),
   });
+  const filters = parsed.success ? parsed.data : supplierListQuerySchema.parse({});
+  const result = await suppliersRepository(user.organizationId).list(filters);
+  const filtering = filters.q !== '' || filters.status !== 'all';
 
   return (
     <div className="space-y-7">
-      <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
         <div>
-          <div className="flex items-center gap-2">
-            <Badge variant="brand">Anteprima dati</Badge>
-            <span className="text-xs text-neutral-400">CRUD nella Fase 4</span>
-          </div>
+          <Badge variant="brand" dot>
+            Anagrafiche operative
+          </Badge>
           <h1 className="mt-3 text-3xl font-black tracking-[-0.035em] text-neutral-950 sm:text-4xl">
             Fornitori
           </h1>
           <p className="mt-2 max-w-2xl leading-6 text-neutral-500">
-            Le anagrafiche già presenti nel database. La modifica completa arriva nella prossima
-            fase.
+            Contatti, condizioni di acquisto e indirizzi per gli ordini in un unico posto.
           </p>
         </div>
-        <div className="tabellare text-sm text-neutral-500">
-          <strong className="text-neutral-900">{suppliers.length}</strong> fornitori totali
-        </div>
+        <Link
+          href="/fornitori/nuovo"
+          className="bg-brand-600 hover:bg-brand-700 focus-visible:ring-brand-600 inline-flex min-h-11 w-full items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:w-auto"
+        >
+          Nuovo fornitore
+        </Link>
       </header>
 
-      <Table scrollLabel="Elenco dei fornitori">
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nome</TableHead>
-            <TableHead>Stato</TableHead>
-            <TableHead>Regime prezzi</TableHead>
-            <TableHead>IVA</TableHead>
-            <TableHead numeric>Prodotti</TableHead>
-            <TableHead numeric>Listini</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {suppliers.map((supplier) => (
-            <TableRow key={supplier.id}>
-              <TableCell className="font-bold text-neutral-950">{supplier.name}</TableCell>
-              <TableCell>
-                <Badge variant={supplier.active ? 'success' : 'neutral'} dot>
-                  {supplier.active ? 'Attivo' : 'Inattivo'}
-                </Badge>
-              </TableCell>
-              <TableCell>IVA {supplier.pricesIncludeVat ? 'inclusa' : 'esclusa'}</TableCell>
-              <TableCell numeric>
-                {supplier.defaultVatRate ? `${supplier.defaultVatRate.toString()}%` : '—'}
-              </TableCell>
-              <TableCell numeric>{supplier._count.supplierProducts}</TableCell>
-              <TableCell numeric>{supplier._count.priceLists}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <section aria-label="Riepilogo fornitori" className="grid gap-3 sm:grid-cols-3">
+        <article className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold tracking-wide text-neutral-500 uppercase">Totali</p>
+          <p className="tabellare mt-1 text-2xl font-black text-neutral-950">{result.total}</p>
+        </article>
+        <article className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold tracking-wide text-neutral-500 uppercase">Attivi</p>
+          <p className="tabellare mt-1 text-2xl font-black text-emerald-700">{result.active}</p>
+        </article>
+        <article className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold tracking-wide text-neutral-500 uppercase">Inattivi</p>
+          <p className="tabellare mt-1 text-2xl font-black text-neutral-600">{result.inactive}</p>
+        </article>
+      </section>
+
+      <form
+        method="get"
+        className="grid gap-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm md:grid-cols-[minmax(14rem,1fr)_12rem_13rem_auto] md:items-end"
+      >
+        <Input
+          name="q"
+          label="Cerca"
+          defaultValue={filters.q}
+          placeholder="Nome, codice, contatto o email"
+          maxLength={100}
+        />
+        <Select name="status" label="Stato" defaultValue={filters.status}>
+          <option value="all">Tutti</option>
+          <option value="active">Solo attivi</option>
+          <option value="inactive">Solo inattivi</option>
+        </Select>
+        <Select name="sort" label="Ordina" defaultValue={filters.sort}>
+          <option value="name-asc">Nome A–Z</option>
+          <option value="name-desc">Nome Z–A</option>
+          <option value="updated-desc">Modificati di recente</option>
+          <option value="updated-asc">Meno recenti</option>
+        </Select>
+        <div className="flex gap-2">
+          <Button type="submit" fullWidth>
+            Applica
+          </Button>
+          {filtering && (
+            <Link
+              href="/fornitori"
+              className="focus-visible:ring-brand-600 inline-flex min-h-11 items-center justify-center rounded-lg border border-neutral-300 bg-white px-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 focus-visible:ring-2 focus-visible:outline-none"
+            >
+              Azzera
+            </Link>
+          )}
+        </div>
+      </form>
+
+      <SupplierList items={result.items} hasFilters={filtering} />
+
+      {result.items.length > 0 && (
+        <p className="text-center text-xs text-neutral-500">
+          {result.items.length === result.total && !filtering
+            ? `${result.total} fornitori`
+            : `${result.items.length} risultati · ${result.total} fornitori complessivi`}
+        </p>
+      )}
     </div>
   );
 }

@@ -88,18 +88,16 @@ export default async function DashboardPage() {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="brand" dot>
-              Fase 3 attiva
+              Fase 4 attiva
             </Badge>
-            <span className="text-xs font-medium text-neutral-400">
-              Accesso e guscio applicativo
-            </span>
+            <span className="text-xs font-medium text-neutral-400">Gestione fornitori</span>
           </div>
           <h1 className="mt-3 text-3xl font-black tracking-[-0.035em] text-neutral-950 sm:text-4xl">
             Buongiorno, {user.name}
           </h1>
           <p className="mt-2 max-w-2xl leading-6 text-neutral-500">
-            Le fondamenta sono pronte. Qui trovi lo stato del catalogo e il punto esatto da cui
-            continuare il lavoro.
+            Le anagrafiche fornitori sono operative. Qui trovi lo stato dei dati e il punto esatto
+            da cui continuare il lavoro.
           </p>
         </div>
         <NewListDialog />
@@ -113,7 +111,7 @@ export default async function DashboardPage() {
           <StatCard
             label="Fornitori attivi"
             value={fornitori}
-            note="Anagrafiche già presenti"
+            note="Anagrafiche operative"
             icon="suppliers"
           />
           <StatCard
@@ -196,16 +194,17 @@ export default async function DashboardPage() {
             <AppIcon name="sparkles" className="h-5 w-5" />
           </span>
           <div className="relative mt-6">
-            <Badge variant="brand">Prossima: Fase 4</Badge>
-            <h2 className="mt-3 text-2xl font-black tracking-tight">Anagrafiche fornitori</h2>
+            <Badge variant="brand">Prossima: Fase 5</Badge>
+            <h2 className="mt-3 text-2xl font-black tracking-tight">Catalogo prodotti</h2>
             <p className="mt-3 text-sm leading-6 text-white/65">
-              Il primo modulo operativo: contatti, regole IVA, minimi d’ordine e giorni di consegna.
+              Prodotti normalizzati, offerte dei fornitori, alias e ricerca veloce in un unico
+              catalogo.
             </p>
             <Link
-              href="/fornitori"
+              href="/prodotti"
               className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-neutral-950 transition-colors hover:bg-lime-50"
             >
-              Apri la sezione
+              Vai ai prodotti
               <AppIcon name="arrow-right" className="h-4 w-4" />
             </Link>
           </div>
