@@ -194,9 +194,29 @@ solo se serve formattazione ricca (colori, larghezze, formule).
 
 ---
 
-## D10 — Invio dell'ordine al fornitore
+## ✅ D10 — Invio dell'ordine al fornitore
 
-**Stato:** APERTA · **Raccomandazione:** fuori MVP.
+**Stato:** **DECISA (2026-08-07): DENTRO l'MVP.** Ribaltata rispetto alla
+raccomandazione iniziale, su richiesta esplicita.
+
+Alla conferma dell'ordine il sistema genera **un PDF per ogni fornitore**
+(nome file con fornitore e data) e lo **manda per email** all'indirizzo
+dell'anagrafica. Diventano le Fasi 16 e 17 della roadmap, e spostano il
+confine dell'MVP dalla Fase 16 alla 17.
+
+Il motivo per cui vale la pena: senza questo pezzo l'app fa risparmiare tempo
+sull'analisi ma lo lascia perdere sull'ultimo passo, che è quello che si fa
+tutte le settimane. Il costo è contenuto perché il PDF si genera con il
+Chromium headless già presente sul server e l'invio è nodemailer su un account
+Aruba già configurato.
+
+Vedi **D18** per il prerequisito vero, che è l'autorizzazione a spedire.
+
+---
+
+## ~~D10 (versione precedente)~~ — Invio dell'ordine al fornitore
+
+**Stato:** superata dalla decisione qui sopra. · Raccomandazione era: fuori MVP.
 
 Se in futuro serve (email con Excel/PDF allegato al fornitore), va deciso il
 canale SMTP — nota: sul progetto `filippo` le email sono ancora su log in
@@ -304,6 +324,43 @@ netto (condizioni attuali) o sul lordo (listino puro).
 
 **Raccomandazione:** confrontare sul netto in ogni caso — è quello che si paga —
 e tenere lordo e sconti a fianco per capire da dove viene una variazione.
+
+### 🔴 D18 — Autorizzazione a spedire email (prerequisito della Fase 17)
+
+Le email ai fornitori sono l'unica cosa che questa applicazione manda fuori, e
+sono irreversibili: un ordine spedito per sbaglio a un fornitore vero non si
+richiama indietro.
+
+**Situazione sul server, verificata.** Esiste già un account SMTP Aruba
+configurato per il progetto `filippo`:
+
+```
+MAIL_HOST=smtps.aruba.it   MAIL_PORT=587
+MAIL_USERNAME=noreply@eventoyou.com
+MAIL_MAILER=log      ← le email NON partono, finiscono su file
+```
+
+È in modalità `log` da mesi, in attesa dell'autorizzazione a usare le
+credenziali. Non c'è nessun MTA locale (`postfix` inattivo).
+
+**Serve decidere tre cose:**
+
+1. **Quale casella** manda gli ordini. `noreply@eventoyou.com` funziona
+   tecnicamente ma è pessima come mittente di un ordine: il fornitore
+   risponderà, e la risposta finirebbe nel vuoto. Meglio una casella vera
+   della gelateria (`ordini@…`), con `Reply-To` corretto.
+2. **Quando si passa da `log` a `smtp`.** Raccomandazione: si sviluppa e si
+   collauda tutto in `log`, si fa una prova reale verso un indirizzo tuo, e
+   solo dopo si accende verso i fornitori.
+3. **Automatico o con conferma.** Raccomandazione: **conferma esplicita** come
+   default (l'app mostra a chi sta per scrivere, tu clicchi «invia»), con
+   l'automatismo pieno attivabile nelle impostazioni quando ti fidi. La
+   differenza di tempo è un click; la differenza in caso di errore è un ordine
+   sbagliato mandato a cinque fornitori.
+
+Finché D18 non è chiusa la Fase 17 si sviluppa e si completa lo stesso: in
+modalità `log` funziona tutto, le email si possono leggere su file, solo non
+escono dal server.
 
 ### D17 — Pezzi per collo, quando non sono scritti
 

@@ -144,6 +144,8 @@ Se un domani servisse davvero il monorepo, la struttura a cartelle proposta
 | PDF (immagini) | **`pdfimages`** (già installato)                                                                | estrazione foto prodotto, opzionale                                                                                                                                                           |
 | LLM            | **DeepSeek** (`deepseek-v4-flash`, endpoint OpenAI-compatible) dietro interfaccia `LlmProvider` | costo ~$0,14/$0,28 per Mtok: permette lotti piccoli e una seconda passata di revisione, che è esattamente ciò che serve qui. Sostituibile con Claude/altro cambiando una variabile d'ambiente |
 | Excel          | **`xlsx` (SheetJS 0.18.5)** o **`exceljs`**                                                     | `xlsx` è già in uso in `china`; `exceljs` se servirà formattazione ricca (colori, larghezze, formule). Decisione rimandabile: il modulo export è isolato                                      |
+| PDF ordini     | **HTML + Chromium headless** già presente sul server                                            | zero dipendenze nuove, e il template resta HTML+CSS: si cambia l'aspetto del documento senza toccare codice. Le librerie PDF native costringono a descrivere il layout con coordinate         |
+| Email          | **`nodemailer`** dietro interfaccia `MailSender` (`log` \| `smtp` \| `mock`)                    | modalità `log` di serie: si sviluppa e si collauda senza spedire niente a nessuno. Stessa astrazione dei provider IA, per gli stessi motivi                                                    |
 | Grafici        | **Recharts** o SVG a mano                                                                       | pochi grafici (storico prezzi, spesa mensile)                                                                                                                                                 |
 | Auth           | **sessione cookie + `@node-rs/argon2`** (o `bcrypt`), no NextAuth                               | 1–5 utenti: NextAuth introdurrebbe più concetti di quanti ne servano                                                                                                                          |
 | Test           | **`node:test` + tsx** (come `china`) + fixture PDF reali                                        | il dominio unità/prezzi e la pipeline di import devono avere test veri                                                                                                                        |
@@ -180,11 +182,19 @@ già nel modello ma non vengono ancora applicati oltre "sei loggato".
 ```
 id, organization_id, name, code?, vat_number?, email?, phone?, contact_name?,
 address?, notes?, prices_include_vat (bool, default false),
-default_vat_rate?, min_order_value?, delivery_days?, active, created_at
+default_vat_rate?, min_order_value?, delivery_days?, active, created_at,
+-- invio automatico degli ordini (Fase 17)
+order_email?, order_email_cc?, send_orders_by_email (bool, default false),
+email_note?          -- testo fisso nel corpo, es. il nostro codice cliente
 ```
 
 `prices_include_vat` per fornitore è importante: alcuni listini sono
 IVA esclusa, altri inclusa, e sbagliarlo falsa ogni confronto.
+
+`order_email` è l'indirizzo a cui parte il PDF dell'ordine. È separato da
+`email` (il contatto generico) di proposito: l'ufficio ordini di un fornitore
+quasi mai coincide con il commerciale che manda i listini, e mandare un ordine
+all'indirizzo sbagliato significa che non arriva a nessuno.
 
 **`supplier_contact`** (opzionale, fase tardiva) — più referenti per fornitore.
 
@@ -392,8 +402,34 @@ position, note?
 Lo snapshot è ciò che rende lo storico ordini leggibile fra due anni, anche
 se nel frattempo prodotti, prezzi e fornitori sono cambiati o spariti.
 
-**`order_export`** — `id, order_id, format (XLSX|PDF|CSV), template_key, file_path, size_bytes, created_by_id, created_at`
-Permette di riscaricare esattamente il file già generato (punto 12).
+**`order_document`** — i file generati dall'ordine
+
+```
+id, order_id, supplier_id?,        -- NULL = documento riepilogativo interno
+format (PDF|XLSX|CSV), template_key, file_path, file_name,
+size_bytes, created_by_id, created_at
+```
+
+Un ordine produce **N+1 documenti**: un PDF per ciascun fornitore coinvolto,
+più l'Excel riepilogativo per uso interno. `supplier_id` è ciò che li tiene
+distinti, e permette di riscaricare mesi dopo esattamente il file che è stato
+mandato a quel fornitore — non una sua rigenerazione, che con prezzi cambiati
+nel frattempo direbbe cose diverse.
+
+**`email_delivery`** — traccia di ogni invio (Fase 17)
+
+```
+id, order_id, supplier_id, document_id,
+to_address, cc?, subject,
+status (PENDING|SENT|FAILED|SKIPPED), attempts (int), error?,
+mode (LOG|SMTP),                   -- com'era configurato al momento dell'invio
+sent_at?, created_at
+```
+
+Perché serve una tabella e non un log: bisogna poter rispondere a «l'ordine a
+Cecconi è partito?» mesi dopo, impedire il doppio invio, e ritentare solo ciò
+che è fallito. `mode` registra se quell'invio è uscito davvero o è finito su
+file: senza, un domani non si saprebbe distinguere «mandato» da «simulato».
 
 ### 3.6 Supporto IA e sistema
 
@@ -437,7 +473,8 @@ erDiagram
     product ||--o{ product_match_candidate : ""
 
     order ||--o{ order_line : ""
-    order ||--o{ order_export : ""
+    order ||--o{ order_document : "un PDF per fornitore"
+    order ||--o{ email_delivery : "invii"
     order_line }o--|| supplier_product : "snapshot di"
 
     ai_call }o--o| price_list : ""
@@ -528,8 +565,11 @@ erDiagram
     se esiste offerta migliore oltre soglia → avviso non bloccante →
     barra/drawer sempre visibile con "N prodotti · M confezioni · €T"
 
-[10] RIEPILOGO → CONFERMA
+[10] RIEPILOGO → CONFERMA → DOCUMENTI → INVIO
     Snapshot di tutti i prezzi in order_line → status CONFIRMED →
+    un PDF per ciascun fornitore coinvolto (nome: data_fornitore_ordine.pdf) +
+    Excel riepilogativo → anteprima degli invii → email a ogni fornitore
+    all'indirizzo della sua anagrafica, con il suo PDF allegato →
     generazione Excel → storico.
 ```
 
@@ -847,7 +887,7 @@ quantità, prezzi al kg su prodotti venduti a pezzo con peso variabile
 | 1   | **Nuovo ordine** ⭐              | barra di ricerca grande, griglia/lista risultati con foto opzionale, `[-] qty [+]` e campo numerico, filtro per fornitore/categoria, badge "miglior prezzo" | 12   |
 | 2   | **Barra/drawer ordine corrente** | sempre visibile: "12 prodotti · 37 confezioni · €423,50" + "GUARDA RIEPILOGO"                                                                               | 12   |
 | 3   | **Riepilogo ordine**             | righe con qty/formato/prezzo unitario/totale/fornitore, alternative più economiche, subtotali per fornitore, totale generale, risparmio potenziale          | 14   |
-| 4   | **Conferma + esito**             | conferma, generazione Excel, link download                                                                                                                  | 14   |
+| 4   | **Conferma + esito**             | conferma, generazione dei documenti (un PDF per fornitore + Excel), anteprima degli invii con destinatari e allegati, pulsante «invia»                        | 14, 16, 17 |
 | 5   | **Storico ordini**               | lista (data, codice, totale, n° prodotti, fornitori) con filtri                                                                                             | 15   |
 | 6   | **Dettaglio ordine passato**     | ordine congelato + riscarica Excel + "riordina" (duplica in DRAFT ai prezzi correnti)                                                                       | 15   |
 
@@ -857,7 +897,7 @@ quantità, prezzi al kg su prodotti venduti a pezzo con peso variabile
 | --- | ------------------------------------ | -------------------------------------------------------------------------------------------------- | ---- |
 | 7   | **Fornitori**                        | lista con n° prodotti, ultimo listino, spesa totale                                                | 4    |
 | 8   | **Scheda fornitore**                 | tab: anagrafica · listini · prodotti · storico prezzi · ordini                                     | 4    |
-| 9   | **Carica listino**                   | drag&drop PDF, scelta fornitore, data validità                                                     | 7    |
+| 9   | **Carica listino**                   | **scelta obbligatoria del fornitore e del nome del listino** (es. «liquori-cecconi»), drag&drop PDF, data validità, avviso su quale listino verrà sostituito | 7    |
 | 10  | **Avanzamento import**               | fasi con progresso, log leggibile, annulla                                                         | 7    |
 | 11  | **Revisione import** ⭐              | "147 prodotti: ✓125 ⚠15 +7 ✕3" con tabella filtrabile, modifica inline, conferma in blocco         | 10   |
 | 12  | **Riepilogo import**                 | nuovi/aggiornati/aumentati/diminuiti/spariti + annulla import                                      | 10   |
@@ -870,10 +910,12 @@ quantità, prezzi al kg su prodotti venduti a pezzo con peso variabile
 
 | #   | Schermata                | Contenuto                                                                                                     | Fase   |
 | --- | ------------------------ | ------------------------------------------------------------------------------------------------------------- | ------ |
-| 17  | **Login**                | email + password                                                                                              | 3      |
-| 18  | **Dashboard**            | spesa mensile, top prodotti, maggiori aumenti, risparmio potenziale, ultimi listini, prodotti senza confronto | 18     |
-| 19  | **Statistiche prodotto** | confezioni ordinate, spesa, frequenza, ultimo acquisto, prezzo medio pagato, variazione                       | 17     |
-| 20  | **Impostazioni**         | soglie avviso, IVA default, provider e budget IA, utenti                                                      | 3 / 19 |
+| 17  | **Login**                | password unica condivisa (decisione D4)                                                                       | 3      |
+| 18  | **Dashboard**            | spesa mensile, top prodotti, maggiori aumenti, risparmio potenziale, ultimi listini, prodotti senza confronto | 19     |
+| 19  | **Statistiche prodotto** | confezioni ordinate, spesa, frequenza, ultimo acquisto, prezzo medio pagato, variazione                       | 18     |
+| 20  | **Impostazioni**         | soglie avviso, IVA default, provider e budget IA, mittente email e modalità di invio                          | 3 / 17 |
+| 21  | **Invii dell'ordine**    | chi ha ricevuto cosa e quando, esito, errore, pulsante «rimanda» per fornitore                                | 17     |
+| 22  | **Documenti dell'ordine** | i PDF generati (uno per fornitore) + Excel, scarica singolo o tutto in zip                                   | 16     |
 
 ⭐ = le due schermate su cui vale la pena spendere più cura di quanto sembri
 necessario: sono quelle che decidono se l'app viene usata o abbandonata.
@@ -1033,7 +1075,10 @@ estraiamo correttamente 398").
 │   │   │   ├── usage.ts
 │   │   │   └── prompts/
 │   │   ├── export/
-│   │   │   └── excel/                  # modulo indipendente, a template
+│   │   │   ├── excel/                  # riepilogo interno (SheetJS)
+│   │   │   ├── pdf/                    # un documento per fornitore (HTML→Chromium)
+│   │   │   └── templates/              # HTML+CSS: si cambia senza toccare codice
+│   │   ├── email/                      # MailSender: log | smtp | mock
 │   │   ├── jobs/                       # runner.ts, import-job.ts
 │   │   └── repositories/               # query con scope organization_id
 │   └── lib/                            # schemi zod condivisi, formattatori

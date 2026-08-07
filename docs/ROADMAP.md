@@ -21,15 +21,20 @@ Le fasi seguono tre criteri, in ordine di priorità:
    (Fasi 7–10) sono le parti che possono sorprendere: arrivano appena le
    fondamenta reggono, non alla fine.
 
-**Confine MVP:** fine Fase 16. Le Fasi 17–19 sono miglioramenti da fare a
+**Confine MVP:** fine Fase 17. Le Fasi 18–20 sono miglioramenti da fare a
 sistema già in uso, con dati veri e feedback reale.
 
+Il confine si ferma lì perché è il punto in cui il giro si chiude davvero:
+arriva il listino → si importa → si ordina → **parte l'email al fornitore con
+il suo PDF**. Fermarsi prima lascerebbe l'ultimo passo a mano, che è
+esattamente quello che si vuole togliere.
+
 **Fasi parallelizzabili:** 4 e 5 (fornitori e catalogo) sono indipendenti;
-16 (Excel) può procedere in parallelo a 15; 17 dipende solo dai dati di 15.
+16 (documenti) può procedere in parallelo a 15; 18 dipende solo dai dati di 15.
 
 **Ordine di grandezza dello sforzo** (sessioni di lavoro, non giorni di
 calendario): Fasi 0–3 ≈ 2–3 · Fasi 4–6 ≈ 3–4 · Fasi 7–10 ≈ 6–9 (la parte
-grossa) · Fasi 11–16 ≈ 6–8 · Fasi 17–19 ≈ 4–5.
+grossa) · Fasi 11–15 ≈ 5–6 · Fasi 16–17 ≈ 3–4 · Fasi 18–20 ≈ 4–5.
 
 ---
 
@@ -183,6 +188,12 @@ prima o poi qualcuno scrive una query senza filtro.
   inizialmente vuoti).
 - Campi importanti da non dimenticare: `prices_include_vat`,
   `default_vat_rate`, `min_order_value`, `delivery_days`.
+- **Email per gli ordini**: `order_email`, `order_email_cc`,
+  `send_orders_by_email`, `email_note` (testo fisso da inserire nel corpo, es.
+  il codice cliente presso quel fornitore). Si raccolgono **qui**, alla Fase 4,
+  anche se serviranno solo alla Fase 17: chiedere di ricompilare l'anagrafica
+  di dieci fornitori mesi dopo è un lavoro inutile, e un campo vuoto non fa
+  danno.
 
 **Tabelle** — `supplier` (+ `supplier_contact` se serve).
 **API** — `GET/POST /api/suppliers`, `GET/PATCH/DELETE /api/suppliers/[id]`.
@@ -198,6 +209,8 @@ sottile e decisivo.
 - [ ] la scheda mostra i tab (vuoti) senza errori
 - [ ] la cancellazione di un fornitore con dati collegati è impedita con
       messaggio comprensibile
+- [ ] l'email d'ordine è validata come indirizzo, e un fornitore con
+      «invia ordini per email» attivo non si salva senza indirizzo
 
 ---
 
@@ -283,6 +296,23 @@ problemi, se la colpa è dell'estrazione o del modello.
 
 **Cosa sviluppare**
 
+- **Schermata di caricamento con due campi obbligatori**: il **fornitore** e il
+  **nome del listino** (es. «liquori-cecconi», «gelato-2026»). Non si carica
+  nulla senza averli scelti: un listino orfano o attribuito al fornitore
+  sbagliato inquina il catalogo in modo difficile da districare, e il momento
+  in cui è banale evitarlo è questo, non dopo.
+  - Il **fornitore** determina *dove* finiranno i prodotti: `supplier_id` è
+    obbligatorio su ogni riga importata.
+  - Il **nome del listino** (`scope_label`) determina *cosa copre*: serve a
+    confrontare il listino nuovo con **il precedente della stessa copertura**,
+    e non con l'intero catalogo del fornitore. È ciò che impedisce che
+    caricando «liquori-cecconi» tutti i vini di Cecconi risultino spariti.
+  - Se per quel fornitore esiste già un listino con lo stesso nome, si mostra
+    subito: «Cecconi / liquori — ultimo caricamento 28/02/2025, 187 prodotti.
+    Questo lo sostituirà». Così si vede *prima* di importare cosa si sta per
+    aggiornare.
+  - Suggerimento dei nomi già usati, per non ritrovarsi «liquori», «Liquori» e
+    «liquori-cecconi» come tre coperture diverse.
 - Upload PDF (drag&drop), calcolo sha256, deduplica, salvataggio in `storage/`.
 - `import/pdf/extract-text.ts`: `pdftotext -layout` e `-bbox-layout`,
   rilevamento PDF senza testo (→ errore esplicito "scansionato").
@@ -307,6 +337,10 @@ e ripreso.
 
 **Completata quando**
 
+- [ ] non è possibile caricare un file senza aver scelto fornitore e nome del
+      listino
+- [ ] caricando un nome già usato, l'app dice quale listino sostituirà e da
+      quando è fermo
 - [ ] i PDF della Fase 0 si caricano e producono righe grezze
 - [ ] la copertura riga per riga è ≥90% su ciascun PDF di prova (righe di
       prodotto individuate / righe di prodotto reali, contate a mano)
@@ -425,12 +459,61 @@ il sistema.**
 > conferma in blocco di tutti i ✓ con un click, e attenzione richiesta solo su
 > ⚠ e ✕.
 
+### La regola di riconciliazione
+
+È il cuore di questa fase, e va scritta esplicitamente perché è la logica che
+decide se il catalogo resta pulito o diventa un macello. **Ogni volta** che si
+carica un file, per quel fornitore e quella copertura:
+
+```
+1. LEGGO DAL DATABASE
+   tutti i supplier_product di quel fornitore appartenenti a quella copertura,
+   ciascuno con la sua identita' completa:
+       codice fornitore + confezione (CF/CT/CO/BT/PZ) + pezzi + formato
+
+2. LEGGO DAL FILE
+   tutte le righe estratte, con la stessa identita' completa
+
+3. CONFRONTO, riga per riga
+   ┌─ stesso codice E stessa confezione E stessi pezzi E stesso formato
+   │     → E' LO STESSO PRODOTTO: aggiorno SOLO il prezzo
+   │       (nuova riga nello storico, la precedente si chiude)
+   │       Se il prezzo e' identico: non scrivo niente, tocco last_seen_at
+   │
+   ├─ stesso codice MA confezione o pezzi diversi
+   │     → ⚠ NON decido da solo: va in revisione
+   │       "ALISEA CL.50 — prima CO da 24, ora CO da 12. Stesso prodotto con
+   │        confezione cambiata, oppure prodotto nuovo?"
+   │       Perche': aggiornare in silenzio farebbe sembrare un dimezzamento
+   │       di prezzo quello che e' un dimezzamento di confezione, e falserebbe
+   │       lo storico e ogni confronto futuro.
+   │
+   ├─ codice mai visto
+   │     → PRODOTTO NUOVO: lo creo
+   │
+   └─ prodotto a database che nel file non c'e' piu'
+         → SPARITO: active = false (mai cancellato, o si perde lo storico
+           e gli ordini passati). Calcolato SOLO sulla stessa copertura.
+```
+
+Il punto delicato è il secondo ramo. La regola «se coincide tutto aggiorno,
+altrimenti ricreo» è giusta come principio, ma applicata alla lettera
+perderebbe lo storico prezzi ogni volta che un fornitore cambia una
+confezione — e lo storico è il dato più prezioso dell'applicazione. Per questo
+quel caso non viene deciso in automatico: viene **mostrato**, e con un click si
+sceglie se è lo stesso prodotto (lo storico continua, la confezione cambia e
+resta annotata) o un prodotto diverso (il vecchio va in pensione, il nuovo
+parte da zero). Sono pochi casi per import, e sono esattamente quelli in cui
+sbagliare costa caro.
+
 **Cosa sviluppare**
 
 - Schermata di revisione: intestazione con i conteggi
   (`✓ riconosciuti · ⚠ dubbi · + nuovi · ✕ non interpretati · ⚠ variazioni
-anomale`), tabella filtrabile per stato, modifica inline di ogni campo,
-  conferma in blocco, esclusione righe.
+anomale · ⚠ confezione cambiata`), tabella filtrabile per stato, modifica
+  inline di ogni campo, conferma in blocco, esclusione righe.
+- **Riconciliazione** secondo la regola qui sopra, con `supplier_id` e
+  `scope_label` del listino come perimetro: mai oltre.
 - `import/apply.ts`, **una sola transazione**: crea i nuovi
   `supplier_product`; per ogni prezzo cambiato chiude il precedente e inserisce
   il nuovo; marca `active=false` i prodotti spariti; scrive gli alias
@@ -459,6 +542,14 @@ far sparire il prodotto ("non l'ho importata" ≠ "non c'è più nel listino").
 **Completata quando**
 
 - [ ] un import reale arriva fino a `APPLIED` passando dalla revisione
+- [ ] **prodotto identico** (codice + confezione + pezzi + formato): aggiorna
+      solo il prezzo, non crea nulla
+- [ ] **prezzo invariato**: nessuna riga nuova nello storico
+- [ ] **stesso codice con confezione diversa**: finisce in revisione, non
+      viene deciso in automatico
+- [ ] **codice nuovo**: crea il prodotto
+- [ ] importando i due listini Cecconi (liquori e vini) in sequenza, **nessun
+      prodotto dell'uno risulta sparito per colpa dell'altro**
 - [ ] i prezzi finiscono nello storico senza perdere i precedenti
 - [ ] i prodotti spariti risultano `active=false` e compaiono nel riepilogo
 - [ ] `revert` riporta il database esattamente allo stato precedente
@@ -657,47 +748,156 @@ frattempo spariti. Paginazione fin da subito.
 
 ---
 
-# FASE 16 — Export Excel _(fine MVP)_
+# FASE 16 — Documenti d'ordine: un PDF per fornitore, più l'Excel
 
-**Obiettivo.** Un file Excel per ogni ordine, con il generatore isolato in modo
-che cambiarne il formato non tocchi nient'altro.
+**Obiettivo.** Da un ordine confermato, **un documento per ogni fornitore**,
+pronto da mandare così com'è. È il punto in cui l'app smette di essere uno
+strumento di analisi e diventa lo strumento con cui si ordina davvero.
+
+Un ordine tocca in genere 3–5 fornitori, e ognuno vuole vedere solo la propria
+parte. Quindi la conferma non produce **un** file: produce **N** file, uno per
+fornitore, più un Excel riepilogativo per uso interno.
+
+**Nome dei file** — devono essere riconoscibili in un allegato email e in una
+cartella con dentro sei mesi di ordini:
+
+```
+2026-08-07_Cecconi_ordine-2026-0042.pdf
+2026-08-07_Barzelli_ordine-2026-0042.pdf
+2026-08-07_ordine-2026-0042_riepilogo.xlsx
+```
+
+**Contenuto del PDF per fornitore**: intestazione con i dati della gelateria e
+del fornitore, numero e data dell'ordine, tabella con codice articolo del
+fornitore (quello suo, non il nostro), descrizione, confezione, quantità,
+prezzo unitario e totale riga, totale netto e IVA, ed eventuali note. Deve
+essere leggibile da chi lo riceve **senza spiegazioni**: il codice articolo del
+fornitore in prima colonna è ciò che gli permette di evaderlo subito.
 
 **Cosa sviluppare**
 
-- `server/export/excel/`: interfaccia `OrderExportTemplate` con
-  `key`, `label`, `build(order): Buffer`; registro dei template; default
-  "standard" (una riga per prodotto, raggruppata per fornitore, con totali).
-- Variante "un foglio per fornitore" (è il formato che serve davvero se
-  l'Excel va mandato ai fornitori).
-- Salvataggio in `storage/exports/` + riga in `order_export` per il
-  ri-download identico.
-- Rigenerazione con un template diverso.
+- `server/export/`: interfaccia comune `DocumentTemplate` con
+  `key`, `label`, `format`, `build(dati): Buffer`; registro dei template.
+- **PDF per fornitore** — generazione server-side. Nessuna dipendenza pesante:
+  si compone l'HTML e lo si stampa con il Chromium headless già presente sul
+  server (`/root/.cache/ms-playwright/…`), che è la stessa strada usata per
+  verificare le pagine su questo VPS. Il template è HTML+CSS, quindi
+  modificabile senza toccare codice.
+- **Excel riepilogativo** (`xlsx`): una riga per prodotto, raggruppata per
+  fornitore, con subtotali e totale.
+- Salvataggio in `storage/exports/<ordine>/` + una riga `order_document` per
+  ciascun file, così si riscarica identico a distanza di mesi.
+- Rigenerazione con un template diverso, senza perdere gli originali.
 
-**Tabelle** — `order_export`.
-**API** — `POST /api/orders/[id]/export` (con `template_key`),
-`GET /api/orders/[id]/export/[exportId]`.
-**Frontend** — pulsanti in schermata 4 e 6; scelta template se >1.
+**Tabelle** — `order_document` (`order_id, supplier_id?, format, template_key,
+file_path, file_name, size_bytes, created_at`).
+**API** — `POST /api/orders/[id]/documents` (genera),
+`GET /api/orders/[id]/documents`,
+`GET /api/orders/[id]/documents/[docId]` (scarica),
+`GET /api/orders/[id]/documents.zip` (scarica tutto).
+**Frontend** — schermata 4 (dopo la conferma: elenco dei documenti generati,
+uno per fornitore, con scarica singola e «scarica tutti») e schermata 6.
 
-**Problemi da considerare.** Il formato definitivo non è ancora definito (D9):
-per questo il modulo è a template e il primo è dichiaratamente provvisorio.
-Numeri come numeri (non testo), decimali con la virgola in locale italiano,
-larghezze colonne, intestazione con dati fornitore e data.
+**Problemi da considerare.** Il formato definitivo dell'Excel non è ancora
+definito (D9): per questo il modulo è a template. Nel PDF servono numeri come
+numeri e decimali all'italiana. Il Chromium headless va invocato con un limite
+di tempo e un solo processo alla volta (RAM). Un ordine con un fornitore solo
+deve comunque produrre un PDF, non un caso speciale. I file vanno in
+`storage/`, che è già nel backup.
 
 **Completata quando**
 
-- [ ] ogni ordine confermato genera un `.xlsx` apribile senza avvisi
-- [ ] il file si riscarica identico dallo storico
-- [ ] aggiungere un template nuovo non richiede modifiche fuori da
-      `server/export/excel/`
-- [ ] i totali del file coincidono al centesimo con quelli dell'app
-
-> **✅ Fine MVP.** A questo punto l'app copre i punti 1–12 della specifica ed è
-> utilizzabile in produzione tutti i giorni. Da qui in avanti si lavora con
-> dati veri e feedback reale, che è il momento giusto per decidere il resto.
+- [ ] un ordine con 3 fornitori genera **3 PDF distinti**, ciascuno con i soli
+      prodotti di quel fornitore
+- [ ] i nomi dei file contengono fornitore e data e sono ordinabili
+- [ ] il PDF mostra il **codice articolo del fornitore**, non il nostro
+- [ ] i totali di ogni PDF coincidono al centesimo con quelli dell'app
+- [ ] l'Excel riepilogativo apre senza avvisi
+- [ ] i documenti si riscaricano identici dallo storico
+- [ ] aggiungere un template non richiede modifiche fuori da `server/export/`
 
 ---
 
-# FASE 17 — Statistiche prodotto
+# FASE 17 — Invio automatico ai fornitori _(fine MVP)_
+
+**Obiettivo.** Alla conferma dell'ordine, ogni fornitore riceve per email il
+proprio PDF, all'indirizzo che sta nella sua anagrafica. È l'ultimo passo per
+cui oggi si perde tempo a mano.
+
+> ⚠️ **Questa è l'unica fase in cui l'app parla col mondo esterno.** Un errore
+> qui non è un numero sbagliato su una schermata: è un ordine vero mandato a
+> un fornitore vero. Per questo il progetto è deliberatamente prudente, e la
+> prudenza sta nel meccanismo, non nella buona volontà di chi lo usa.
+
+**Le tre sicurezze, prima ancora delle funzionalità**
+
+1. **Modalità `log` di serie.** `MAIL_MODE=log` scrive l'email in un file e non
+   la spedisce. È il default all'installazione, e con questa si fanno tutte le
+   prove. Passare a `MAIL_MODE=smtp` è una scelta esplicita. (È lo stesso
+   schema già in uso sul progetto `filippo`, che è ancora in `log` proprio
+   perché mandare email per sbaglio è un danno che non si annulla.)
+2. **Anteprima e conferma prima della partenza.** La conferma dell'ordine non
+   spedisce: mostra «Sto per mandare 3 email — Cecconi → ordini@…, Barzelli →
+   …», con il PDF allegato consultabile, e **un pulsante per inviare**. Chi
+   vuole l'automatismo pieno lo attiva nelle impostazioni, ma il default è
+   guardare prima.
+3. **Nessun doppio invio.** Ogni invio è registrato; un ordine già spedito a un
+   fornitore non riparte da solo, e se si vuole rimandare bisogna dirlo.
+
+**Cosa sviluppare**
+
+- **Anagrafica fornitori completata** (estende la Fase 4): `order_email`,
+  `order_email_cc`, `send_orders_by_email` (sì/no per fornitore), `email_note`
+  (testo fisso da mettere nel corpo, es. il codice cliente).
+- `server/email/`: interfaccia `MailSender` con implementazioni `log`, `smtp`
+  (nodemailer su Aruba) e `mock` per i test — stessa forma dell'astrazione dei
+  provider IA, per gli stessi motivi.
+- Composizione del messaggio: oggetto `Ordine 2026-0042 — Gelateria Guido —
+  07/08/2026`, corpo breve e cortese con il totale e il numero di righe, PDF
+  in allegato.
+- Coda di invio con ritenti (3 tentativi a distanza crescente) e registrazione
+  di ogni esito.
+- Schermata **«Invii»** dentro l'ordine: chi ha ricevuto cosa, quando, con
+  quale esito, e un pulsante «rimanda» per fornitore.
+- Impostazioni: mittente, firma, invio automatico sì/no, indirizzo in copia
+  a sé stessi (consigliato: così si ha sempre la prova di cosa è partito).
+
+**Tabelle** — `supplier` (campi email), `email_delivery`
+(`order_id, supplier_id, document_id, to_address, cc, subject, status
+(PENDING|SENT|FAILED|SKIPPED), attempts, error?, sent_at, created_at`).
+**API** — `POST /api/orders/[id]/send` (con elenco fornitori),
+`GET /api/orders/[id]/deliveries`,
+`POST /api/orders/[id]/deliveries/[id]/retry`.
+**Frontend** — schermata 4 (anteprima invii + conferma), nuova schermata
+«Invii» nel dettaglio ordine, tab email nella scheda fornitore.
+
+**Problemi da considerare.** **Le credenziali SMTP sono il vero prerequisito**
+(vedi D18): sul server c'è già un account Aruba configurato per `filippo`, ma
+in modalità `log`. Senza autorizzazione a spedire, questa fase si completa
+comunque — funziona tutto, le email finiscono su file invece che nella posta
+del fornitore. Altri punti: un fornitore senza email va segnalato prima della
+conferma, non dopo; l'allegato PDF non deve superare i limiti di Aruba; il
+mittente deve essere un dominio autorizzato o le email finiscono in spam;
+serve un indirizzo di risposta vero, perché i fornitori risponderanno.
+
+**Completata quando**
+
+- [ ] in modalità `log` un ordine a 3 fornitori produce 3 email complete di
+      allegato, verificabili su file, e **nessuna parte davvero**
+- [ ] l'anteprima elenca destinatari e allegati prima di qualunque invio
+- [ ] un fornitore senza email è segnalato **prima** della conferma
+- [ ] un invio fallito è ritentato e resta registrato con l'errore
+- [ ] un ordine già inviato non si rispedisce da solo
+- [ ] passando a `MAIL_MODE=smtp` con un indirizzo di prova, l'email arriva
+      davvero, con il PDF leggibile
+
+> **✅ Fine MVP.** L'app copre i punti 1–12 della specifica più i documenti per
+> fornitore e l'invio: dall'arrivo del listino all'ordine spedito, senza
+> passaggi manuali. Da qui in avanti si lavora con dati veri e feedback reale.
+
+---
+
+# FASE 18 — Statistiche prodotto
 
 **Obiettivo.** Il punto 13 della specifica.
 
@@ -729,7 +929,7 @@ risalendo da `supplier_product` a `product`.
 
 ---
 
-# FASE 18 — Dashboard
+# FASE 19 — Dashboard
 
 **Obiettivo.** Il punto 14: la fotografia d'insieme.
 
@@ -756,7 +956,7 @@ essere cliccabile e portare al dettaglio, altrimenti è decorazione.
 
 ---
 
-# FASE 19 — Consolidamento
+# FASE 20 — Consolidamento
 
 **Obiettivo.** Rendere il sistema sostenibile nel tempo e pronto ad altre
 attività.
@@ -786,11 +986,11 @@ attività.
 
 | Idea                                        | Quando ha senso                                                                      |
 | ------------------------------------------- | ------------------------------------------------------------------------------------ |
-| OCR per listini scansionati                 | se compaiono davvero (Fase 0 lo dirà)                                                |
-| Invio ordine al fornitore via email/PDF     | quando l'Excel non basta più                                                         |
+| OCR per listini scansionati                 | non serve: nessuno dei listini veri è scansionato (Fase 0)                           |
+| ~~Invio ordine al fornitore via email/PDF~~ | **promosso a Fasi 16–17, dentro l'MVP** (richiesta del 2026-08-07)                   |
+| Import da Excel/CSV oltre al PDF            | **da rimettere in Fase 7** se AD Beverage conta: manda `.xls` (vedi D15)             |
 | Ricezione merce e controllo bolle vs ordine | è il naturale passo successivo: scopre gli errori di fatturazione                    |
 | Giacenze e scorte minime                    | grande valore, ma è un progetto a sé                                                 |
-| Import da Excel/CSV oltre al PDF            | economico da aggiungere, alcuni fornitori li mandano già                             |
 | Embeddings (pgvector) per l'abbinamento     | solo se trigram + LLM si rivelassero insufficienti; richiede installare l'estensione |
 | Suggerimenti d'ordine sui consumi storici   | dopo 6–12 mesi di dati veri                                                          |
 | App mobile / PWA offline                    | se l'ordine si fa girando per il magazzino                                           |
@@ -817,7 +1017,8 @@ attività.
 | 13   | Avviso prezzo migliore               | 11, 12     | ✅  |
 | 14   | Riepilogo e conferma                 | 12         | ✅  |
 | 15   | Storico ordini                       | 14         | ✅  |
-| 16   | Export Excel                         | 14         | ✅  |
-| 17   | Statistiche prodotto                 | 15         | —   |
-| 18   | Dashboard                            | 15, 17     | —   |
-| 19   | Consolidamento                       | tutte      | —   |
+| 16   | Documenti d'ordine (PDF per fornitore + Excel) | 14 | ✅  |
+| 17   | Invio automatico ai fornitori        | 16, 4      | ✅  |
+| 18   | Statistiche prodotto                 | 15         | —   |
+| 19   | Dashboard                            | 15, 18     | —   |
+| 20   | Consolidamento                       | tutte      | —   |
