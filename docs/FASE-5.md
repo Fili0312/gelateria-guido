@@ -326,8 +326,8 @@ allineati alla convenzione già usata nel resto del progetto (senza estensione).
 
 ## Prossimo passo
 
-Prima della Fase 6 è stata inserita la **Fase 5b — Reparti e categorie**, nata
-da un'esigenza reale durante gli ordini. È documentata in
-[FASE-5B.md](FASE-5B.md). Dopo la sua chiusura, il passo successivo resta la
+Prima della Fase 6 è stata inserita e completata la
+**Fase 5b — Reparti e categorie**, nata da un'esigenza reale durante gli
+ordini. È documentata in [FASE-5B.md](FASE-5B.md). Il passo successivo è ora la
 **Fase 6 — Storico prezzi**: servizio `setPrice` append-only, prezzo alla data,
 serie storica e grafico nella scheda prodotto.

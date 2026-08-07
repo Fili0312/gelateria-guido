@@ -272,8 +272,9 @@ caratteri: prefisso invece di trigram).
 categoria — così filtri e futuri ordini seguono lo stesso giro fisico del
 magazzino.
 
-**Stato (7 agosto 2026):** codice, test, build e prove di migrazione completati;
-pronta al backup e al deploy. Dettagli in [FASE-5B.md](FASE-5B.md).
+**Stato (7 agosto 2026):** completata, pubblicata e collaudata in produzione.
+Implementazione, migrazione, backup e smoke test sono documentati in
+[FASE-5B.md](FASE-5B.md).
 
 **Cosa sviluppare**
 
@@ -303,7 +304,7 @@ pronta al backup e al deploy. Dettagli in [FASE-5B.md](FASE-5B.md).
 - [x] una installazione da zero crea 4 reparti e 29 categorie tramite il seed
 - [x] scope organizzazione, API, schema, ricerca e migrazione sono coperti dai
       test e dalla rehearsal su copia del live
-- [ ] backup immediatamente precedente, deploy e smoke test live completati
+- [x] backup immediatamente precedente, deploy e smoke test live completati
 
 ---
 

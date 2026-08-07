@@ -1,7 +1,6 @@
 # FASE 5b — Reparti e categorie
 
-Data: 2026-08-07 · **pronta al backup e al deploy** · codice, test, build e
-rehearsal completati; non ancora dichiarata live.
+Data: 2026-08-07 · **completata, pubblicata e collaudata in produzione**.
 
 ## Risultato
 
@@ -146,7 +145,7 @@ relazione potrebbe attraversare lo scope:
   prodotto;
 - un id appartenente a un'altra organizzazione risulta non trovato.
 
-## Controlli prima del deploy
+## Controlli di rilascio
 
 ```text
 pnpm test          212 test, 53 suite, 0 falliti
@@ -161,16 +160,47 @@ git diff --check   pulito
 La ricerca era già stata misurata su 5.000 prodotti e 9.973 offerte dopo
 `ANALYZE`: caso peggiore 50,4 ms, sotto il limite di 100 ms.
 
-## Deploy e collaudo da completare
+## Deploy e collaudo live
 
-1. eseguire `scripts/backup-db.sh` e verificare il nuovo dump;
-2. committare il codice revisionato;
-3. eseguire `scripts/deploy.sh`;
-4. verificare health check interno ed HTTPS;
-5. collaudare pagina e API con sessione autenticata, inclusi conflitti,
-   cancellazione con `SET NULL` e pulizia dei record temporanei;
-6. confermare 4 reparti, 29 categorie, 19 prodotti e zero non classificati;
-7. aggiornare questo documento e la ROADMAP a `pubblicata e collaudata`.
+Prima della migrazione è stato creato e verificato il dump:
+
+```text
+/var/backups/gelateria/gelateria_guido-20260807-183708-616767701.sql.gz
+dimensione: 11 KB
+storage:    16 KB
+dump conservati: 9
+```
+
+Il commit di rilascio `bbbc6d2` è stato pubblicato con `scripts/deploy.sh`.
+Build, migrazione `20260807175028_reparti_e_categorie`, riavvio e health check
+sono riusciti. Il servizio è `active`, lo schema Prisma è aggiornato e sia
+l'health check interno sia quello HTTPS rispondono `{ "ok": true }`.
+
+Lo smoke test autenticato ha verificato via HTTP:
+
+- albero iniziale da 4 reparti, 29 categorie e zero prodotti da classificare;
+- rendering di catalogo, pagina reparti e modifica prodotto;
+- creazione, rinomina, riordino, disattivazione e riattivazione;
+- duplicato reparto → `409`;
+- cancellazione reparto non vuoto → `409`;
+- categoria inesistente sul prodotto → `400` con errore su `categoryId`;
+- cancellazione categoria → prodotto conservato, categoria `null` e
+  `productsAffected: 1`;
+- ricerca `amaro` con risultati in **4,92 ms**;
+- cancellazione di tutti i record di collaudo attraverso le API.
+
+Conteggi finali live:
+
+```text
+reparti:                  4
+categorie:               29
+prodotti:                19
+prodotti da classificare: 0
+```
+
+I database temporanei `gelateria_prova`, `gelateria_collaudo` e
+`gelateria_seed_collaudo` sono stati eliminati dopo il collaudo. Il database
+live e il backup pre-deploy non sono stati toccati dalla pulizia.
 
 ## Passo successivo
 
