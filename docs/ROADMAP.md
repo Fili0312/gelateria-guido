@@ -185,9 +185,9 @@ prima o poi qualcuno scrive una query senza filtro.
 
 **Obiettivo.** Anagrafica fornitori completa. Prima cosa realmente usabile.
 
-**Stato (7 agosto 2026):** pronta al collaudo/deploy. Funzionalità, regole e
-procedura di verifica sono documentate in [FASE-4.md](FASE-4.md); la
-pubblicazione in produzione non è ancora dichiarata completata.
+**Stato (7 agosto 2026):** completato, pubblicato e collaudato in produzione.
+Funzionalità, regole, backup ed esito del collaudo sono documentati in
+[FASE-4.md](FASE-4.md).
 
 **Cosa sviluppare**
 

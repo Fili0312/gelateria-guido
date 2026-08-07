@@ -1,10 +1,6 @@
 # FASE 4 — Gestione fornitori
 
-Data: 2026-08-07 · **pronta al collaudo/deploy**.
-
-> Il codice della fase è predisposto per la verifica finale, ma questo documento
-> non certifica ancora la pubblicazione in produzione. La fase potrà essere
-> dichiarata live soltanto dopo backup, deploy e smoke test descritti sotto.
+Data: 2026-08-07 · **codice e deploy completati** · collaudo live superato.
 
 ## Risultato
 
@@ -157,13 +153,22 @@ Le risposte con contenuto usano una busta stabile:
 
 Gli errori hanno sempre un messaggio destinato all'interfaccia; una
 validazione può aggiungere `fields`, mentre il blocco cancellazione aggiunge
-`canDeactivate`:
+`canDeactivate` e i conteggi che impediscono l'operazione:
 
 ```json
 {
   "ok": false,
   "error": "Il fornitore ha dati collegati e non può essere eliminato.",
-  "canDeactivate": true
+  "canDeactivate": true,
+  "counts": {
+    "priceLists": 1,
+    "supplierProducts": 20,
+    "importProfiles": 0,
+    "orderLines": 0,
+    "orderDocuments": 0,
+    "emailDeliveries": 0,
+    "aliases": 0
+  }
 }
 ```
 
@@ -207,7 +212,7 @@ La suite Node copre senza rete e senza database:
 - confronto dell'Origin diretto e dietro reverse proxy, inclusi mismatch e
   header forwarded ambigui.
 
-Controlli da eseguire prima del deploy:
+Controlli eseguiti prima del deploy:
 
 ```bash
 pnpm typecheck
@@ -218,12 +223,23 @@ pnpm exec prisma validate
 pnpm build
 ```
 
-La suite automatica non sostituisce ancora una prova di repository contro due
-organizzazioni su PostgreSQL isolato. Lo scope è coperto a livello di
-estensione Prisma; isolamento reale, constraint e codici HTTP vanno inclusi
-nel collaudo prima di dichiarare la fase completata in produzione.
+Esito: **142 test su 142 in 33 suite**, typecheck, ESLint, Prettier, schema
+Prisma e build production Webpack verdi. Lo scope multi-tenant resta coperto a
+livello dell'estensione Prisma; il collaudo live ha verificato repository,
+constraint e codici HTTP sull'organizzazione reale senza creare una seconda
+organizzazione artificiale in produzione.
 
-## Collaudo e deploy ancora da eseguire
+## Collaudo e deploy eseguiti
+
+Il preflight ha trovato 2 fornitori, nessun nome duplicato dopo
+`lower(trim(name))` e nessuna riga incompatibile con le nuove constraint.
+Subito prima del deploy è stato creato e verificato il backup:
+
+`/var/backups/gelateria/gelateria_guido-20260807-133111-930475447.sql.gz`
+
+Il dump è compresso correttamente, misura 10.824 byte, ha permessi `0600` e lo
+storage è stato sincronizzato. La procedura seguente resta il runbook da
+ripetere nei deploy futuri.
 
 ### 1. Preflight e backup
 
@@ -240,20 +256,23 @@ fornitore reale.
 
 ### 2. Deploy
 
-Eseguire il ciclo versionato:
+È stato eseguito il ciclo versionato:
 
 ```bash
 ./scripts/deploy.sh
 ```
 
-Lo script installa le dipendenze bloccate, genera Prisma, costruisce Next,
-applica la migrazione, riavvia `gelateria` e attende il `200` dell'health check.
+Lo script ha installato le dipendenze bloccate, generato Prisma, costruito
+Next, applicato `20260807130000_supplier_invariants`, riavviato `gelateria` e
+ottenuto il `200` dell'health check. `prisma migrate status` conferma 3
+migrazioni applicate e schema aggiornato.
 Non esiste rollback automatico dopo la migrazione: in caso di errore seguire
 [OPERAZIONI.md](OPERAZIONI.md), senza rilanciare alla cieca.
 
 ### 3. Smoke test HTTPS
 
-Sul percorso pubblico `https://filippo.eventoyou.com/gelateria`:
+Sul percorso pubblico `https://filippo.eventoyou.com/gelateria` sono stati
+eseguiti questi controlli:
 
 1. verificare redirect della pagina protetta e `401` API senza sessione;
 2. accedere e controllare che Barzelli e Cecconi siano visibili;
@@ -274,11 +293,21 @@ Il test distruttivo su un fornitore con collegamenti va eseguito in un database
 di collaudo, non sui record seed live. Il cleanup deve usare l'ID esatto della
 fixture temporanea anche se un passaggio intermedio fallisce.
 
+Esito live: confine anonimo `401`/redirect, lista seed, query e ricerca,
+round-trip di tutti i campi, normalizzazione Decimal, errore email
+condizionale, duplicato case-insensitive `409`, Origin ostile `403`, JSON
+malformato `400`, media type `415`, body oltre 64 KiB `413`, sei pagine della
+scheda, filtri attivo/inattivo, disattivazione, riattivazione, cancellazione e
+successivo `404` tutti verificati. La fixture `ZZ COLLAUDO F4 …` è stata
+rimossa; nessun dato seed è stato cancellato e nessun percorso invia email in
+questa fase. Servizi `gelateria` e `nginx` attivi, log senza errori e percorsi
+preesistenti del dominio ancora raggiungibili.
+
 ### 4. Chiusura della fase
 
-Soltanto dopo esito positivo del deploy e dello smoke test si potrà cambiare lo
-stato in «completata, pubblicata e collaudata in produzione», annotando data,
-risultato dei controlli, numero dei test e backup usato.
+La fase è **completata, pubblicata e collaudata in produzione**. Il codice live
+parte dal commit `b38e3cc`; il commit documentale successivo registra questo
+esito senza cambiare il comportamento applicativo.
 
 ## Prossimo passo
 
