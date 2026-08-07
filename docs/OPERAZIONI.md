@@ -19,10 +19,14 @@ getent passwd gelateria-app >/dev/null || \
   useradd --system --user-group --no-create-home --home-dir /nonexistent \
     --shell /usr/sbin/nologin gelateria-app
 
-# systemd legge i segreti come root e passa le variabili al processo; l'utente
-# web non ha bisogno di poter aprire il file.
-chown root:root .env
-chmod 0600 .env
+# I segreti live restano fuori dal repository. systemd li legge come root e
+# passa le variabili al processo; l'utente web non apre il file.
+install -d -o root -g root -m 0700 /etc/gelateria
+install -o root -g root -m 0600 .env /etc/gelateria/gelateria.env
+cmp --silent .env /etc/gelateria/gelateria.env
+install -d -o root -g root -m 0700 /var/backups/gelateria
+mv .env /var/backups/gelateria/gelateria.env.pre-externalization
+chmod 0600 /var/backups/gelateria/gelateria.env.pre-externalization
 
 # Le sole directory scrivibili dal processo web.
 install -d -o gelateria-app -g gelateria-app -m 0700 storage
@@ -87,10 +91,12 @@ che neghi la porta 3030 dall'esterno.
 ### Rotazione delle credenziali di accesso
 
 La procedura per generare `APP_PASSWORD_HASH` senza lasciare la password nella
-cronologia è in [FASE-3.md](FASE-3.md#attivazione-live). Per una sostituzione
-ordinaria basta aggiornare l'hash. Se invece la password può essere stata letta
-da terzi, aggiornare anche `SESSION_SECRET`: è la chiave che firma i cookie e
-la sua rotazione invalida immediatamente tutte le sessioni esistenti.
+cronologia è in
+[FASE-3.md](FASE-3.md#attivazione-live-e-rotazione-password). Sostituire la
+riga in `/etc/gelateria/gelateria.env`. Per una rotazione ordinaria basta
+aggiornare l'hash. Se invece la password può essere stata letta da terzi,
+aggiornare anche `SESSION_SECRET`: è la chiave che firma i cookie e la sua
+rotazione invalida immediatamente tutte le sessioni esistenti.
 
 ### Deploy: garanzie e limite attuale
 

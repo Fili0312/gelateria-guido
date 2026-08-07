@@ -63,8 +63,9 @@ live. La procedura verificabile su database nuovo, con collaudo e cutover, è in
   su questo server è già capitato che una build senza basePath producesse un
   sito senza stile. Chi non configura nulla ottiene la versione giusta; per
   lavorare in locale si passa `NEXT_BASE_PATH=`.
-- **`.env` è `chmod 600` e non entra in git.** Lo legge systemd via
-  `EnvironmentFile`. `.env.example` documenta ogni variabile, anche quelle che
+- **Il file live `/etc/gelateria/gelateria.env` è `chmod 600` e non entra in
+  git.** Lo legge systemd via `EnvironmentFile`. `.env.example` documenta ogni
+  variabile, anche quelle che
   serviranno solo dalla Fase 8 (DeepSeek) — così non ci si dimentica che
   esistono.
 - **Il client Prisma non è versionato** (`src/generated/`): lo rigenera

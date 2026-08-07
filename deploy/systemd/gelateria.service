@@ -12,9 +12,9 @@ User=gelateria-app
 Group=gelateria-app
 WorkingDirectory=/var/www/gelateria-guido
 
-# Il service manager legge il file root-owned prima dell'avvio; il processo
-# riceve le variabili necessarie ma non puo' aprire o modificare `.env`.
-EnvironmentFile=/var/www/gelateria-guido/.env
+# Il service manager legge il file root-owned fuori dal repository prima
+# dell'avvio; il processo riceve le variabili ma non puo' aprire il file.
+EnvironmentFile=/etc/gelateria/gelateria.env
 Environment=NODE_ENV=production
 Environment=NODE_OPTIONS=--max-old-space-size=512
 

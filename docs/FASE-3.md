@@ -1,7 +1,6 @@
 # FASE 3 — Autenticazione e guscio applicativo
 
-Data: 2026-08-07 · **codice completato e collaudato localmente** · attivazione
-live in attesa della password definitiva.
+Data: 2026-08-07 · **codice e deploy completati** · collaudo live superato.
 
 ## Risultato
 
@@ -10,7 +9,7 @@ navigazione responsive e prime schermate collegate ai dati reali. La scelta è
 quella già fissata in D4: una sola password condivisa, senza email e senza
 password in chiaro nel database.
 
-- `POST /api/auth/login` verifica un hash Argon2id preso da `.env`.
+- `POST /api/auth/login` verifica l'hash Argon2id ricevuto dall'ambiente.
 - Il body di login viene interrotto oltre 4 KiB; applicazione e nginx limitano
   inoltre a otto i tentativi ravvicinati per indirizzo, contenendo sia il brute
   force sia il costo CPU/RAM di Argon2id.
@@ -73,14 +72,15 @@ pnpm build
 ```
 
 Esito al completamento: **94 test su 94** in 26 suite, typecheck, ESLint,
-Prettier e schema Prisma verdi; build production Next completata in una copia
-temporanea per non sovrascrivere gli artefatti usati dal processo live.
+Prettier e schema Prisma verdi. La build production Webpack e il ciclo completo
+di deploy sono stati eseguiti anche sul server live.
 
-## Attivazione live
+## Attivazione live e rotazione password
 
-`APP_PASSWORD_HASH` nel `.env` live è intenzionalmente ancora vuoto: non è
-stata inventata una credenziale al posto del proprietario. Per scegliere la
-password senza scriverla nella cronologia della shell:
+Il 7 agosto 2026 è stata configurata la password temporanea scelta dal
+proprietario. Nel file live `/etc/gelateria/gelateria.env` è presente soltanto
+il relativo hash Argon2id; password e hash non sono versionati. Per sostituirla
+senza scriverla nella cronologia della shell:
 
 ```bash
 cd /var/www/gelateria-guido
@@ -90,9 +90,9 @@ unset GELATERIA_PASSWORD
 ```
 
 Il comando stampa l'intera assegnazione `APP_PASSWORD_HASH="..."` da sostituire
-nel `.env`. I dollari sono già escapati: rimuovere quei backslash romperebbe
-l'hash quando Next carica il file. Il primo deploy accetta temporaneamente un
-minimo di 7 caratteri su richiesta del proprietario; al primo cambio va
+nel file live. I dollari sono già escapati: rimuovere quei backslash romperebbe
+l'hash quando il file viene caricato. Il primo deploy accetta temporaneamente
+un minimo di 7 caratteri su richiesta del proprietario; al primo cambio va
 ripristinato un minimo di almeno 8 ed è preferibile una frase lunga e non
 riutilizzata.
 
@@ -101,12 +101,10 @@ password può essere stata compromessa, rigenerare nello stesso intervento
 anche `SESSION_SECRET` con `openssl rand -base64 48`: al riavvio tutte le
 sessioni esistenti verranno invalidate e sarà necessario accedere di nuovo.
 
-Prima del deploy live si crea un nuovo backup, poi si seguono installazione e
-verifiche in [OPERAZIONI.md](OPERAZIONI.md). I template `deploy/` non modificano
-il server finché non vengono installati manualmente.
-
-Al momento di questo handoff il servizio live continua intenzionalmente a
-servire la versione precedente: gira ancora come `root` e ascolta su `*:3030`.
-Attivare insieme hash definitivo, nuova unit systemd e binding su
-`127.0.0.1`; riavviare soltanto uno di questi pezzi lascerebbe il sistema
-incoerente o renderebbe impossibile l'accesso.
+Prima dell'attivazione è stato creato e verificato un nuovo backup, quindi sono
+state installate le configurazioni descritte in
+[OPERAZIONI.md](OPERAZIONI.md). Il servizio live gira come utente non-root
+`gelateria-app`, ascolta soltanto su `127.0.0.1:3030` ed è pubblicato da nginx.
+Il collaudo HTTPS ha verificato redirect anonimo, login errato e corretto,
+cookie protetto, dashboard e impostazioni, persistenza dopo riavvio, logout e
+assenza di regressioni sugli altri percorsi del dominio.

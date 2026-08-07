@@ -20,9 +20,23 @@ set -euo pipefail
 umask 0022
 
 PROGETTO="/var/www/gelateria-guido"
+FILE_VARIABILI="${GELATERIA_ENV_FILE:-/etc/gelateria/gelateria.env}"
 SERVIZIO="gelateria"
 HEALTH="http://127.0.0.1:3030/gelateria/api/health"
 TENTATIVI=20
+
+# In produzione i segreti vivono fuori dalla directory servita da Next. Oltre
+# a ridurre l'esposizione del repository, questo evita che `next start` provi
+# a rileggere un `.env` root-only e registri un falso errore a ogni avvio.
+if [[ ! -r "$FILE_VARIABILI" ]]; then
+  echo "File delle variabili non leggibile: $FILE_VARIABILI" >&2
+  exit 78
+fi
+set -a
+# shellcheck disable=SC1090
+. "$FILE_VARIABILI"
+set +a
+
 UTENTE_SERVIZIO="${GELATERIA_SERVICE_USER:-gelateria-app}"
 GRUPPO_SERVIZIO="${GELATERIA_SERVICE_GROUP:-$UTENTE_SERVIZIO}"
 
@@ -35,7 +49,9 @@ fi
 cd "$PROGETTO"
 
 echo "→ Dipendenze"
-pnpm install --frozen-lockfile
+# Anche con NODE_ENV=production servono Prisma, TypeScript e il toolchain CSS
+# per costruire la release; `--prod=false` impedisce a pnpm di potarli.
+pnpm install --frozen-lockfile --prod=false
 
 echo "→ Client Prisma"
 pnpm exec prisma generate

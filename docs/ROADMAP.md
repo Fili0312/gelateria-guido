@@ -149,9 +149,9 @@ scelte con cura: cambiarle dopo, con dati in produzione, è fastidioso.
 
 **Obiettivo.** Entrare nell'app e muoversi fra sezioni vuote ma reali.
 
-**Stato codice (7 agosto 2026):** completato e collaudato localmente. La messa
-live attende soltanto la scelta della password condivisa definitiva e il deploy;
-vedi [FASE-3.md](FASE-3.md).
+**Stato (7 agosto 2026):** completato, pubblicato e collaudato in produzione.
+La password iniziale è temporanea e va ruotata seguendo
+[FASE-3.md](FASE-3.md#attivazione-live-e-rotazione-password).
 
 **Cosa sviluppare**
 

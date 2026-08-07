@@ -88,7 +88,7 @@ Verificato: `pg_trgm` 1.6, `unaccent` 1.1, `pgcrypto` 1.3 disponibili.
 **Stato:** **DECISA (2026-08-07): password unica condivisa.**
 Niente account personali: si entra con una sola password, senza email.
 
-Implementazione: hash argon2 della password in `.env`, sessione su cookie
+Implementazione: hash argon2 nel file di ambiente root-only, sessione su cookie
 httpOnly, form con il solo campo password.
 
 Nota di progetto: la tabella `user` resta nello schema con **una riga sola**

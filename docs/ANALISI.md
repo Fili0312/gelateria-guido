@@ -1106,7 +1106,7 @@ Stesso pattern di `china-web` e `menu-digitale`:
 - `next.config.mjs` con `basePath: process.env.NEXT_BASE_PATH ?? "/gelateria"`;
 - `gelateria.service` systemd (`WorkingDirectory=/var/www/gelateria-guido`,
   `ExecStart=node_modules/.bin/next start -p 3030`, `Restart=always`,
-  `EnvironmentFile=/var/www/gelateria-guido/.env`);
+  `EnvironmentFile=/etc/gelateria/gelateria.env`);
 - blocco nginx in `/etc/nginx/sites-available/filippo` con `proxy_pass
 http://127.0.0.1:3030` per `/gelateria` e `/gelateria/`;
 - `scripts/deploy.sh`: `pnpm install --frozen-lockfile && prisma migrate deploy

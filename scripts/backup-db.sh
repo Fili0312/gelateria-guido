@@ -18,16 +18,21 @@ umask 077
 PROGETTO="/var/www/gelateria-guido"
 DESTINAZIONE="/var/backups/gelateria"
 GIORNI_DI_STORIA=30
+FILE_VARIABILI="${GELATERIA_ENV_FILE:-/etc/gelateria/gelateria.env}"
 
 cd "$PROGETTO"
 
-# La password del database sta nel .env, fuori da git. Non usiamo `set -a`:
-# pg_dump non deve ereditare chiavi IA, SMTP o altri segreti non necessari.
-# shellcheck disable=SC1091
-. ./.env
+# La password del database sta nel file root-only fuori dal repository. Non
+# usiamo `set -a`: pg_dump non deve ereditare chiavi IA, SMTP o altri segreti.
+if [[ ! -r "$FILE_VARIABILI" ]]; then
+  echo "File delle variabili non leggibile: $FILE_VARIABILI" >&2
+  exit 78
+fi
+# shellcheck disable=SC1090
+. "$FILE_VARIABILI"
 
 if [[ -z "${DATABASE_URL:-}" ]]; then
-  echo "DATABASE_URL mancante in $PROGETTO/.env" >&2
+  echo "DATABASE_URL mancante in $FILE_VARIABILI" >&2
   exit 1
 fi
 
