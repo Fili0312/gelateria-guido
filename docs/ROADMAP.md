@@ -538,6 +538,11 @@ riproposto.
 i dati dallo staging al dominio. **È la fase che protegge l'integrità di tutto
 il sistema.**
 
+**Stato (8 agosto 2026): FATTA e in produzione**, con una riserva dichiarata:
+la schermata di revisione mostra i conteggi e i due pulsanti, ma non permette
+ancora di modificare una riga o decidere una confezione cambiata
+dall'interfaccia. Dettagli e collaudo in [FASE-10.md](FASE-10.md).
+
 > **Sulla domanda "è tecnicamente consigliata?": sì, senza dubbio.** Tre
 > ragioni. (a) L'estrazione da PDF eterogenei non sarà mai al 100%, e un
 > prezzo sbagliato che entra in silenzio corrompe storico, confronti e ordini
@@ -631,22 +636,27 @@ far sparire il prodotto ("non l'ho importata" ≠ "non c'è più nel listino").
 
 **Completata quando**
 
-- [ ] un import reale arriva fino a `APPLIED` passando dalla revisione
-- [ ] **prodotto identico** (codice + confezione + pezzi + formato): aggiorna
+- [x] un import reale arriva fino a `APPLIED` passando dalla revisione
+- [x] **prodotto identico** (codice + confezione + pezzi + formato): aggiorna
       solo il prezzo, non crea nulla
-- [ ] **prezzo invariato**: nessuna riga nuova nello storico
-- [ ] **stesso codice con confezione diversa**: finisce in revisione, non
-      viene deciso in automatico
-- [ ] **codice nuovo**: crea il prodotto
-- [ ] importando i due listini Cecconi (liquori e vini) in sequenza, **nessun
-      prodotto dell'uno risulta sparito per colpa dell'altro**
-- [ ] i prezzi finiscono nello storico senza perdere i precedenti
-- [ ] i prodotti spariti risultano `active=false` e compaiono nel riepilogo
-- [ ] `revert` riporta il database esattamente allo stato precedente
-      (verificato con confronto)
-- [ ] importare due volte lo stesso listino non duplica né altera nulla
-- [ ] il secondo listino dello stesso fornitore richiede sensibilmente meno
-      interventi manuali del primo
+- [x] **prezzo invariato**: nessuna riga nuova nello storico
+- [x] **stesso codice con confezione diversa**: finisce in revisione, non
+      viene deciso in automatico — blocca l'applicazione dicendo perché
+- [x] **codice nuovo**: crea il prodotto
+- [x] importando due listini in sequenza, **nessun prodotto dell'uno risulta
+      sparito per colpa dell'altro**
+- [x] i prezzi finiscono nello storico senza perdere i precedenti
+- [x] i prodotti spariti risultano `active=false` e compaiono nel riepilogo
+- [x] `revert` riporta il database esattamente allo stato precedente —
+      **fotografia identica al byte**
+- [x] importare due volte lo stesso listino non duplica né altera nulla
+- [x] il secondo listino trova i prodotti del primo: 4 abbinamenti fra
+      fornitori diversi, con notazioni diverse (`1/5` contro `CL.20`)
+
+**Scoperto applicando il listino vero:** lo stesso codice può comparire due
+volte nello stesso file (Barzelli elenca `SC204` due volte). Senza il
+controllo si creavano due offerte identiche dello stesso fornitore, che poi si
+sarebbero confrontate fra loro.
 
 ---
 

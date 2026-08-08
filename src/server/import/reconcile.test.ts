@@ -182,3 +182,35 @@ describe('riepiloga', () => {
     assert.equal(r.anomale, 1);
   });
 });
+
+describe('lo stesso codice due volte nello stesso file', () => {
+  /**
+   * Succede davvero: il preventivo Barzelli elenca «SC204 angostura BITTER
+   * 0.200» due volte. Senza il controllo si creavano due offerte identiche
+   * dello stesso fornitore, e l'import si schiantava sull'unicita'
+   * dell'impronta — o peggio, se fosse passato, le due si sarebbero
+   * confrontate fra loro come se fossero di fornitori diversi.
+   */
+  const confronti = riconcilia(
+    [],
+    [
+      nelFile({ chiave: 'a', supplierCode: 'SC204' }),
+      nelFile({ chiave: 'b', supplierCode: 'SC204' }),
+    ],
+  );
+
+  it('la prima si crea, la seconda viene dichiarata duplicata', () => {
+    assert.equal(confronti[0]?.esito, 'NUOVO');
+    assert.equal(confronti[1]?.esito, 'DUPLICATO');
+  });
+
+  it('e il motivo si può mostrare', () => {
+    assert.match(confronti[1]!.differenze[0]!, /compare più volte/);
+  });
+
+  it('il riepilogo le conta a parte', () => {
+    const r = riepiloga(confronti);
+    assert.equal(r.nuovi, 1);
+    assert.equal(r.duplicati, 1);
+  });
+});

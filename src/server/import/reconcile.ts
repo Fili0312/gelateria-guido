@@ -31,7 +31,9 @@ export type EsitoRiconciliazione =
   /** Codice mai visto per questo fornitore: si crea. */
   | 'NUOVO'
   /** Era a catalogo, nel file non c'è più: si disattiva. */
-  | 'SPARITO';
+  | 'SPARITO'
+  /** Lo stesso codice compare più volte **nello stesso file**: si salta. */
+  | 'DUPLICATO';
 
 /** L'identità completa di un'offerta, come la definisce la regola. */
 export interface Identita {
@@ -128,10 +130,33 @@ export function riconcilia(
 
   const confronti: Confronto[] = [];
   const visti = new Set<string>();
+  const codiciDelFile = new Set<string>();
 
   for (const riga of nelFile) {
     if (!riga.inclusa) continue;
     const chiave = chiaveCodice(riga.supplierCode);
+
+    // Lo stesso codice due volte nello stesso file.
+    //
+    // Succede davvero: il preventivo Barzelli elenca «SC204 angostura BITTER
+    // 0.200» due volte. Senza questo controllo si creerebbero due offerte
+    // identiche dello stesso fornitore — che poi si confronterebbero fra loro
+    // come se fossero di fornitori diversi, e una delle due risulterebbe
+    // «più conveniente» dell'altra. Si salta la seconda e la si dichiara.
+    if (chiave && codiciDelFile.has(chiave)) {
+      confronti.push({
+        esito: 'DUPLICATO',
+        chiaveRiga: riga.chiave,
+        supplierProductId: null,
+        differenze: [`il codice ${riga.supplierCode} compare più volte in questo listino`],
+        prezzoPrima: null,
+        prezzoDopo: riga.prezzoNetto,
+        variazionePct: null,
+      });
+      continue;
+    }
+    if (chiave) codiciDelFile.add(chiave);
+
     const esistente = chiave ? perCodice.get(chiave) : undefined;
 
     if (!esistente) {
@@ -214,6 +239,7 @@ export interface RiepilogoImport {
   invariati: number;
   confezioneCambiata: number;
   spariti: number;
+  duplicati: number;
   aumentati: number;
   diminuiti: number;
   /** Variazioni oltre la soglia: vanno guardate prima di applicare. */
@@ -236,6 +262,7 @@ export function riepiloga(
     invariati: conta('INVARIATO'),
     confezioneCambiata: conta('CONFEZIONE_CAMBIATA'),
     spariti: conta('SPARITO'),
+    duplicati: conta('DUPLICATO'),
     aumentati: variazioni.filter((c) => c.variazionePct!.gt(0)).length,
     diminuiti: variazioni.filter((c) => c.variazionePct!.lt(0)).length,
     anomale: variazioni.filter((c) => c.variazionePct!.abs().gt(sogliaAnomala)).length,

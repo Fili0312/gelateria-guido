@@ -8,6 +8,7 @@ import { nucleoDescrizione } from '@/server/domain/packaging/parse';
 import { normalizzaTesto } from '@/server/domain/packaging/normalize';
 import { baseDi, type UnitOfMeasure } from '@/server/domain/packaging/units';
 import { improntaDaDescrizione } from '@/server/domain/packaging/fingerprint';
+import { ricalcolaMiglioriOfferte } from './best-offer';
 import {
   riconcilia,
   riepiloga,
@@ -247,6 +248,11 @@ export async function applicaImport(
         continue;
       }
 
+      // Una riga duplicata nello stesso file non si crea due volte: sarebbe
+      // la stessa offerta dello stesso fornitore, e le due si
+      // confronterebbero fra loro.
+      if (confronto.esito === 'DUPLICATO') continue;
+
       const riga = righe.get(confronto.chiaveRiga!);
       if (!riga) continue;
       const c = riga.campi;
@@ -351,6 +357,15 @@ export async function applicaImport(
       data: { status: 'APPLIED', appliedAt: new Date() },
     });
   });
+
+  // Fuori dalla transazione: e' un dato derivato, e se fallisse non deve
+  // poter annullare un import corretto. Il peggio che capita e' una miglior
+  // offerta vecchia di qualche minuto.
+  try {
+    await ricalcolaMiglioriOfferte(organizationId);
+  } catch (errore) {
+    console.error(`Ricalcolo delle migliori offerte dopo l'import ${priceListId} fallito:`, errore);
+  }
 
   return {
     priceListId,
@@ -524,6 +539,14 @@ export async function annullaImport(
       data: { status: 'REVERTED', revertedAt: new Date(), appliedAt: null },
     });
   });
+
+  // Anche qui fuori dalla transazione, e per lo stesso motivo: dopo un
+  // annullamento le migliori offerte sono quelle di prima, e vanno rifatte.
+  try {
+    await ricalcolaMiglioriOfferte(organizationId);
+  } catch (errore) {
+    console.error(`Ricalcolo delle migliori offerte dopo l'annullamento fallito:`, errore);
+  }
 
   return esito;
 }

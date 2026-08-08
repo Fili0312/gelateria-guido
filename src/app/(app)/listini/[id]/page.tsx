@@ -2,11 +2,13 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ImportProgress } from '@/components/price-lists/import-progress';
 import { RawRows } from '@/components/price-lists/raw-rows';
+import { ReviewPanel } from '@/components/price-lists/review-panel';
 import { Badge } from '@/components/ui';
 import { getCurrentUser } from '@/server/auth';
 import { withBasePath } from '@/server/base-path';
 import type { PriceListDetail } from '@/features/price-lists/dto';
 import { priceListsRepository } from '@/server/repositories/price-lists';
+import { anteprima } from '@/server/import/apply';
 
 export const dynamic = 'force-dynamic';
 
@@ -101,6 +103,11 @@ export default async function PriceListPage({ params }: { params: Promise<{ id: 
 
   const righe = await repo.righe(id, { tipo: 'tutte', limite: 500, salta: 0 });
 
+  // L'anteprima dice cosa succederebbe applicando, senza applicare. Se non si
+  // riesce a calcolarla — un listino ancora in lavorazione, per esempio — la
+  // pagina si mostra lo stesso: il pannello sparisce, le righe restano.
+  const revisione = await anteprima(user.organizationId, id).catch(() => null);
+
   return (
     <div className="space-y-7">
       <header>
@@ -123,6 +130,33 @@ export default async function PriceListPage({ params }: { params: Promise<{ id: 
         endpointAnnulla={withBasePath(`/api/price-lists/${listino.id}/cancel`)}
       />
 
+      {revisione && listino.prodotti > 0 && (
+        <ReviewPanel
+          anteprima={{
+            riepilogo: revisione.riepilogo,
+            daDecidere: revisione.confronti
+              .filter((c) => c.esito === 'CONFEZIONE_CAMBIATA')
+              .map((c) => ({
+                rigaId: c.chiaveRiga,
+                differenze: c.differenze,
+                prezzoPrima: c.prezzoPrima?.toString() ?? null,
+                prezzoDopo: c.prezzoDopo?.toString() ?? null,
+              })),
+            anomale: revisione.confronti
+              .filter((c) => c.variazionePct !== null && c.variazionePct.abs().gt(40))
+              .map((c) => ({
+                rigaId: c.chiaveRiga,
+                variazionePct: c.variazionePct?.toString() ?? null,
+                prezzoPrima: c.prezzoPrima?.toString() ?? null,
+                prezzoDopo: c.prezzoDopo?.toString() ?? null,
+              })),
+          }}
+          stato={listino.status}
+          endpointApply={withBasePath(`/api/price-lists/${listino.id}/apply`)}
+          endpointRevert={withBasePath(`/api/price-lists/${listino.id}/revert`)}
+        />
+      )}
+
       {listino.righe > 0 && (
         <>
           <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -144,15 +178,17 @@ export default async function PriceListPage({ params }: { params: Promise<{ id: 
               celle originali, che è il modo di capire <em>perché</em> una riga è stata letta così.
             </p>
             {/* La domanda che si fa chiunque veda «189 prodotti» e poi il
-                catalogo vuoto. Meglio rispondere qui che lasciarla venire. */}
-            <p className="mb-4 max-w-3xl rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm leading-6 text-neutral-600">
-              <strong className="font-semibold text-neutral-900">
-                Il catalogo non è ancora stato toccato.
-              </strong>{' '}
-              Queste righe stanno solo qui: non hanno creato prodotti, non hanno cambiato prezzi e
-              non compaiono in <em>Prodotti</em>. L’applicazione al catalogo arriva con la Fase 10,
-              e passerà comunque da una revisione dove approvi tu.
-            </p>
+                catalogo vuoto. Sparisce quando l'import e' stato applicato,
+                perche' a quel punto la risposta e' un'altra. */}
+            {listino.status !== 'APPLIED' && (
+              <p className="mb-4 max-w-3xl rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm leading-6 text-neutral-600">
+                <strong className="font-semibold text-neutral-900">
+                  Il catalogo non è ancora stato toccato.
+                </strong>{' '}
+                Queste righe stanno solo qui finché non premi <em>Applica al catalogo</em>: non
+                hanno creato prodotti e non hanno cambiato prezzi. E si può annullare.
+              </p>
+            )}
             <RawRows righe={righe} />
           </div>
         </>
