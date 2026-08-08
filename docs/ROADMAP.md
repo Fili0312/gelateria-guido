@@ -313,9 +313,8 @@ Implementazione, migrazione, backup e smoke test sono documentati in
 **Obiettivo.** Il meccanismo append-only funzionante e visibile, alimentato a
 mano. Quando arriverà l'import, dovrà solo chiamare queste funzioni.
 
-**Stato (7 agosto 2026):** implementata e pronta al collaudo di rilascio. Le
-regole temporali, l'API, l'interfaccia e la procedura di verifica sono
-documentate in [FASE-6.md](FASE-6.md).
+**Stato (8 agosto 2026): FATTA e in produzione.** Le regole temporali, l'API,
+l'interfaccia e il collaudo sono documentati in [FASE-6.md](FASE-6.md).
 
 **Cosa sviluppare**
 
@@ -340,11 +339,13 @@ Fuso orario: usare `date`, non `timestamp`, per la validità.
 
 **Completata quando**
 
-- [ ] inserendo tre prezzi in sequenza si ottiene la catena 01/05 €9,50 →
-      01/06 €9,80 → 01/07 €10,20 con variazioni corrette
-- [ ] `priceAt('2026-06-15')` restituisce €9,80
-- [ ] inserire lo stesso prezzo due volte non crea una riga in più
-- [ ] il grafico mostra la serie correttamente
+- [x] inserendo tre prezzi in sequenza si ottiene la catena 01/05 €9,50 →
+      01/06 €9,80 → 01/07 €10,20 con variazioni corrette (+3,16% e +4,08%)
+- [x] `priceAt('2026-06-15')` restituisce €9,80
+- [x] inserire lo stesso prezzo due volte non crea una riga in più
+      (`created: false`, righe invariate)
+- [x] il grafico mostra la serie correttamente — verificato a browser aperto,
+      dopo aver corretto il `<title>` che il server rendeva vuoto
 
 ---
 

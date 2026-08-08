@@ -42,7 +42,16 @@ export function PriceHistoryChart({
         role="img"
         aria-labelledby={`${titleId} ${descriptionId}`}
       >
-        <title id={titleId}>Storico del prezzo netto di {supplierName}</title>
+        {/*
+          Un figlio solo, e una stringa gia' composta.
+          `<title>` e' un elemento che React 19 tratta come metadato del
+          documento, e con due figli — il testo fisso piu' `{supplierName}` —
+          il server lo rendeva **vuoto**: il nome accessibile del grafico
+          spariva dall'HTML e l'idratazione falliva, buttando via e
+          ridisegnando l'intero sottoalbero sul client. Il fratello `<desc>`
+          qui sotto non ne soffre proprio perche' ha gia' un figlio unico.
+        */}
+        <title id={titleId}>{`Storico del prezzo netto di ${supplierName}`}</title>
         <desc id={descriptionId}>
           {model.points.length === 1
             ? `Un prezzo: ${euro(first.value)} dal ${dateOnly(first.date)}.`

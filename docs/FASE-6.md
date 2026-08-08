@@ -1,6 +1,6 @@
 # FASE 6 — Storico prezzi
 
-Data: 2026-08-07 · **implementata e pronta al collaudo di rilascio**.
+Data: 2026-08-07 · pubblicata e collaudata in produzione l'8 agosto 2026.
 
 ## Risultato
 
@@ -145,6 +145,50 @@ fotografia commerciale, finestre 30/90/180 e proiezione del grafico. Prima
 della pubblicazione vengono inoltre eseguiti l'intera suite, typecheck, lint,
 Prettier, validazione Prisma, build con le variabili live, backup e smoke test
 autenticato.
+
+## Collaudo di rilascio (8 agosto 2026)
+
+I quattro criteri sono stati verificati su una **copia usa e getta del
+database di produzione**, esercitata via HTTP dal server di produzione vero:
+non con chiamate dirette al repository, che salterebbero route, sessione,
+validazione e transazione.
+
+| Criterio | Esito |
+|---|---|
+| catena dei tre prezzi con variazioni | ✅ 9,50 → 9,80 (+0,30, +3,16%) → 10,20 (+0,40, +4,08%) |
+| `priceAt('2026-06-15')` | ✅ 9,80 €; al 30/04 dichiara «nessun prezzo in vigore» invece di inventarlo |
+| stesso prezzo due volte | ✅ `created: false`, tre righe prima e tre dopo |
+| il grafico mostra la serie | ✅ a browser aperto, **dopo** la correzione qui sotto |
+
+Provati anche quattro comportamenti che i criteri non chiedono: il retroattivo
+si infila al posto giusto e **ricalcola** le variazioni a valle; la correzione
+nello stesso giorno lascia la riga vecchia visibile ma annullata; una data
+futura viene rifiutata; 12,00 € con −6% e −10% dà 10,15 € netti (half-even).
+
+### Il guasto trovato dal collaudo
+
+Il grafico dichiarava il proprio nome accessibile così:
+
+```jsx
+<title id={titleId}>Storico del prezzo netto di {supplierName}</title>
+```
+
+Due figli — testo fisso più un'espressione. React 19 tratta `<title>` come
+**metadato del documento**, e con più di un figlio il render sul server lo
+emetteva **vuoto**: il nome accessibile spariva dall'HTML, l'idratazione
+falliva e React buttava via e ridisegnava l'intero sottoalbero sul client.
+
+Il fratello `<desc>`, che ha già un figlio unico, non ne soffriva. I test
+unitari nemmeno: la funzione che costruisce la serie era corretta, il guasto
+stava nella serializzazione. Si vedeva solo aprendo la pagina con un browser —
+motivo per cui il criterio «il grafico mostra la serie» non andava spuntato
+leggendo un test verde.
+
+Corretto componendo la stringa prima e passandola come figlio unico. Il
+controllo `src/components/prices/title-svg.test.ts` legge i sorgenti e
+impedisce che il caso torni; ha un secondo test che verifica di saper
+riconoscere la forma rotta, perché essere verdi per il motivo sbagliato è
+peggio che essere rossi.
 
 ## Passo successivo
 
