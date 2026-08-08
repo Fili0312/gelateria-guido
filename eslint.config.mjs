@@ -84,6 +84,11 @@ export default [
       // del runner parte comunque da un priceListId, che l'organizzazione ce
       // l'ha addosso.
       'src/server/import/runner.ts',
+      // Contabilita' e cache delle chiamate IA: `ai_call` e `ai_cache` non
+      // sono raggiungibili dal client scoped (la cache non ha organizzazione,
+      // e il conteggio della spesa deve poter girare anche dalla ripresa
+      // all'avvio, che di sessione non ne ha).
+      'src/server/ai/index.ts',
     ],
     rules: {
       'no-restricted-imports': 'off',

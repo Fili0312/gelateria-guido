@@ -41,7 +41,7 @@ for (const file of readdirSync(CARTELLA).filter((f) => f.endsWith('.pdf')).sort(
 
   console.log(`\n═══ ${file}`);
   console.log(`  pagine ${documento.pagine.length} · parole ${documento.pagine.reduce((s, p) => s + p.parole.length, 0)}`);
-  console.log(`  colonne riconosciute: ${esito.colonne.map((c) => c.toFixed(0)).join(', ')}`);
+  console.log(`  colonne riconosciute: ${esito.colonne.map((c) => `${Math.round(c.centro)}${c.bordo === 'destro' ? '→' : ''}`).join(', ')}`);
   console.log(
     `  righe visive ${esito.diagnostica.righeVisive} · intestazioni scartate ${esito.intestazioni.length} · ` +
       `continuazioni unite ${esito.diagnostica.continuazioniUnite} · sezioni ${esito.diagnostica.sezioni}`,

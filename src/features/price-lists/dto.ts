@@ -77,6 +77,35 @@ export interface RigaListino {
    *  descrizione perché nei listini Cecconi ripetono il codice articolo. */
   codici: string[];
   sezione: string | null;
+  /** I campi interpretati dalla Fase 8. `null` finché non è stata fatta, e
+   *  sulle righe che non sono prodotti. */
+  campi: CampiRiga | null;
+}
+
+export interface SegnalazioneRiga {
+  campo: string;
+  gravita: 'errore' | 'avviso';
+  messaggio: string;
+}
+
+export interface CampiRiga {
+  codice: string | null;
+  descrizione: string | null;
+  unitaDiVendita: string | null;
+  prezzoListino: string | null;
+  sconti: number[];
+  prezzoNettoDichiarato: string | null;
+  prezzoNettoCalcolato: string | null;
+  prezzoNetto: string | null;
+  iva: string | null;
+  unitSize: string | null;
+  unitOfMeasure: string | null;
+  packQuantity: number;
+  packQuantityConfirmed: boolean;
+  contentPerPack: string | null;
+  baseUnit: string | null;
+  segnalazioni: SegnalazioneRiga[];
+  importabile: boolean;
 }
 
 export interface RigheListino {
@@ -94,6 +123,17 @@ export interface PriceListDetail extends PriceListItem {
   intestazioniScartate: number;
   continuazioniUnite: number;
   extractorVersion: string | null;
+  /** Come si è arrivati al profilo delle colonne. `aritmetica` significa
+   *  dimostrato dal conto che torna, `ia` significa proposto da un modello:
+   *  sono due cose diverse e vanno mostrate diverse. */
+  fonteProfilo: 'aritmetica' | 'indizi' | 'ia' | 'salvato' | null;
+  righeCheConfermano: number;
+  righeCheSmentiscono: number;
+  importabili: number;
+  conErrori: number;
+  conAvvisi: number;
+  chiamateIa: number;
+  costoUsd: number;
 }
 
 /**

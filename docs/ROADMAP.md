@@ -422,6 +422,12 @@ e ripreso.
 dietro un'interfaccia e con il **profilo per fornitore** che la rende
 progressivamente superflua.
 
+**Stato (8 agosto 2026): FATTA e in produzione.** Con una sorpresa: sui tre
+listini della gelateria l'IA **non serve affatto**. Un documento che dichiara
+prezzo, sconti e netto contiene già la prova di quali colonne siano quali, e il
+profilo si deduce cercando la combinazione per cui l'aritmetica torna. 189, 142
+e 33 righe strutturate al 100%, zero chiamate. Dettagli in [FASE-8.md](FASE-8.md).
+
 > **Cosa può e cosa non può salvare l'IA.** Sono due guasti diversi e vanno
 > tenuti separati, perché hanno rimedi diversi:
 >
@@ -466,13 +472,14 @@ non una versione già interpretata.
 
 **Completata quando**
 
-- [ ] con `AI_MOCK=1` l'intera pipeline gira senza rete
-- [ ] su un PDF reale ≥85% delle righe è strutturato correttamente al primo giro
-- [ ] il secondo import dello stesso fornitore usa il profilo e riduce le
-      chiamate LLM di ≥80%
-- [ ] ogni chiamata è tracciata su `ai_call` con costo stimato
-- [ ] superato il budget, il job si ferma e lo comunica
-- [ ] cambiare `AI_PROVIDER` non richiede modifiche al codice
+- [x] con `AI_MOCK=1` l'intera pipeline gira senza rete
+- [x] su un PDF reale ≥85% delle righe è strutturato correttamente al primo giro
+      — **100% su tutti e tre**, con zero chiamate al modello
+- [x] il secondo import dello stesso fornitore usa il profilo e riduce le
+      chiamate LLM di ≥80% (profilo riusato e **riverificato**, non creduto)
+- [x] ogni chiamata è tracciata su `ai_call` con costo stimato
+- [x] superato il budget, il job si ferma e lo comunica
+- [x] cambiare `AI_PROVIDER` non richiede modifiche al codice
 
 ---
 

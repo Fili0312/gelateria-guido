@@ -5,6 +5,7 @@ import { RawRows } from '@/components/price-lists/raw-rows';
 import { Badge } from '@/components/ui';
 import { getCurrentUser } from '@/server/auth';
 import { withBasePath } from '@/server/base-path';
+import type { PriceListDetail } from '@/features/price-lists/dto';
 import { priceListsRepository } from '@/server/repositories/price-lists';
 
 export const dynamic = 'force-dynamic';
@@ -16,6 +17,69 @@ const DATA = new Intl.DateTimeFormat('it-IT', {
   hour: '2-digit',
   minute: '2-digit',
 });
+
+/**
+ * Come si è capito quale colonna fosse quale.
+ *
+ * `aritmetica` e `ia` non sono la stessa cosa e non vanno mostrate uguali:
+ * la prima è dimostrata dal conto che torna su ogni riga, la seconda è la
+ * proposta di un modello. Chi rivede un import deve sapere dove guardare con
+ * più attenzione.
+ */
+function ProfiloRiconosciuto({ listino }: { listino: PriceListDetail }) {
+  const dimostrato = listino.fonteProfilo === 'aritmetica' || listino.fonteProfilo === 'salvato';
+  return (
+    <div
+      className={`rounded-xl border px-4 py-3 text-sm leading-6 ${
+        dimostrato ? 'border-green-200 bg-green-50 text-green-900' : 'border-amber-200 bg-amber-50 text-amber-900'
+      }`}
+    >
+      {listino.fonteProfilo === 'aritmetica' && (
+        <>
+          <strong className="font-semibold">Colonne riconosciute e verificate.</strong> Su{' '}
+          {listino.righeCheConfermano} righe il conto torna — prezzo di listino meno gli sconti fa
+          esattamente il netto dichiarato. Non è una stima: è la prova che le colonne sono state
+          lette giuste.
+          {listino.righeCheSmentiscono > 0 && (
+            <>
+              {' '}
+              {listino.righeCheSmentiscono === 1
+                ? 'Una riga non torna'
+                : `${listino.righeCheSmentiscono} righe non tornano`}
+              : è il fornitore che ha arrotondato a modo suo. Vale il netto che ha dichiarato lui.
+            </>
+          )}
+        </>
+      )}
+      {listino.fonteProfilo === 'salvato' && (
+        <>
+          <strong className="font-semibold">Riusato il profilo di questo fornitore.</strong> Le
+          colonne erano già state riconosciute su un listino precedente: nessuna interpretazione
+          nuova, nessuna chiamata al modello.
+        </>
+      )}
+      {listino.fonteProfilo === 'ia' && (
+        <>
+          <strong className="font-semibold">Colonne proposte da un modello.</strong> Il documento
+          non dichiara il netto, quindi non c’era modo di verificarle con l’aritmetica. Vale la
+          pena controllare qualche riga prima di importare.
+        </>
+      )}
+      {listino.fonteProfilo === 'indizi' && (
+        <>
+          <strong className="font-semibold">Colonne dedotte dalla forma dei dati.</strong> Non è
+          stato possibile verificarle con il conto: controlla qualche riga prima di importare.
+        </>
+      )}
+      {listino.chiamateIa > 0 && (
+        <span className="mt-1 block text-xs opacity-80">
+          {listino.chiamateIa} {listino.chiamateIa === 1 ? 'chiamata' : 'chiamate'} al modello ·
+          costo stimato {listino.costoUsd.toFixed(4)} $
+        </span>
+      )}
+    </div>
+  );
+}
 
 function Riquadro({ etichetta, valore }: { etichetta: string; valore: string | number }) {
   return (
@@ -63,10 +127,14 @@ export default async function PriceListPage({ params }: { params: Promise<{ id: 
         <>
           <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Riquadro etichetta="Righe estratte" valore={listino.righe} />
-            <Riquadro etichetta="Colonne riconosciute" valore={listino.colonne.length} />
-            <Riquadro etichetta="Intestazioni scartate" valore={listino.intestazioniScartate} />
-            <Riquadro etichetta="Righe a capo unite" valore={listino.continuazioniUnite} />
+            <Riquadro etichetta="Campi interpretati" valore={listino.importabili} />
+            <Riquadro etichetta="Da correggere" valore={listino.conErrori} />
+            <Riquadro etichetta="Con avvisi" valore={listino.conAvvisi} />
           </dl>
+
+          {listino.fonteProfilo && (
+            <ProfiloRiconosciuto listino={listino} />
+          )}
 
           <div>
             <h2 className="text-lg font-black text-neutral-950">Righe grezze</h2>

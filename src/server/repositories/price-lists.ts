@@ -141,6 +141,14 @@ interface Statistiche {
   colonne?: number[];
   intestazioniScartate?: number;
   continuazioniUnite?: number;
+  fonteProfilo?: PriceListDetail['fonteProfilo'];
+  confermate?: number;
+  smentite?: number;
+  importabili?: number;
+  conErrori?: number;
+  conAvvisi?: number;
+  chiamateIa?: number;
+  costoUsd?: number;
 }
 
 function statistiche(grezze: unknown): Statistiche {
@@ -218,6 +226,14 @@ export function priceListsRepository(organizationId: string) {
         intestazioniScartate: stats.intestazioniScartate ?? 0,
         continuazioniUnite: stats.continuazioniUnite ?? 0,
         extractorVersion: record.extractorVersion,
+        fonteProfilo: stats.fonteProfilo ?? null,
+        righeCheConfermano: stats.confermate ?? 0,
+        righeCheSmentiscono: stats.smentite ?? 0,
+        importabili: stats.importabili ?? 0,
+        conErrori: stats.conErrori ?? 0,
+        conAvvisi: stats.conAvvisi ?? 0,
+        chiamateIa: stats.chiamateIa ?? 0,
+        costoUsd: stats.costoUsd ?? 0,
       };
     },
 
@@ -359,6 +375,7 @@ export function priceListsRepository(organizationId: string) {
           continuazioni?: string[];
           codici?: string[];
           sezione?: string | null;
+          campi?: RigaListino['campi'];
         };
         return {
           id: riga.id,
@@ -370,6 +387,7 @@ export function priceListsRepository(organizationId: string) {
           continuazioni: extra.continuazioni ?? [],
           codici: extra.codici ?? [],
           sezione: extra.sezione ?? null,
+          campi: extra.campi ?? null,
         };
       });
 

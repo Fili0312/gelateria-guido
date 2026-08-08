@@ -132,20 +132,31 @@ describe('intestazioni ripetute', () => {
 });
 
 describe('colonne', () => {
-  it('una colonna esiste se molte righe cominciano allo stesso punto', () => {
-    const righe = Array.from({ length: 20 }, (_, i) =>
-      righeDiPagina(
-        parole([
-          [20, 100 + i * 13, `COD${i}`],
-          [57, 100 + i * 13, 'Descrizione'],
-          [342, 100 + i * 13, '5,25'],
-        ]),
-      )[0]!,
-    );
+  it('una colonna esiste se molte righe si allineano allo stesso punto', () => {
+    // I prezzi hanno larghezze diverse — «5,25» e «11,90» — perché è così che
+    // stanno nei listini veri: incolonnati a destra. Con numeri tutti larghi
+    // uguali il caso non direbbe niente sull'allineamento.
+    const righe = Array.from({ length: 20 }, (_, i) => {
+      const prezzo = i % 2 === 0 ? '5,25' : '11,90';
+      const x = 362 - prezzo.length * 5;
+      return righeDiPagina({
+        numero: 1,
+        larghezza: 595,
+        altezza: 842,
+        parole: [
+          { testo: `COD${i}`, x: 20, y: 100 + i * 13, xFine: 50, yFine: 108 + i * 13 },
+          { testo: 'Descrizione', x: 57, y: 100 + i * 13, xFine: 112, yFine: 108 + i * 13 },
+          { testo: prezzo, x, y: 100 + i * 13, xFine: 362, yFine: 108 + i * 13 },
+        ],
+      })[0]!;
+    });
     const colonne = trovaColonne(righe);
+    assert.equal(colonne.length, 3);
+    // La colonna dei prezzi si allinea a **destra**: e' cosi' che stanno nei
+    // listini veri, e cercarla dal bordo sinistro la spezzava in due.
     assert.deepEqual(
-      colonne.map((c) => Math.round(c)),
-      [20, 57, 342],
+      colonne.map((c) => c.bordo),
+      ['sinistro', 'sinistro', 'destro'],
     );
   });
 });

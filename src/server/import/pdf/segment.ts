@@ -68,8 +68,8 @@ export interface RigaGrezza {
 
 export interface EsitoSegmentazione {
   righe: RigaGrezza[];
-  /** I bordi sinistri delle colonne riconosciute, in punti. */
-  colonne: number[];
+  /** Le colonne riconosciute, col bordo su cui si allineano. */
+  colonne: ColonnaRiconosciuta[];
   /** Le righe scartate perché ripetute su più pagine, con quante volte. */
   intestazioni: { testo: string; pagine: number }[];
   diagnostica: {
@@ -256,47 +256,119 @@ function altezzeRaggruppate(altezze: readonly number[], quota: number): boolean 
 //  3. Colonne
 // ─────────────────────────────────────────────────────────────────────────
 
-/**
- * I bordi sinistri delle colonne, ricavati da dove le celle cominciano davvero.
- *
- * Non si cerca un numero fisso di colonne né si assume un ordine: si guarda
- * quali ascisse ricorrono. Una colonna esiste se molte righe cominciano una
- * cella allo stesso punto — che è la definizione operativa di colonna in un
- * documento impaginato.
- */
-export function trovaColonne(righe: RigaVisiva[], tolleranza = 4): number[] {
-  const ascisse: number[] = [];
-  for (const riga of righe) for (const cella of riga.celle) ascisse.push(cella.x);
-  if (ascisse.length === 0) return [];
+export type Bordo = 'sinistro' | 'destro';
 
-  ascisse.sort((a, b) => a - b);
-  const gruppi: { centro: number; conteggio: number }[] = [];
-  for (const x of ascisse) {
+export interface ColonnaRiconosciuta {
+  /** Posizione del bordo su cui la colonna si allinea. */
+  centro: number;
+  bordo: Bordo;
+  /** Quante celle del documento cadono in questa colonna. */
+  celle: number;
+}
+
+/**
+ * L'allineamento è una proprietà della **colonna**, non della singola cella.
+ *
+ * Il testo si allinea a sinistra, i numeri a destra: è tipografia. Ma la
+ * regola non si può applicare cella per cella, ed è l'errore che ho fatto al
+ * primo tentativo — in Cecconi i codici articolo sono `20561` (numero) e
+ * `7A0757` (non numero), e allinearli su bordi diversi li spediva in due
+ * colonne diverse. Il codice di metà prodotti spariva.
+ *
+ * Si cercano quindi i raggruppamenti su **entrambi** i bordi e si tiene, per
+ * ogni insieme di celle, l'interpretazione che ne spiega di più. Una colonna
+ * di prezzi ha il bordo destro compatto e il sinistro sparso; una di
+ * descrizioni il contrario.
+ *
+ * Senza questo, la colonna del netto di Cecconi si spezzava in due — cadeva a
+ * volte nella 7 e a volte nella 8 — e con le colonne sbagliate l'aritmetica
+ * del profilo (Fase 8) non poteva tornare da nessuna parte.
+ */
+function raggruppa(
+  posizioni: readonly { valore: number; cella: number }[],
+  tolleranza: number,
+): { centro: number; celle: Set<number> }[] {
+  const ordinate = [...posizioni].sort((a, b) => a.valore - b.valore);
+  const gruppi: { centro: number; celle: Set<number> }[] = [];
+  for (const p of ordinate) {
     const ultimo = gruppi.at(-1);
-    if (ultimo && x - ultimo.centro <= tolleranza) {
-      ultimo.centro = (ultimo.centro * ultimo.conteggio + x) / (ultimo.conteggio + 1);
-      ultimo.conteggio += 1;
+    if (ultimo && p.valore - ultimo.centro <= tolleranza) {
+      ultimo.centro = (ultimo.centro * ultimo.celle.size + p.valore) / (ultimo.celle.size + 1);
+      ultimo.celle.add(p.cella);
     } else {
-      gruppi.push({ centro: x, conteggio: 1 });
+      gruppi.push({ centro: p.valore, celle: new Set([p.cella]) });
     }
   }
+  return gruppi;
+}
+
+export function trovaColonne(righe: RigaVisiva[], tolleranza = 4): ColonnaRiconosciuta[] {
+  const celle: Cella[] = [];
+  for (const riga of righe) celle.push(...riga.celle);
+  if (celle.length === 0) return [];
+
+  const sinistri = raggruppa(
+    celle.map((c, i) => ({ valore: c.x, cella: i })),
+    tolleranza,
+  );
+  const destri = raggruppa(
+    celle.map((c, i) => ({ valore: c.xFine, cella: i })),
+    tolleranza,
+  );
 
   // Una colonna vera ricorre; un allineamento casuale no. La soglia è
   // relativa al numero di righe, così vale su un listino di 6 pagine come su
   // uno di 60.
   const minimo = Math.max(3, Math.floor(righe.length * 0.05));
-  return gruppi
-    .filter((g) => g.conteggio >= minimo)
-    .map((g) => g.centro)
-    .sort((a, b) => a - b);
+  const candidati = [
+    ...sinistri.map((g) => ({ ...g, bordo: 'sinistro' as Bordo })),
+    ...destri.map((g) => ({ ...g, bordo: 'destro' as Bordo })),
+  ]
+    .filter((g) => g.celle.size >= minimo)
+    // Prima i raggruppamenti che spiegano più celle: fra «queste sono
+    // allineate a sinistra» e «a destra», vince quello che ne tiene insieme
+    // di più, che è la definizione operativa di colonna.
+    .sort((a, b) => b.celle.size - a.celle.size);
+
+  const accettate: (ColonnaRiconosciuta & { celle_: Set<number> })[] = [];
+  const gia = new Set<number>();
+  for (const g of candidati) {
+    const nuove = [...g.celle].filter((i) => !gia.has(i));
+    // Se metà delle sue celle è già spiegata da una colonna accettata, questo
+    // raggruppamento è l'altra faccia della stessa colonna, non una nuova.
+    if (nuove.length < g.celle.size * 0.5) continue;
+    for (const i of nuove) gia.add(i);
+    accettate.push({
+      centro: g.centro,
+      bordo: g.bordo,
+      celle: nuove.length,
+      celle_: new Set(nuove),
+    });
+  }
+
+  // L'ordine è quello in cui si leggono sulla pagina.
+  return accettate
+    .sort((a, b) => a.centro - b.centro)
+    .map(({ centro, bordo, celle: n }) => ({ centro, bordo, celle: n }));
 }
 
-function assegnaColonne(riga: RigaVisiva, colonne: number[], tolleranza = 6): void {
+/** Le sole posizioni, per chi deve solo mostrarle o contarle. */
+export function ascisseColonne(colonne: readonly ColonnaRiconosciuta[]): number[] {
+  return colonne.map((c) => Math.round(c.centro));
+}
+
+/** Ogni cella va nella colonna al cui bordo si allinea meglio. */
+function assegnaColonne(
+  riga: RigaVisiva,
+  colonne: readonly ColonnaRiconosciuta[],
+  tolleranza = 6,
+): void {
   for (const cella of riga.celle) {
     let migliore = -1;
     let distanza = Infinity;
-    for (const [indice, x] of colonne.entries()) {
-      const d = Math.abs(cella.x - x);
+    for (const [indice, colonna] of colonne.entries()) {
+      const ascissa = colonna.bordo === 'destro' ? cella.xFine : cella.x;
+      const d = Math.abs(ascissa - colonna.centro);
       if (d < distanza) {
         distanza = d;
         migliore = indice;
@@ -330,11 +402,11 @@ function celleNumeriche(riga: RigaVisiva): number {
  * solo passerebbero le righe di totale e le note; con tre, i listini che non
  * espongono l'IVA perderebbero tutto.
  */
-function eProdotto(riga: RigaVisiva, colonnaIniziale: number, tolleranza = 6): boolean {
-  const prima = riga.celle[0];
-  if (!prima) return false;
-  if (Math.abs(prima.x - colonnaIniziale) > tolleranza) return false;
-  return celleNumeriche(riga) >= 2;
+function eProdotto(riga: RigaVisiva): boolean {
+  // Si guarda la **colonna assegnata** e non l'ascissa: l'assegnazione sa già
+  // su quale bordo quella colonna si allinea, mentre un confronto di ascisse
+  // dovrebbe indovinarlo di nuovo qui.
+  return riga.celle[0]?.colonna === 0 && celleNumeriche(riga) >= 2;
 }
 
 /**
@@ -342,10 +414,8 @@ function eProdotto(riga: RigaVisiva, colonnaIniziale: number, tolleranza = 6): b
  * Nei listini con le categorie in mezzo («AMARI», «BIRRE») è la riga che
  * cambia il reparto delle righe che seguono.
  */
-function eSezione(riga: RigaVisiva, colonnaIniziale: number, tolleranza = 6): boolean {
-  const prima = riga.celle[0];
-  if (!prima) return false;
-  if (Math.abs(prima.x - colonnaIniziale) > tolleranza) return false;
+function eSezione(riga: RigaVisiva): boolean {
+  if (riga.celle[0]?.colonna !== 0) return false;
   if (celleNumeriche(riga) > 0) return false;
   const parole = riga.testo.trim().split(/\s+/);
   return parole.length >= 1 && parole.length <= 5 && riga.celle.length <= 2;
@@ -415,7 +485,6 @@ export function segmenta(
 
   const candidate = righePerPagina.flat().filter((riga) => !intestazioni.has(chiave(riga)));
   const colonne = trovaColonne(candidate);
-  const colonnaIniziale = colonne[0] ?? 0;
   for (const riga of candidate) assegnaColonne(riga, colonne);
 
   const righe: RigaGrezza[] = [];
@@ -427,7 +496,7 @@ export function segmenta(
   let sezioni = 0;
 
   for (const riga of candidate) {
-    if (eProdotto(riga, colonnaIniziale)) {
+    if (eProdotto(riga)) {
       const prodotto: RigaGrezza = {
         pagina: riga.pagina,
         numero: riga.numero,
@@ -451,7 +520,7 @@ export function segmenta(
       continue;
     }
 
-    if (eSezione(riga, colonnaIniziale)) {
+    if (eSezione(riga)) {
       sezioneCorrente = riga.testo.trim();
       sezioni += 1;
       righe.push({

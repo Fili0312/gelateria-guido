@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui';
-import type { RigheListino } from '@/features/price-lists/dto';
+import type { CampiRiga, RigheListino } from '@/features/price-lists/dto';
 
 /**
  * Le righe grezze, come le ha lette il segmentatore.
@@ -22,7 +22,9 @@ type Vista = 'prodotto' | 'sezione' | 'ignota';
 
 export function RawRows({ righe }: { righe: RigheListino }) {
   const [vista, setVista] = useState<Vista>('prodotto');
+  const [grezzo, setGrezzo] = useState(false);
   const mostrate = righe.items.filter((r) => r.tipo === vista);
+  const interpretate = righe.items.some((r) => r.campi);
 
   const schede: { chiave: Vista; etichetta: string; valore: number; tono: 'brand' | 'neutral' | 'warning' }[] =
     [
@@ -62,6 +64,18 @@ export function RawRows({ righe }: { righe: RigheListino }) {
         </p>
       )}
 
+      {interpretate && vista === 'prodotto' && (
+        <label className="flex items-center gap-2 text-sm text-neutral-600">
+          <input
+            type="checkbox"
+            checked={grezzo}
+            onChange={(e) => setGrezzo(e.target.checked)}
+            className="size-4 rounded border-neutral-300"
+          />
+          Mostra le celle grezze invece dei campi interpretati
+        </label>
+      )}
+
       {mostrate.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-neutral-300 bg-white px-5 py-10 text-center text-sm text-neutral-500">
           Nessuna riga di questo tipo.
@@ -92,14 +106,32 @@ export function RawRows({ righe }: { righe: RigheListino }) {
           <div className="hidden overflow-x-auto lg:block">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-24">Pagina</TableHead>
-                  <TableHead>Celle individuate</TableHead>
-                  <TableHead className="w-28">A capo</TableHead>
-                </TableRow>
+                {interpretate && vista === 'prodotto' && !grezzo ? (
+                  <TableRow>
+                    <TableHead className="w-24">Codice</TableHead>
+                    <TableHead>Descrizione</TableHead>
+                    <TableHead className="w-20">Formato</TableHead>
+                    <TableHead className="w-16">U.M.</TableHead>
+                    <TableHead className="w-24 text-right">Listino</TableHead>
+                    <TableHead className="w-24">Sconti</TableHead>
+                    <TableHead className="w-24 text-right">Netto</TableHead>
+                    <TableHead className="w-14 text-right">IVA</TableHead>
+                    <TableHead className="w-8">
+                      <span className="sr-only">Segnalazioni</span>
+                    </TableHead>
+                  </TableRow>
+                ) : (
+                  <TableRow>
+                    <TableHead className="w-24">Pagina</TableHead>
+                    <TableHead>Celle individuate</TableHead>
+                    <TableHead className="w-28">A capo</TableHead>
+                  </TableRow>
+                )}
               </TableHeader>
               <TableBody>
-                {mostrate.map((riga) => (
+                {interpretate && vista === 'prodotto' && !grezzo
+                  ? mostrate.map((riga) => <RigaInterpretata key={riga.id} campi={riga.campi} />)
+                  : mostrate.map((riga) => (
                   <TableRow key={riga.id}>
                     <TableCell className="tabellare text-xs text-neutral-500">
                       p{riga.pagina} · {riga.numero}
@@ -142,5 +174,68 @@ export function RawRows({ righe }: { righe: RigheListino }) {
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * Una riga con i campi già interpretati.
+ *
+ * Le segnalazioni non sono nascoste in un tooltip: una pastiglia colorata sta
+ * in fondo alla riga, e il testo si legge passandoci sopra. Un errore che si
+ * vede solo cercandolo è un errore che nessuno vede.
+ */
+function RigaInterpretata({ campi }: { campi: CampiRiga | null }) {
+  if (!campi) {
+    return (
+      <TableRow>
+        <TableCell colSpan={9} className="text-sm text-neutral-400">
+          Riga non interpretata.
+        </TableCell>
+      </TableRow>
+    );
+  }
+
+  const errori = campi.segnalazioni.filter((s) => s.gravita === 'errore');
+  const avvisi = campi.segnalazioni.filter((s) => s.gravita === 'avviso');
+  const formato =
+    campi.unitSize && campi.unitOfMeasure && campi.unitOfMeasure !== 'PIECE'
+      ? `${campi.unitSize} ${campi.unitOfMeasure.toLowerCase()}`
+      : '—';
+
+  return (
+    <TableRow className={errori.length ? 'bg-red-50/50' : undefined}>
+      <TableCell className="tabellare text-xs text-neutral-600">{campi.codice ?? '—'}</TableCell>
+      <TableCell className="text-sm text-neutral-900">{campi.descrizione ?? '—'}</TableCell>
+      <TableCell className="tabellare text-xs text-neutral-600">
+        {formato}
+        {campi.packQuantity > 1 && (
+          <span className="block text-neutral-400">×{campi.packQuantity}</span>
+        )}
+      </TableCell>
+      <TableCell className="text-xs text-neutral-600">{campi.unitaDiVendita ?? '—'}</TableCell>
+      <TableCell className="tabellare text-right text-sm">{campi.prezzoListino ?? '—'}</TableCell>
+      <TableCell className="text-xs text-neutral-600">
+        {campi.sconti.length > 0 ? campi.sconti.map((s) => `−${s}%`).join(' ') : '—'}
+      </TableCell>
+      <TableCell className="tabellare text-right text-sm font-semibold text-neutral-950">
+        {campi.prezzoNetto ?? '—'}
+      </TableCell>
+      <TableCell className="tabellare text-right text-xs text-neutral-500">
+        {campi.iva ? `${campi.iva}%` : '—'}
+      </TableCell>
+      <TableCell>
+        {errori.length > 0 ? (
+          <Badge variant="danger" title={errori.map((s) => s.messaggio).join('\n')}>
+            !
+          </Badge>
+        ) : avvisi.length > 0 ? (
+          <Badge variant="warning" title={avvisi.map((s) => s.messaggio).join('\n')}>
+            ?
+          </Badge>
+        ) : (
+          <span className="text-neutral-300">—</span>
+        )}
+      </TableCell>
+    </TableRow>
   );
 }

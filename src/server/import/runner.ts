@@ -5,6 +5,10 @@ import { systemPrisma } from '@/server/database/system-client';
 import { estraiTesto, PdfIllegibileError, PdfSenzaTestoError } from './pdf/extract-text';
 import { segmenta, type RigaGrezza } from './pdf/segment';
 import { percorsoAssoluto } from './storage';
+import { strutturaListino, type EsitoStrutturazione } from './structure';
+import type { RigaValidata } from './validate';
+import type { ProfiloColonne } from './profile/mapping';
+import type { OrganizationJsonInput } from '@/server/db';
 
 /**
  * Il processo che porta un PDF caricato alle sue righe grezze.
@@ -48,8 +52,14 @@ async function annullato(jobId: string): Promise<boolean> {
   return job?.phase === 'CANCELLED';
 }
 
-function righeDaScrivere(righe: readonly RigaGrezza[], priceListId: string) {
-  return righe.map((riga) => ({
+function righeDaScrivere(
+  righe: readonly RigaGrezza[],
+  priceListId: string,
+  strutturate: ReadonlyMap<RigaGrezza, RigaValidata>,
+) {
+  return righe.map((riga) => {
+    const campi = strutturate.get(riga);
+    return {
     priceListId,
     pageNumber: riga.pagina,
     lineNumber: riga.numero,
@@ -68,10 +78,19 @@ function righeDaScrivere(righe: readonly RigaGrezza[], priceListId: string) {
       // incollarli al nome sporcherebbe la ricerca della Fase 9.
       codici: riga.codici,
       sezione: riga.sezione,
-    },
+      // I campi interpretati, quando la riga e' un prodotto. `null` sui
+      // titoli di sezione e sulle righe non capite: non e' una mancanza, e'
+      // che non c'e' niente da interpretare.
+      campi: campi ?? null,
+    } as unknown as OrganizationJsonInput,
+    confidence: campi ? (campi.importabile ? '1' : '0.5') : null,
+    validationErrors: campi?.segnalazioni.length
+      ? (campi.segnalazioni as unknown as OrganizationJsonInput)
+      : undefined,
     matchStatus: 'PENDING' as const,
     proposedAction: 'AMBIGUOUS' as const,
-  }));
+    };
+  });
 }
 
 /**
@@ -85,7 +104,14 @@ function righeDaScrivere(righe: readonly RigaGrezza[], priceListId: string) {
 export async function lavora(priceListId: string): Promise<EsitoLavorazione> {
   const listino = await systemPrisma.priceList.findUnique({
     where: { id: priceListId },
-    select: { id: true, storagePath: true, job: { select: { id: true, phase: true } } },
+    select: {
+      id: true,
+      organizationId: true,
+      supplierId: true,
+      scopeLabel: true,
+      storagePath: true,
+      job: { select: { id: true, phase: true } },
+    },
   });
   if (!listino?.job) return 'saltato';
   const jobId = listino.job.id;
@@ -115,7 +141,36 @@ export async function lavora(priceListId: string): Promise<EsitoLavorazione> {
     });
 
     const esito = segmenta(testo.documento.pagine);
-    const daScrivere = righeDaScrivere(esito.righe, priceListId);
+
+    // ── Strutturazione (Fase 8) ─────────────────────────────────────────
+    // Si prova prima a dedurre il profilo dall'aritmetica del documento; il
+    // modello si chiama solo se non ci si riesce. Sui listini della gelateria
+    // non si chiama mai.
+    await battito(jobId, { phase: 'STRUCTURING' });
+    const prodottiGrezzi = esito.righe.filter((r) => r.tipo === 'prodotto');
+    // Il profilo si cerca per fornitore **e copertura**: lo stesso fornitore
+    // impagina i vini diversamente dai liquori, ed e' proprio la ragione per
+    // cui la copertura esiste. Senza il filtro sulla copertura, il profilo dei
+    // liquori Cecconi finiva applicato ai vini e leggeva 0 righe su 33.
+    const archiviato = await systemPrisma.supplierImportProfile.findFirst({
+      where: { supplierId: listino.supplierId, scopeLabel: listino.scopeLabel, active: true },
+      orderBy: { version: 'desc' },
+      select: { columnMapping: true },
+    });
+
+    const struttura = await strutturaListino(prodottiGrezzi, {
+      organizationId: listino.organizationId,
+      priceListId,
+      profiloSalvato: profiloSalvato(archiviato?.columnMapping),
+      intestazioni: esito.intestazioni.map((i) => i.testo),
+    });
+
+    const campiPerRiga = new Map(
+      prodottiGrezzi.map((riga, i) => [riga, struttura.validazione.righe[i]!]),
+    );
+
+    await battito(jobId, { phase: 'VALIDATING' });
+    const daScrivere = righeDaScrivere(esito.righe, priceListId, campiPerRiga);
 
     // Si riparte da quante righe risultano già scritte, non dal checkpoint
     // dichiarato: dopo un'interruzione il database è la verità, il checkpoint
@@ -135,7 +190,14 @@ export async function lavora(priceListId: string): Promise<EsitoLavorazione> {
       });
     }
 
-    const prodotti = esito.righe.filter((r) => r.tipo === 'prodotto').length;
+    // Il profilo si salva **solo se dimostrato**: un profilo dedotto a occhio
+    // e messo in archivio verrebbe riusato senza che nessuno lo riveda, e
+    // sbaglierebbe in silenzio su tutti i listini successivi.
+    if (struttura.fonteProfilo === 'aritmetica') {
+      await salvaProfilo(listino.supplierId, listino.scopeLabel, struttura);
+    }
+
+    const prodotti = prodottiGrezzi.length;
     await systemPrisma.$transaction([
       systemPrisma.importJob.update({
         where: { id: jobId },
@@ -155,9 +217,18 @@ export async function lavora(priceListId: string): Promise<EsitoLavorazione> {
             prodotti,
             sezioni: esito.diagnostica.sezioni,
             ignote: esito.righe.filter((r) => r.tipo === 'ignota').length,
-            colonne: esito.colonne.map((c) => Math.round(c)),
+            colonne: esito.colonne.map((c) => Math.round(c.centro)),
             intestazioniScartate: esito.intestazioni.length,
             continuazioniUnite: esito.diagnostica.continuazioniUnite,
+            profilo: struttura.profilo as unknown as object,
+            fonteProfilo: struttura.fonteProfilo,
+            confermate: struttura.confermate,
+            smentite: struttura.smentite,
+            importabili: struttura.validazione.importabili,
+            conErrori: struttura.validazione.conErrori,
+            conAvvisi: struttura.validazione.conAvvisi,
+            chiamateIa: struttura.chiamateIa,
+            costoUsd: struttura.costoUsd,
           },
         },
       }),
@@ -230,4 +301,79 @@ export function avviaInBackground(priceListId: string): void {
   void lavora(priceListId).catch((errore: unknown) => {
     console.error(`Lavorazione del listino ${priceListId} fallita:`, errore);
   });
+}
+
+/**
+ * Rilegge il profilo salvato di un fornitore, se ce n'è uno.
+ *
+ * Restituisce `null` a ogni minimo dubbio sulla forma: un profilo salvato
+ * male leggerebbe le colonne sbagliate su tutti i listini futuri, e siccome
+ * non fa fallire niente lo si scoprirebbe dai prezzi.
+ */
+function profiloSalvato(grezzo: unknown): ProfiloColonne | null {
+  if (!grezzo || typeof grezzo !== 'object') return null;
+  const p = grezzo as Record<string, unknown>;
+  const indice = (v: unknown): number | null =>
+    typeof v === 'number' && Number.isInteger(v) && v >= 0 ? v : null;
+  if (indice(p.prezzoListino) === null && indice(p.prezzoNetto) === null) return null;
+  return {
+    codice: indice(p.codice),
+    descrizione: indice(p.descrizione),
+    quantita: indice(p.quantita),
+    unitaDiVendita: indice(p.unitaDiVendita),
+    prezzoListino: indice(p.prezzoListino),
+    sconti: Array.isArray(p.sconti)
+      ? p.sconti.filter((s): s is number => typeof s === 'number' && Number.isInteger(s) && s >= 0)
+      : [],
+    prezzoNetto: indice(p.prezzoNetto),
+    iva: indice(p.iva),
+  };
+}
+
+/**
+ * Archivia il profilo dimostrato di un fornitore.
+ *
+ * È ciò che rende l'import successivo dello stesso fornitore completamente
+ * deterministico. La versione si incrementa invece di sovrascrivere: un
+ * fornitore che cambia impaginazione lascia una traccia di com'era prima.
+ */
+async function salvaProfilo(
+  supplierId: string,
+  scopeLabel: string,
+  struttura: EsitoStrutturazione,
+): Promise<void> {
+  try {
+    const ultima = await systemPrisma.supplierImportProfile.findFirst({
+      where: { supplierId, scopeLabel },
+      orderBy: { version: 'desc' },
+      select: { version: true, columnMapping: true },
+    });
+
+    // Se il profilo non è cambiato non si crea una versione nuova: un
+    // archivio pieno di copie identiche non racconta niente.
+    if (ultima && JSON.stringify(ultima.columnMapping) === JSON.stringify(struttura.profilo)) {
+      return;
+    }
+
+    await systemPrisma.$transaction([
+      systemPrisma.supplierImportProfile.updateMany({
+        where: { supplierId, scopeLabel },
+        data: { active: false },
+      }),
+      systemPrisma.supplierImportProfile.create({
+        data: {
+          supplierId,
+          scopeLabel,
+          version: (ultima?.version ?? 0) + 1,
+          active: true,
+          columnMapping: struttura.profilo as unknown as object,
+          createdBy: 'PROFILE',
+        },
+      }),
+    ]);
+  } catch (errore) {
+    // Non salvare il profilo costa una strutturazione in più al prossimo
+    // listino: fastidioso, non grave. Far fallire l'import per questo sì.
+    console.error(`Salvataggio del profilo per il fornitore ${supplierId} fallito:`, errore);
+  }
 }
