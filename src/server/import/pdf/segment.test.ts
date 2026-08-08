@@ -204,6 +204,39 @@ describe('il caso più insidioso: le descrizioni che vanno a capo', () => {
   });
 });
 
+describe('la cornice di pagina viene davvero riconosciuta', () => {
+  /**
+   * Il conteggio dei prodotti non basta a dire che la segmentazione sta bene.
+   * Un giro in cui il riconoscimento delle intestazioni si era spento da 8
+   * pattern a 1 lasciava passare 250 righe di cornice fra i dati, e i
+   * prodotti restavano 189: giusti per caso, perche' il classificatore e'
+   * robusto. Questo controlla la cosa che quel conteggio non vede.
+   */
+  it('su un listino di 9 pagine trova la cornice che si ripete', () => {
+    const esito = segmentaFile('Cecconi Listino prezzi al 28.02.25 (escluso Vino_spumante).pdf');
+    assert.ok(
+      esito.intestazioni.length >= 3,
+      `solo ${esito.intestazioni.length} pattern di cornice riconosciuti: ` +
+        'il riconoscimento delle intestazioni si e rotto',
+    );
+    // La riga delle colonne c'e' su tutte le pagine ed e' la piu' importante:
+    // se resta fra i dati, la Fase 8 prova a interpretarla come un prodotto.
+    assert.ok(
+      esito.intestazioni.some((i) => i.testo.includes('codice descrizione')),
+      'la riga di intestazione delle colonne deve essere riconosciuta come cornice',
+    );
+  });
+
+  it('le righe non capite restano poche: sono la cornice della prima pagina e i totali', () => {
+    const esito = segmentaFile('Cecconi Listino prezzi al 28.02.25 (escluso Vino_spumante).pdf');
+    const ignote = esito.righe.filter((r) => r.tipo === 'ignota');
+    assert.ok(
+      ignote.length < 40,
+      `${ignote.length} righe non capite su 9 pagine: sono troppe, la cornice sta rientrando fra i dati`,
+    );
+  });
+});
+
 describe('i totali di fine documento non entrano nell’ultimo prodotto', () => {
   it('nessun listino finisce con «Totale» dentro l’ultima riga', () => {
     // È l'errore che il conteggio non vede: le righe restano 189, ma

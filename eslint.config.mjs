@@ -78,6 +78,12 @@ export default [
       'src/server/database/ricerca-catalogo.ts',
       'src/server/health.ts',
       'src/app/api/auth/login/route.ts',
+      // La ripresa dei job all'avvio non ha una sessione da cui ricavare
+      // l'organizzazione: non c'e' nessun utente, c'e' solo una lavorazione
+      // rimasta appesa, e va cercata in tutto il database. Ogni altra query
+      // del runner parte comunque da un priceListId, che l'organizzazione ce
+      // l'ha addosso.
+      'src/server/import/runner.ts',
     ],
     rules: {
       'no-restricted-imports': 'off',

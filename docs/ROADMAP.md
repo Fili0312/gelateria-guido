@@ -355,6 +355,10 @@ Fuso orario: usare `date`, non `timestamp`, per la validità.
 Separare questa fase dall'IA è ciò che permetterà di capire, in caso di
 problemi, se la colpa è dell'estrazione o del modello.
 
+**Stato (8 agosto 2026): FATTA e in produzione.** Copertura 100% su tutti e tre
+i listini veri. Dettagli, regole imparate misurando e collaudo in
+[FASE-7.md](FASE-7.md).
+
 **Cosa sviluppare**
 
 - **Schermata di caricamento con due campi obbligatori**: il **fornitore** e il
@@ -398,16 +402,17 @@ e ripreso.
 
 **Completata quando**
 
-- [ ] non è possibile caricare un file senza aver scelto fornitore e nome del
+- [x] non è possibile caricare un file senza aver scelto fornitore e nome del
       listino
-- [ ] caricando un nome già usato, l'app dice quale listino sostituirà e da
+- [x] caricando un nome già usato, l'app dice quale listino sostituirà e da
       quando è fermo
-- [ ] i PDF della Fase 0 si caricano e producono righe grezze
-- [ ] la copertura riga per riga è ≥90% su ciascun PDF di prova (righe di
-      prodotto individuate / righe di prodotto reali, contate a mano)
-- [ ] un PDF scansionato produce un errore chiaro, non un crash
-- [ ] ricaricare lo stesso file viene rifiutato con messaggio
-- [ ] il job sopravvive a un riavvio del servizio e riprende
+- [x] i PDF della Fase 0 si caricano e producono righe grezze (142, 189, 33)
+- [x] la copertura riga per riga è ≥90% su ciascun PDF di prova — **100% su
+      tutti e tre**, contro conteggi fatti a mano prima di scrivere il codice
+- [x] un PDF scansionato produce un errore chiaro, non un crash
+- [x] ricaricare lo stesso file viene rifiutato con messaggio
+- [x] il job sopravvive a un riavvio del servizio e riprende (troncato a
+      92/212, ripreso e finito a 212 senza duplicati)
 
 ---
 

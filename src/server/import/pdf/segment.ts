@@ -215,11 +215,32 @@ export function trovaIntestazioni(
   const intestazioni = new Map<string, number>();
   for (const [k, voce] of conteggio) {
     if (voce.pagine.size < soglia) continue;
-    const oscillazione = Math.max(...voce.altezze) - Math.min(...voce.altezze);
-    if (oscillazione > OSCILLAZIONE_INTESTAZIONE) continue;
+    if (!altezzeRaggruppate(voce.altezze, quota)) continue;
     intestazioni.set(k, voce.pagine.size);
   }
   return intestazioni;
+}
+
+/**
+ * Le altezze si addensano attorno a un valore?
+ *
+ * Non si pretende che coincidano **tutte**: la prima pagina di un listino ha
+ * quasi sempre un blocco intestatario più alto delle altre, quindi la riga
+ * delle colonne sta 85 punti più in basso li' che altrove. Chiedere il
+ * massimo scostamento zero spegneva il riconoscimento proprio sui documenti
+ * veri — misurato: da 8 intestazioni riconosciute a 1, con 250 righe di
+ * cornice che finivano fra i dati.
+ *
+ * Si guarda invece se la **maggioranza** delle occorrenze sta attorno alla
+ * mediana. Una cornice ce l'ha; due righe di prodotto che si somigliano, che
+ * capitano a altezze qualsiasi, no.
+ */
+function altezzeRaggruppate(altezze: readonly number[], quota: number): boolean {
+  if (altezze.length === 0) return false;
+  const ordinate = [...altezze].sort((a, b) => a - b);
+  const mediana = ordinate[Math.floor(ordinate.length / 2)]!;
+  const vicine = altezze.filter((y) => Math.abs(y - mediana) <= OSCILLAZIONE_INTESTAZIONE).length;
+  return vicine >= Math.max(2, Math.ceil(altezze.length * quota));
 }
 
 // ─────────────────────────────────────────────────────────────────────────

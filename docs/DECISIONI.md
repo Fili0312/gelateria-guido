@@ -250,7 +250,7 @@ al profilo salvato. Il tetto di 5 basta ampiamente.
 `AI_MONTHLY_BUDGET_USD` perché DeepSeek fattura in USD. 5 $ sono circa 4,60 €,
 quindi il tetto configurato sta **sotto** i 5 € autorizzati, non sopra.
 
-*Il credito vero sul conto è 1,84 $*, non 5. È il vincolo che conta per primo,
+*Il credito vero sul conto è 1,84 $* (riverificato l'8 agosto 2026), non 5. È il vincolo che conta per primo,
 ed è **condiviso con il progetto `china`**: quando si esaurisce si fermano
 entrambi. Da ricaricare prima di lanciare l'import di un listino intero
 (Fase 7). Il contatore di spesa dell'applicazione va quindi letto come «quanto

@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "format": "git ls-files -z | xargs -0 prettier --write --ignore-unknown",
     "format:check": "git ls-files -z | xargs -0 prettier --check --ignore-unknown",
-    "test": "tsx --test \"src/**/*.test.ts\"",
+    "test": "tsx --conditions=react-server --test \"src/**/*.test.ts\"",
     "db:generate": "prisma generate",
     "db:migrate": "./scripts/nuova-migrazione.sh",
     "db:deploy": "./scripts/con-variabili.sh pnpm exec prisma migrate deploy",
@@ -32,6 +32,7 @@
     "next": "^16.2.10",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "server-only": "^0.0.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
