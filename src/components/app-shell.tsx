@@ -154,7 +154,7 @@ export function AppShell({
             Ambiente protetto
           </div>
           <p className="mt-2 text-xs leading-5 text-neutral-600">
-            Fase 6 · Catalogo e storico prezzi operativi.
+            Fase 7 · Importazione listini: estrazione leggibile prima di importare.
           </p>
         </div>
         <LogoutButton endpoint={logoutEndpoint} loginPath={loginPath} />

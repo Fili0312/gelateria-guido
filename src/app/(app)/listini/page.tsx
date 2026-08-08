@@ -95,6 +95,9 @@ export default async function PriceListsPage({
                 <TableHead>Caricato</TableHead>
                 <TableHead>Righe</TableHead>
                 <TableHead>Stato</TableHead>
+                <TableHead className="text-right">
+                  <span className="sr-only">Apri</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -102,11 +105,15 @@ export default async function PriceListsPage({
                 const fase = listino.lavorazione?.fase ?? 'QUEUED';
                 const stato = STATO[fase] ?? { etichetta: fase.toLowerCase(), tono: 'neutral' as const };
                 return (
-                  <TableRow key={listino.id}>
+                  <TableRow key={listino.id} className="hover:bg-neutral-50">
                     <TableCell>
+                      {/* Il nome deve *sembrare* un link, non solo esserlo: in
+                          nero e senza sottolineatura nessuno lo clicca, e le
+                          righe estratte restano invisibili anche se ci sono
+                          tutte. E' successo al primo collaudo vero. */}
                       <Link
                         href={`/listini/${listino.id}`}
-                        className="focus-visible:ring-brand-600 font-semibold text-neutral-950 hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                        className="text-brand-700 focus-visible:ring-brand-600 font-semibold underline decoration-brand-300 underline-offset-2 hover:decoration-brand-600 focus-visible:ring-2 focus-visible:outline-none"
                       >
                         {listino.scopeLabel}
                       </Link>
@@ -128,6 +135,14 @@ export default async function PriceListsPage({
                           interrotta
                         </Badge>
                       )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Link
+                        href={`/listini/${listino.id}`}
+                        className="text-brand-700 focus-visible:ring-brand-600 min-h-tap inline-flex items-center gap-1 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm font-semibold whitespace-nowrap hover:border-neutral-400 focus-visible:ring-2 focus-visible:outline-none"
+                      >
+                        Vedi le righe →
+                      </Link>
                     </TableCell>
                   </TableRow>
                 );
