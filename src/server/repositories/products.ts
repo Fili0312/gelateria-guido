@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type {
+  CatalogPrice,
   ProductAliasItem,
   ProductDetail,
   ProductListItem,
@@ -21,7 +22,8 @@ import { eseguiRicerca, preparaTermine } from '@/server/database/ricerca-catalog
 import { prismaForOrganization } from '@/server/db';
 import { nucleoDescrizione } from '@/server/domain/packaging/parse';
 import { normalizzaTesto } from '@/server/domain/packaging/normalize';
-import { baseDi, type UnitOfMeasure } from '@/server/domain/packaging/units';
+import { baseDi, type BaseUnit, type UnitOfMeasure } from '@/server/domain/packaging/units';
+import { scegliPrezzoDaMostrare } from '@/server/domain/pricing/catalog-price';
 import { mapOffer, OFFER_INCLUDE, type OfferRecord } from './offers';
 import { CATEGORY_REF_SELECT, mapCategoryRef, taxonomyRepository } from './taxonomy';
 
@@ -78,6 +80,50 @@ interface ProductRecord {
   updatedAt: Date;
 }
 
+/**
+ * Il prezzo da mostrare in catalogo si ricava dalle offerte **già caricate**:
+ * nessuna query in più, e nessuna dipendenza da `product_best_offer`, che è
+ * un dato derivato e ricalcolato solo dopo un import. Se il catalogo leggesse
+ * quella tabella, un prezzo modificato a mano resterebbe vecchio in elenco e
+ * nuovo nella scheda — senza che nulla lo segnali.
+ *
+ * La scelta di *quale* offerta mostrare sta nel dominio, ed è la stessa
+ * regola che usa il confronto fra fornitori.
+ */
+function mapPrice(offers: readonly SupplierOffer[]): CatalogPrice | null {
+  const scelta = scegliPrezzoDaMostrare(
+    offers.map((o) => ({
+      id: o.id,
+      attiva: o.active,
+      prezzoNetto: o.price?.priceNet ?? null,
+      contenutoPerConfezione: o.contentPerPack,
+      base: o.baseUnit as BaseUnit,
+      confezioneCerta: o.packQuantityConfirmed,
+    })),
+  );
+  if (!scelta) return null;
+
+  const offerta = offers.find((o) => o.id === scelta.id)!;
+  const certa = offerta.packQuantityConfirmed;
+  return {
+    supplierProductId: offerta.id,
+    supplierName: offerta.supplierName,
+    priceNet: offerta.price!.priceNet,
+    // Il prezzo per unità esiste solo se la confezione è dichiarata: senza,
+    // sarebbe calcolato su un numero inventato e sembrerebbe un dato vero.
+    unitPrice: certa ? offerta.price!.unitPrice : null,
+    unitPriceBasis: certa ? offerta.price!.unitPriceBasis : null,
+    packQuantity: offerta.packQuantity,
+    packagingType: offerta.packagingType,
+    unitSize: offerta.unitSize,
+    unitOfMeasure: offerta.unitOfMeasure,
+    packQuantityConfirmed: certa,
+    offersWithPrice: scelta.conPrezzo,
+    compared: scelta.confrontato,
+    savingPct: scelta.risparmioPct?.toString() ?? null,
+  };
+}
+
 function mapList(record: ProductRecord, offers: SupplierOffer[]): ProductListItem {
   return {
     id: record.id,
@@ -93,6 +139,7 @@ function mapList(record: ProductRecord, offers: SupplierOffer[]): ProductListIte
     updatedAt: record.updatedAt.toISOString(),
     offersCount: offers.length,
     comparableOffersCount: countComparableOffers(offers),
+    price: mapPrice(offers),
   };
 }
 

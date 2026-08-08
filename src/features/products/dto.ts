@@ -51,6 +51,36 @@ export interface ProductAliasItem {
   createdAt: string;
 }
 
+/**
+ * Il prezzo mostrato in catalogo, con accanto **a cosa si riferisce**.
+ *
+ * Le due cose viaggiano insieme di proposito: «4,72 €» da solo non è
+ * un'informazione, perché non si sa se è la bottiglia o il cartone da 24. Chi
+ * legge il catalogo deve poter capire cosa sta guardando senza aprire la
+ * scheda.
+ */
+export interface CatalogPrice {
+  supplierProductId: string;
+  supplierName: string;
+  /** Il netto della confezione, come lo fa il fornitore. */
+  priceNet: string;
+  /** €/L o €/kg: `null` quando la confezione non è dichiarata. */
+  unitPrice: string | null;
+  unitPriceBasis: PriceBasisValue | null;
+  /** La confezione a cui il netto si riferisce. */
+  packQuantity: number;
+  packagingType: string | null;
+  unitSize: string;
+  unitOfMeasure: UnitOfMeasureValue;
+  packQuantityConfirmed: boolean;
+  /** Quante offerte attive hanno un prezzo. */
+  offersWithPrice: number;
+  /** `true` solo se la scelta viene da un confronto di prezzi unitari. */
+  compared: boolean;
+  /** Risparmio rispetto alla più cara, quando il confronto è vero. */
+  savingPct: string | null;
+}
+
 export interface ProductListItem {
   id: string;
   name: string;
@@ -67,6 +97,8 @@ export interface ProductListItem {
   offersCount: number;
   /** Offerte con la confezione dichiarata: le altre non sono confrontabili. */
   comparableOffersCount: number;
+  /** `null` quando nessuna offerta attiva ha un prezzo corrente. */
+  price: CatalogPrice | null;
 }
 
 export interface ProductDetail extends ProductListItem {

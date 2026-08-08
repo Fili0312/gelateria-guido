@@ -1,14 +1,36 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import type { SupplierOffer } from './dto';
+import type { CatalogPrice, SupplierOffer } from './dto';
 import { countComparableOffers } from './dto';
 import {
   catenaSconti,
+  confezioneDelPrezzo,
   contenutoConfezione,
+  etichettaImballo,
   formatoConfezione,
   formatoUnitario,
   prezzoUnitario,
+  prezzoUnitarioDiCatalogo,
 } from './format';
+
+function prezzoDiCatalogo(parziale: Partial<CatalogPrice> = {}): CatalogPrice {
+  return {
+    supplierProductId: 'o1',
+    supplierName: 'Cecconi',
+    priceNet: '5.31',
+    unitPrice: '0.4425',
+    unitPriceBasis: 'PER_L',
+    packQuantity: 24,
+    packagingType: 'CT',
+    unitSize: '50',
+    unitOfMeasure: 'CL',
+    packQuantityConfirmed: true,
+    offersWithPrice: 1,
+    compared: false,
+    savingPct: null,
+    ...parziale,
+  };
+}
 
 function offerta(parziale: Partial<SupplierOffer> = {}): SupplierOffer {
   return {
@@ -105,5 +127,52 @@ describe('countComparableOffers', () => {
       offerta({ id: 'c' }),
     ];
     assert.equal(countComparableOffers(offerte), 2);
+  });
+});
+
+describe('il prezzo unitario si scrive attaccato al denominatore', () => {
+  it('«0,4425 €/L», non «0,4425 € /L»', () => {
+    // In italiano il simbolo va in fondo: lo spazio in mezzo sembra un refuso,
+    // e su un elenco di centoquaranta righe lo sembra centoquaranta volte.
+    const scritto = prezzoUnitarioDiCatalogo(prezzoDiCatalogo())!;
+    assert.ok(!/\s\/L$/.test(scritto), `spazio di troppo in «${scritto}»`);
+    assert.match(scritto, /0,4425.*€\/L$/);
+  });
+
+  it('vale anche per le offerte nella scheda prodotto', () => {
+    assert.ok(!/\s\/L$/.test(prezzoUnitario(offerta())));
+  });
+
+  it('senza confezione dichiarata non c’è prezzo unitario', () => {
+    // Meglio niente che un numero calcolato su pezzi inventati.
+    assert.equal(
+      prezzoUnitarioDiCatalogo(prezzoDiCatalogo({ unitPrice: null, unitPriceBasis: null })),
+      null,
+    );
+  });
+});
+
+describe('la confezione che accompagna il prezzo', () => {
+  it('scioglie le sigle certe', () => {
+    assert.equal(etichettaImballo('CT'), 'cartone');
+    assert.equal(etichettaImballo('bt'), 'bottiglia');
+  });
+
+  it('lascia intatto quello che non conosce', () => {
+    // Inventare uno scioglimento sbagliato è peggio di mostrare una sigla:
+    // una sigla si riconosce come tale, una parola sbagliata no.
+    assert.equal(etichettaImballo('XZ9'), 'XZ9');
+    assert.equal(etichettaImballo(null), null);
+  });
+
+  it('dice imballo, formato e quanti pezzi', () => {
+    assert.equal(confezioneDelPrezzo(prezzoDiCatalogo()), 'cartone · 50 cl × 24');
+  });
+
+  it('senza imballo resta il formato', () => {
+    assert.equal(
+      confezioneDelPrezzo(prezzoDiCatalogo({ packagingType: null, packQuantity: 1 })),
+      '50 cl',
+    );
   });
 });

@@ -9,7 +9,13 @@ import {
   TableRow,
 } from '@/components/ui';
 import type { ProductListItem } from '@/features/products/dto';
-import { formatoUnitario } from '@/features/products/format';
+import {
+  confezioneDelPrezzo,
+  euro,
+  formatoUnitario,
+  numero,
+  prezzoUnitarioDiCatalogo,
+} from '@/features/products/format';
 import { CategoryBadge } from '@/components/taxonomy/category-badge';
 
 function Vuoto({ conFiltri }: { conFiltri: boolean }) {
@@ -60,6 +66,64 @@ function Offerte({ prodotto }: { prodotto: ProductListItem }) {
   );
 }
 
+/**
+ * Il prezzo, e subito sotto **a cosa si riferisce**.
+ *
+ * Le tre righe non sono ridondanti: il netto è quello che si paga, il prezzo
+ * unitario è quello che si confronta, e la confezione è ciò che rende il primo
+ * leggibile. Toglierne una lascia un numero che sembra chiaro e non lo è.
+ */
+function Prezzo({ prodotto }: { prodotto: ProductListItem }) {
+  const p = prodotto.price;
+  if (!p) {
+    return (
+      <span className="text-sm text-neutral-400" title="Nessuna offerta attiva ha un prezzo">
+        —
+      </span>
+    );
+  }
+
+  const unitario = prezzoUnitarioDiCatalogo(p);
+  // Solo elementi in linea: su telefono questo blocco sta dentro il `<a>`
+  // della scheda, e un `<div>` dentro uno `<span>` è annidamento non valido —
+  // il genere di errore che si manifesta solo in idratazione, a pagina viva.
+  return (
+    <span className="block min-w-40">
+      <span className="flex items-baseline gap-2">
+        <span className="tabellare font-semibold text-neutral-950">{euro(p.priceNet)}</span>
+        {p.compared && p.savingPct && Number(p.savingPct) > 0 && (
+          <Badge
+            variant="success"
+            title={`Costa il ${numero(p.savingPct, 1)}% in meno dell’offerta più cara`}
+          >
+            {`−${numero(p.savingPct, 1)}%`}
+          </Badge>
+        )}
+      </span>
+      <span className="tabellare mt-0.5 block text-xs text-neutral-600">
+        {unitario ?? (
+          <span
+            className="text-amber-700"
+            title="Senza i pezzi per confezione il prezzo per litro sarebbe calcolato su un numero inventato"
+          >
+            confezione da definire
+          </span>
+        )}
+      </span>
+      <span className="mt-1 block text-xs text-neutral-500">
+        {`${confezioneDelPrezzo(p)} · ${p.supplierName}`}
+      </span>
+      {p.offersWithPrice > 1 && (
+        <span className="mt-0.5 block text-xs text-neutral-400">
+          {p.compared
+            ? `il più conveniente fra ${p.offersWithPrice}`
+            : `${p.offersWithPrice} offerte, non confrontabili`}
+        </span>
+      )}
+    </span>
+  );
+}
+
 export function ProductList({
   items,
   conFiltri,
@@ -87,6 +151,9 @@ export function ProductList({
               <span className="mt-2 block">
                 <CategoryBadge categoria={prodotto.category} />
               </span>
+              <span className="mt-3 block border-t border-neutral-100 pt-3">
+                <Prezzo prodotto={prodotto} />
+              </span>
               <span className="mt-3 flex items-center gap-2 text-sm">
                 <Offerte prodotto={prodotto} />
                 <span className="text-neutral-400">offerte</span>
@@ -103,7 +170,7 @@ export function ProductList({
               <TableHead>Prodotto</TableHead>
               <TableHead>Formato</TableHead>
               <TableHead>Categoria</TableHead>
-              <TableHead>Marca</TableHead>
+              <TableHead>Prezzo e confezione</TableHead>
               <TableHead>Offerte</TableHead>
             </TableRow>
           </TableHeader>
@@ -122,6 +189,9 @@ export function ProductList({
                       creato dall’IA
                     </Badge>
                   )}
+                  {prodotto.brand && (
+                    <span className="mt-0.5 block text-xs text-neutral-500">{prodotto.brand}</span>
+                  )}
                 </TableCell>
                 <TableCell className="tabellare">
                   {formatoUnitario(prodotto.unitSize, prodotto.unitOfMeasure)}
@@ -129,7 +199,9 @@ export function ProductList({
                 <TableCell>
                   <CategoryBadge categoria={prodotto.category} />
                 </TableCell>
-                <TableCell>{prodotto.brand ?? '—'}</TableCell>
+                <TableCell>
+                  <Prezzo prodotto={prodotto} />
+                </TableCell>
                 <TableCell>
                   <Offerte prodotto={prodotto} />
                 </TableCell>

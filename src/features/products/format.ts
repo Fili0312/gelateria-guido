@@ -1,4 +1,4 @@
-import type { BaseUnitValue, PriceBasisValue, SupplierOffer } from './dto';
+import type { BaseUnitValue, CatalogPrice, PriceBasisValue, SupplierOffer } from './dto';
 import type { UnitOfMeasureValue } from './schema';
 
 /**
@@ -95,7 +95,62 @@ export function contenutoConfezione(contentPerPack: string, baseUnit: BaseUnitVa
 export function prezzoUnitario(offer: SupplierOffer): string {
   if (!offer.price) return '—';
   if (!offer.packQuantityConfirmed) return 'confezione da definire';
-  return `${euro(offer.price.unitPrice, 4)} ${etichettaBasis(offer.price.unitPriceBasis).slice(1)}`;
+  return importoPerUnita(offer.price.unitPrice, offer.price.unitPriceBasis);
+}
+
+/**
+ * «17,0900 €/L» — importo e denominatore, attaccati.
+ *
+ * In italiano `euro` mette il simbolo in fondo, quindi il denominatore va
+ * incollato lì: uno spazio in mezzo si legge «17,0900 € /L», che sembra un
+ * refuso e su un elenco di centoquaranta righe lo sembra centoquaranta volte.
+ */
+function importoPerUnita(valore: string, basis: PriceBasisValue): string {
+  return `${euro(valore, 4)}${etichettaBasis(basis).slice(1)}`;
+}
+
+/**
+ * Le sigle che i listini usano per l'unità di vendita.
+ *
+ * Si sciolgono solo quelle certe e ricorrenti: «BT» in un listino di bevande
+ * è una bottiglia in tutti i listini che abbiamo visto. Tutto il resto resta
+ * **come lo scrive il fornitore** — inventare uno scioglimento sbagliato è
+ * peggio che mostrare una sigla, perché una sigla si riconosce come tale e una
+ * parola sbagliata no.
+ */
+const SIGLE_CONFEZIONE: Record<string, string> = {
+  BT: 'bottiglia',
+  CT: 'cartone',
+  CF: 'confezione',
+  SC: 'scatola',
+  PZ: 'pezzo',
+  LT: 'latta',
+  FU: 'fusto',
+};
+
+export function etichettaImballo(packagingType: string | null): string | null {
+  const sigla = packagingType?.trim().toUpperCase();
+  if (!sigla) return null;
+  return SIGLE_CONFEZIONE[sigla] ?? packagingType!.trim();
+}
+
+/**
+ * «cartone · 50 cl × 24» — a cosa si riferisce il prezzo netto.
+ *
+ * Va sempre accanto al prezzo: «4,72 €» da solo non dice se è la bottiglia o
+ * il collo, e leggerlo come bottiglia quando è un collo da 24 sbaglia di
+ * ventiquattro volte.
+ */
+export function confezioneDelPrezzo(price: CatalogPrice): string {
+  const formato = formatoConfezione(price.unitSize, price.unitOfMeasure, price.packQuantity);
+  const imballo = etichettaImballo(price.packagingType);
+  return imballo ? `${imballo} · ${formato}` : formato;
+}
+
+/** «0,3933 €/L» — il prezzo per unità, quando la confezione lo permette. */
+export function prezzoUnitarioDiCatalogo(price: CatalogPrice): string | null {
+  if (!price.unitPrice || !price.unitPriceBasis) return null;
+  return importoPerUnita(price.unitPrice, price.unitPriceBasis);
 }
 
 /** «6% + 10%» — la catena di sconti come la scrive il listino. */
