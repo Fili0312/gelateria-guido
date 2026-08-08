@@ -10,5 +10,6 @@ export const ERRORI_LISTINI: readonly ErroreMappato[] = [
     fields: (errore) => (errore as { fields?: Record<string, string[]> }).fields,
   },
   { nome: 'StorageError', status: 400 },
+  { nome: 'ApplicazioneBloccataError', status: 409 },
   { nome: 'OrganizationScopeError', status: 400 },
 ];

@@ -271,6 +271,174 @@ function validateSetPriceInput(input: SetPriceInput): ValidatedSetPriceInput {
   return parsed.data;
 }
 
+/**
+ * Il corpo di `setPrice`, dentro una transazione **gia aperta**.
+ *
+ * Estratto perche' l'applicazione di un import (Fase 10) deve scrivere
+ * decine di prezzi dentro la propria transazione, e le transazioni Prisma
+ * non si annidano. L'alternativa era copiare qui la logica temporale: due
+ * copie delle stesse regole su periodi di validita e puntatore corrente
+ * divergono, e divergerebbero in silenzio.
+ */
+export async function applicaPrezzoInTransazione(
+  tx: OrganizationPrismaClient,
+  supplierProductId: string,
+  input: SetPriceInput,
+  createdById?: string | null,
+): Promise<SetPriceResult> {
+  const data = validateSetPriceInput(input);
+  const actorId = createdById?.trim() || null;
+  if (data.source === 'MANUAL' && !actorId) {
+    throw new PriceHistoryValidationError('Un prezzo manuale deve indicare chi lo ha inserito.', {
+      _form: ["L'utente che inserisce il prezzo e obbligatorio."],
+    });
+  }
+
+    const record = await readHistoryRecord(tx, supplierProductId);
+
+    // In sequenza e non con `Promise.all`: dentro una transazione le due
+    // query condividono la stessa connessione, e lanciarle insieme e' un uso
+    // che `pg` deprecata e che togliera' del tutto. Non si vedeva finche' i
+    // prezzi si scrivevano uno alla volta; l'applicazione di un import ne
+    // scrive centonovanta di fila.
+    const actor = actorId
+      ? await tx.user.findFirst({ where: { id: actorId }, select: { id: true } })
+      : null;
+    const linkedPriceList = data.priceListId
+      ? await tx.priceList.findFirst({
+          where: { id: data.priceListId, supplierId: record.supplierId },
+          select: { id: true, currency: true },
+        })
+      : null;
+
+    if (actorId && !actor) {
+      throw new PriceHistoryValidationError('Utente non valido per questa organizzazione.', {
+        _form: ["L'utente che inserisce il prezzo non appartiene all'organizzazione."],
+      });
+    }
+    if (data.priceListId && !linkedPriceList) {
+      throw new PriceHistoryValidationError(
+        "Il listino non appartiene al fornitore dell'offerta.",
+        { priceListId: ['Listino non trovato per questo fornitore.'] },
+      );
+    }
+
+    let values;
+    try {
+      values = priceValuesForWrite(
+        data,
+        record.contentPerPack.toString(),
+        record.baseUnit as BaseUnit,
+      );
+    } catch (error) {
+      if (!(error instanceof PriceStorageRangeError)) throw error;
+      const field =
+        error.field === 'priceNet' && data.priceNet === undefined ? 'priceList' : error.field;
+      throw new PriceHistoryValidationError('Il prezzo non e memorizzabile.', {
+        [field]: [error.message],
+      });
+    }
+    const { net, unit } = values;
+    const currency = linkedPriceList?.currency ?? 'EUR';
+    const seenInPriceList =
+      data.source === 'PRICE_LIST' && linkedPriceList
+        ? {
+            lastSeenAt: new Date(),
+            lastSeenPriceList: { connect: { id: linkedPriceList.id } },
+            active: true,
+            disappearedAt: null,
+          }
+        : {};
+    const rows = timelineRows(record);
+    const plan = planTimelineInsertion(rows, data.validFrom);
+    const effective = plan.effectiveRowId
+      ? (rows.find((row) => row.id === plan.effectiveRowId)?.record ?? null)
+      : null;
+
+    const nextSnapshot = {
+      priceList: data.priceList,
+      discounts: data.discounts,
+      priceNet: net.toString(),
+      vatRate: data.vatRate,
+      currency,
+      unitPrice: unit.valore.toString(),
+      unitPriceBasis: unit.basis,
+    };
+    if (
+      effective &&
+      sameCommercialPrice(
+        {
+          priceList: effective.priceList.toString(),
+          discounts: discountsFromJson(effective.discounts),
+          priceNet: effective.priceNet.toString(),
+          vatRate: effective.vatRate?.toString() ?? null,
+          currency: effective.currency,
+          unitPrice: effective.unitPrice.toString(),
+          unitPriceBasis: effective.unitPriceBasis,
+        },
+        nextSnapshot,
+      )
+    ) {
+      if (data.source === 'PRICE_LIST') {
+        await tx.supplierProduct.update({
+          where: { id: supplierProductId },
+          data: seenInPriceList,
+        });
+      }
+      return { created: false, history: mapHistory(record, null) };
+    }
+
+    const newPriceId = randomUUID();
+    const validFrom = dayToDate(data.validFrom);
+    const validTo = plan.newValidTo ? dayToDate(plan.newValidTo) : null;
+
+    await tx.supplierProduct.update({
+      where: { id: supplierProductId },
+      data: {
+        ...seenInPriceList,
+        prices: {
+          ...(plan.closeRowId
+            ? {
+                update: {
+                  where: { id: plan.closeRowId },
+                  data: { validTo: validFrom },
+                },
+              }
+            : {}),
+          create: {
+            id: newPriceId,
+            priceList: data.priceList,
+            discounts: data.discounts as OrganizationJsonInput,
+            priceNet: net.toString(),
+            vatRate: data.vatRate,
+            currency,
+            unitPrice: unit.valore.toString(),
+            unitPriceBasis: unit.basis,
+            validFrom,
+            validTo,
+            source: data.source,
+            ...(actor ? { createdBy: { connect: { id: actor.id } } } : {}),
+            ...(linkedPriceList ? { priceListRef: { connect: { id: linkedPriceList.id } } } : {}),
+          },
+        },
+      },
+    });
+
+    // Non esistono prezzi pianificati nel futuro: la riga aperta e anche
+    // quella efficace oggi, quindi puo diventare il puntatore corrente.
+    if (validTo === null) {
+      await tx.supplierProduct.update({
+        where: { id: supplierProductId },
+        data: { currentPriceId: newPriceId },
+      });
+    }
+
+    return {
+      created: true,
+      history: mapHistory(await readHistoryRecord(tx, supplierProductId), null),
+    };
+}
+
 export function pricesRepository(organizationId: string) {
   const db = prismaForOrganization(organizationId);
 
@@ -287,147 +455,9 @@ export function pricesRepository(organizationId: string) {
       });
     }
 
-    return transactionForOrganization(organizationId, async (tx) => {
-      const record = await readHistoryRecord(tx, supplierProductId);
-      const [actor, linkedPriceList] = await Promise.all([
-        actorId
-          ? tx.user.findFirst({ where: { id: actorId }, select: { id: true } })
-          : Promise.resolve(null),
-        data.priceListId
-          ? tx.priceList.findFirst({
-              where: { id: data.priceListId, supplierId: record.supplierId },
-              select: { id: true, currency: true },
-            })
-          : Promise.resolve(null),
-      ]);
-
-      if (actorId && !actor) {
-        throw new PriceHistoryValidationError('Utente non valido per questa organizzazione.', {
-          _form: ["L'utente che inserisce il prezzo non appartiene all'organizzazione."],
-        });
-      }
-      if (data.priceListId && !linkedPriceList) {
-        throw new PriceHistoryValidationError(
-          "Il listino non appartiene al fornitore dell'offerta.",
-          { priceListId: ['Listino non trovato per questo fornitore.'] },
-        );
-      }
-
-      let values;
-      try {
-        values = priceValuesForWrite(
-          data,
-          record.contentPerPack.toString(),
-          record.baseUnit as BaseUnit,
-        );
-      } catch (error) {
-        if (!(error instanceof PriceStorageRangeError)) throw error;
-        const field =
-          error.field === 'priceNet' && data.priceNet === undefined ? 'priceList' : error.field;
-        throw new PriceHistoryValidationError('Il prezzo non e memorizzabile.', {
-          [field]: [error.message],
-        });
-      }
-      const { net, unit } = values;
-      const currency = linkedPriceList?.currency ?? 'EUR';
-      const seenInPriceList =
-        data.source === 'PRICE_LIST' && linkedPriceList
-          ? {
-              lastSeenAt: new Date(),
-              lastSeenPriceList: { connect: { id: linkedPriceList.id } },
-              active: true,
-              disappearedAt: null,
-            }
-          : {};
-      const rows = timelineRows(record);
-      const plan = planTimelineInsertion(rows, data.validFrom);
-      const effective = plan.effectiveRowId
-        ? (rows.find((row) => row.id === plan.effectiveRowId)?.record ?? null)
-        : null;
-
-      const nextSnapshot = {
-        priceList: data.priceList,
-        discounts: data.discounts,
-        priceNet: net.toString(),
-        vatRate: data.vatRate,
-        currency,
-        unitPrice: unit.valore.toString(),
-        unitPriceBasis: unit.basis,
-      };
-      if (
-        effective &&
-        sameCommercialPrice(
-          {
-            priceList: effective.priceList.toString(),
-            discounts: discountsFromJson(effective.discounts),
-            priceNet: effective.priceNet.toString(),
-            vatRate: effective.vatRate?.toString() ?? null,
-            currency: effective.currency,
-            unitPrice: effective.unitPrice.toString(),
-            unitPriceBasis: effective.unitPriceBasis,
-          },
-          nextSnapshot,
-        )
-      ) {
-        if (data.source === 'PRICE_LIST') {
-          await tx.supplierProduct.update({
-            where: { id: supplierProductId },
-            data: seenInPriceList,
-          });
-        }
-        return { created: false, history: mapHistory(record, null) };
-      }
-
-      const newPriceId = randomUUID();
-      const validFrom = dayToDate(data.validFrom);
-      const validTo = plan.newValidTo ? dayToDate(plan.newValidTo) : null;
-
-      await tx.supplierProduct.update({
-        where: { id: supplierProductId },
-        data: {
-          ...seenInPriceList,
-          prices: {
-            ...(plan.closeRowId
-              ? {
-                  update: {
-                    where: { id: plan.closeRowId },
-                    data: { validTo: validFrom },
-                  },
-                }
-              : {}),
-            create: {
-              id: newPriceId,
-              priceList: data.priceList,
-              discounts: data.discounts as OrganizationJsonInput,
-              priceNet: net.toString(),
-              vatRate: data.vatRate,
-              currency,
-              unitPrice: unit.valore.toString(),
-              unitPriceBasis: unit.basis,
-              validFrom,
-              validTo,
-              source: data.source,
-              ...(actor ? { createdBy: { connect: { id: actor.id } } } : {}),
-              ...(linkedPriceList ? { priceListRef: { connect: { id: linkedPriceList.id } } } : {}),
-            },
-          },
-        },
-      });
-
-      // Non esistono prezzi pianificati nel futuro: la riga aperta e anche
-      // quella efficace oggi, quindi puo diventare il puntatore corrente.
-      if (validTo === null) {
-        await tx.supplierProduct.update({
-          where: { id: supplierProductId },
-          data: { currentPriceId: newPriceId },
-        });
-      }
-
-      return {
-        created: true,
-        history: mapHistory(await readHistoryRecord(tx, supplierProductId), null),
-      };
-    });
+    return transactionForOrganization(organizationId, async (tx) =>
+      applicaPrezzoInTransazione(tx, supplierProductId, input, createdById),
+    );
   }
 
   return {
