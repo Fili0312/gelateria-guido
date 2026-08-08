@@ -154,7 +154,7 @@ export function AppShell({
             Ambiente protetto
           </div>
           <p className="mt-2 text-xs leading-5 text-neutral-600">
-            Fase 7 · Importazione listini: estrazione leggibile prima di importare.
+            Fase 8 · Listini letti e interpretati, prima di toccare il catalogo.
           </p>
         </div>
         <LogoutButton endpoint={logoutEndpoint} loginPath={loginPath} />

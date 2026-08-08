@@ -137,11 +137,11 @@ export default async function PriceListPage({ params }: { params: Promise<{ id: 
           )}
 
           <div>
-            <h2 className="text-lg font-black text-neutral-950">Righe grezze</h2>
+            <h2 className="text-lg font-black text-neutral-950">Righe del listino</h2>
             <p className="mt-1 mb-3 max-w-3xl text-sm leading-6 text-neutral-500">
-              È il testo del PDF diviso in celle, non ancora interpretato: nessuno di questi valori
-              è ancora un prezzo o un prodotto. Serve a giudicare se l’estrazione ha letto bene il
-              documento, <strong>prima</strong> di importare qualsiasi cosa.
+              Come l’app ha letto il documento, riga per riga. Serve a giudicare se l’ha letto bene{' '}
+              <strong>prima</strong> di importare qualsiasi cosa: la casella qui sotto mostra le
+              celle originali, che è il modo di capire <em>perché</em> una riga è stata letta così.
             </p>
             {/* La domanda che si fa chiunque veda «189 prodotti» e poi il
                 catalogo vuoto. Meglio rispondere qui che lasciarla venire. */}
@@ -150,8 +150,8 @@ export default async function PriceListPage({ params }: { params: Promise<{ id: 
                 Il catalogo non è ancora stato toccato.
               </strong>{' '}
               Queste righe stanno solo qui: non hanno creato prodotti, non hanno cambiato prezzi e
-              non compaiono in <em>Prodotti</em>. L’interpretazione dei campi arriva con la Fase 8,
-              l’applicazione al catalogo con la Fase 10 — e passerà comunque da una revisione.
+              non compaiono in <em>Prodotti</em>. L’applicazione al catalogo arriva con la Fase 10,
+              e passerà comunque da una revisione dove approvi tu.
             </p>
             <RawRows righe={righe} />
           </div>
