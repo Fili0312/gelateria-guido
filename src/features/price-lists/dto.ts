@@ -73,6 +73,9 @@ export interface RigaListino {
   testo: string;
   celle: CellaEstratta[];
   continuazioni: string[];
+  /** Codici dichiarati su una riga a sé (`EAN: 20561`), tenuti fuori dalla
+   *  descrizione perché nei listini Cecconi ripetono il codice articolo. */
+  codici: string[];
   sezione: string | null;
 }
 

@@ -63,6 +63,10 @@ function righeDaScrivere(righe: readonly RigaGrezza[], priceListId: string) {
     extracted: {
       tipo: riga.tipo,
       continuazioni: riga.continuazioni,
+      // I codici dichiarati a parte (`EAN: 20561`) stanno qui e non nella
+      // descrizione: nei listini Cecconi ripetono il codice articolo, e
+      // incollarli al nome sporcherebbe la ricerca della Fase 9.
+      codici: riga.codici,
       sezione: riga.sezione,
     },
     matchStatus: 'PENDING' as const,

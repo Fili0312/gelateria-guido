@@ -357,6 +357,7 @@ export function priceListsRepository(organizationId: string) {
       const mappate: RigaListino[] = tutte.map((riga) => {
         const extra = (riga.extracted ?? {}) as {
           continuazioni?: string[];
+          codici?: string[];
           sezione?: string | null;
         };
         return {
@@ -367,6 +368,7 @@ export function priceListsRepository(organizationId: string) {
           testo: riga.rawText,
           celle: Array.isArray(riga.rawCells) ? (riga.rawCells as RigaListino['celle']) : [],
           continuazioni: extra.continuazioni ?? [],
+          codici: extra.codici ?? [],
           sezione: extra.sezione ?? null,
         };
       });

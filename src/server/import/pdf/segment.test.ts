@@ -4,7 +4,14 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { leggiBbox, type PaginaParole, type Parola } from './bbox';
-import { righeDiPagina, segmenta, sembraNumero, trovaColonne, trovaIntestazioni } from './segment';
+import {
+  codiceAnnotato,
+  righeDiPagina,
+  segmenta,
+  sembraNumero,
+  trovaColonne,
+  trovaIntestazioni,
+} from './segment';
 
 /**
  * Il segmentatore misurato sui listini veri, più i casi costruiti a mano che
@@ -204,6 +211,57 @@ describe('il caso più insidioso: le descrizioni che vanno a capo', () => {
   });
 });
 
+describe('i codici dichiarati a parte non finiscono nella descrizione', () => {
+  const CECCONI = 'Cecconi Listino prezzi al 28.02.25 (escluso Vino_spumante).pdf';
+
+  it('riconosce le forme in cui i listini scrivono un codice', () => {
+    assert.equal(codiceAnnotato('EAN: 20561'), '20561');
+    assert.equal(codiceAnnotato('EAN 7A0757'), '7A0757');
+    assert.equal(codiceAnnotato('COD. 4477'), '4477');
+    assert.equal(codiceAnnotato('  Codice: AB-12/3  '), 'AB-12/3');
+  });
+
+  it('non scambia un pezzo di descrizione per un codice', () => {
+    // «VAP» e «GEWURZTRAMINER 42% CL.70» sono descrizione che va a capo: se
+    // finissero fra i codici, il formato del prodotto sparirebbe.
+    for (const testo of ['VAP', 'GEWURZTRAMINER 42% CL.70', "EXTRABRUT VALLEE' DE LA MARNE", '']) {
+      assert.equal(codiceAnnotato(testo), null, testo);
+    }
+  });
+
+  it('nessuna descrizione contiene più «EAN»', () => {
+    const prodotti = segmentaFile(CECCONI).righe.filter((r) => r.tipo === 'prodotto');
+    const sporche = prodotti.filter((r) => /EAN/i.test(r.celle[1]?.testo ?? ''));
+    assert.deepEqual(
+      sporche.map((r) => r.celle[1]?.testo),
+      [],
+      'l\'EAN incollato alla descrizione finirebbe nel nome normalizzato della ricerca',
+    );
+  });
+
+  it('il codice annotato coincide con quello della prima colonna', () => {
+    // È la ragione per cui si può buttare dalla descrizione: non aggiunge
+    // niente. Se un giorno un fornitore ci mettesse un EAN vero e diverso,
+    // questo test lo direbbe.
+    const prodotti = segmentaFile(CECCONI).righe.filter((r) => r.tipo === 'prodotto');
+    const conCodice = prodotti.filter((r) => r.codici.length > 0);
+    assert.equal(conCodice.length, prodotti.length, 'ogni prodotto Cecconi ha la sua riga EAN');
+    const diversi = conCodice.filter((r) => r.codici[0] !== r.celle[0]?.testo);
+    assert.deepEqual(diversi.map((r) => [r.celle[0]?.testo, r.codici]), []);
+  });
+
+  it('un codice a inizio pagina si attacca lo stesso al suo prodotto', () => {
+    // Un pezzo di descrizione a cavallo di pagina non si può attribuire: non
+    // dice a chi appartiene. `EAN: 40201` sì, perché si etichetta da solo —
+    // ed è la differenza che toglie sei righe dalle «non capite».
+    const ignote = segmentaFile(CECCONI).righe.filter((r) => r.tipo === 'ignota');
+    assert.deepEqual(
+      ignote.filter((r) => /^EAN/i.test(r.testo)).map((r) => r.testo),
+      [],
+    );
+  });
+});
+
 describe('la cornice di pagina viene davvero riconosciuta', () => {
   /**
    * Il conteggio dei prodotti non basta a dire che la segmentazione sta bene.
@@ -231,7 +289,7 @@ describe('la cornice di pagina viene davvero riconosciuta', () => {
     const esito = segmentaFile('Cecconi Listino prezzi al 28.02.25 (escluso Vino_spumante).pdf');
     const ignote = esito.righe.filter((r) => r.tipo === 'ignota');
     assert.ok(
-      ignote.length < 40,
+      ignote.length < 25,
       `${ignote.length} righe non capite su 9 pagine: sono troppe, la cornice sta rientrando fra i dati`,
     );
   });

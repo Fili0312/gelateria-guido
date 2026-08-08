@@ -52,6 +52,15 @@ export interface RigaGrezza {
   celle: Cella[];
   /** Le righe di continuazione assorbite, testuali, per poterle mostrare. */
   continuazioni: string[];
+  /**
+   * I codici dichiarati su una riga a se': `EAN: 20561`, `COD. 4477`.
+   *
+   * Stanno qui e **non** dentro la descrizione. Nei listini Cecconi l'EAN
+   * ripete pari pari il codice articolo della prima colonna, quindi
+   * incollarlo alla descrizione la sporca senza aggiungere nulla — e dalla
+   * Fase 9 finirebbe dentro il nome normalizzato su cui gira la ricerca.
+   */
+  codici: string[];
   /** L'ultima sezione incontrata sopra questa riga, se il documento ne ha. */
   sezione: string | null;
   bbox: { x: number; y: number; xFine: number; yFine: number };
@@ -343,6 +352,21 @@ function eSezione(riga: RigaVisiva, colonnaIniziale: number, tolleranza = 6): bo
 }
 
 /**
+ * Una riga che dichiara soltanto un codice: `EAN: 20561`, `COD. 4477`.
+ *
+ * Si distingue dal resto perche' e' **auto-etichettata**: dice da sola cosa
+ * contiene. E' la ragione per cui puo' essere attribuita anche attraverso un
+ * salto di pagina, mentre un pezzo di descrizione no — «VAP» in cima a una
+ * pagina non dice a chi appartiene, `EAN: 40201` si'.
+ */
+const RE_CODICE_ANNOTATO = /^(ean|gtin|cod|codice|art|articolo)\s*[:.]?\s*([A-Za-z0-9._/-]{3,20})$/i;
+
+export function codiceAnnotato(testo: string): string | null {
+  const m = RE_CODICE_ANNOTATO.exec(testo.trim());
+  return m ? m[2]! : null;
+}
+
+/**
  * Questa riga è la continuazione della descrizione del prodotto sopra?
  *
  * Servono **due** condizioni insieme, e nessuna delle due basta da sola.
@@ -411,6 +435,7 @@ export function segmenta(
         testo: riga.testo,
         celle: riga.celle,
         continuazioni: [],
+        codici: [],
         sezione: sezioneCorrente,
         bbox: {
           x: riga.celle[0]!.x,
@@ -436,6 +461,7 @@ export function segmenta(
         testo: riga.testo,
         celle: riga.celle,
         continuazioni: [],
+        codici: [],
         sezione: sezioneCorrente,
         bbox: { x: riga.celle[0]!.x, y: riga.y, xFine: riga.celle.at(-1)!.xFine, yFine: riga.y },
       });
@@ -448,6 +474,20 @@ export function segmenta(
     // fallire niente, allunga solo la descrizione — ed è per questo che è un
     // errore che si scopre tardi, quando il prezzo importato è sbagliato.
     const ultimo = righe.at(-1);
+
+    // Un codice dichiarato su una riga a se' non e' descrizione: si registra
+    // a parte, e puo' attraversare un salto di pagina perche' dice da solo a
+    // che cosa si riferisce. Senza questa distinzione «EAN: 20561» finiva
+    // incollato alla descrizione, e i sei che cadono a inizio pagina
+    // restavano righe non capite.
+    const codice = codiceAnnotato(riga.testo);
+    if (codice && ultimo && ultimo.tipo === 'prodotto') {
+      ultimo.codici.push(codice);
+      ultimo.continuazioni.push(riga.testo);
+      continuazioniUnite += 1;
+      continue;
+    }
+
     if (ultimo && ultimo.tipo === 'prodotto' && eContinuazione(riga, ultimo, colonneAperte)) {
       const stato = colonneAperte.get(ultimo)!;
       // Il testo a capo va nella **cella della descrizione**, non in coda
@@ -473,6 +513,7 @@ export function segmenta(
       testo: riga.testo,
       celle: riga.celle,
       continuazioni: [],
+      codici: [],
       sezione: sezioneCorrente,
       bbox: { x: riga.celle[0]!.x, y: riga.y, xFine: riga.celle.at(-1)!.xFine, yFine: riga.y },
     });

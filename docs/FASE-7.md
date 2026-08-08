@@ -94,10 +94,25 @@ Il **28% dei prodotti Cecconi** (53 su 189) ha la descrizione spezzata su due
 righe. La roadmap lo chiamava «il caso più insidioso»: non è un caso limite, è
 un quarto del listino.
 
-Le righe `EAN:` vengono assorbite nel prodotto a cui appartengono. Sei su 189
-restano fuori, e sono quelle che cadono all'inizio della pagina successiva
-rispetto al loro prodotto: attraverso un salto pagina l'attribuzione non è
-affidabile, e non viene fatta.
+### I codici dichiarati a parte
+
+Cecconi mette sotto ogni prodotto una riga `EAN: 20561`. Su **189 righe su
+189** quel numero è identico al codice della prima colonna: non aggiunge
+niente. Incollarlo alla descrizione la sporcherebbe, e dalla Fase 9 finirebbe
+dentro il nome normalizzato su cui gira la ricerca prodotti.
+
+Viene quindi tolto dalla descrizione e registrato a parte, in
+`extracted.codici`. La descrizione resta `ALISEA NATURALE CL.50 PET`, non
+`ALISEA NATURALE CL.50 PET EAN: 20561`.
+
+Una riga di questo tipo può essere attribuita **anche attraverso un salto di
+pagina**, a differenza di un pezzo di descrizione. La ragione è che si
+etichetta da sola: «VAP» in cima a una pagina non dice a chi appartiene,
+`EAN: 40201` sì. Sono le sei righe che prima restavano fra le «non capite».
+
+Un test verifica che i due codici coincidano: se un fornitore ci mettesse un
+EAN vero e diverso dal codice interno, quel test lo direbbe invece di lasciarlo
+buttare via.
 
 ## Caricamento
 
