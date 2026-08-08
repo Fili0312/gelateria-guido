@@ -6,6 +6,7 @@ import { estraiTesto, PdfIllegibileError, PdfSenzaTestoError } from './pdf/extra
 import { segmenta, type RigaGrezza } from './pdf/segment';
 import { percorsoAssoluto } from './storage';
 import { strutturaListino, type EsitoStrutturazione } from './structure';
+import { proponiAbbinamenti } from './matching/proposte';
 import type { RigaValidata } from './validate';
 import type { ProfiloColonne } from './profile/mapping';
 import type { OrganizationJsonInput } from '@/server/db';
@@ -197,6 +198,15 @@ export async function lavora(priceListId: string): Promise<EsitoLavorazione> {
       await salvaProfilo(listino.supplierId, listino.scopeLabel, struttura);
     }
 
+    // ── Abbinamento (Fase 9) ────────────────────────────────────────────
+    // Propone, non applica: le proposte finiscono sulle righe di staging e
+    // la Fase 10 le riconcilia col catalogo. Un import che scrivesse
+    // direttamente sul dominio non si potrebbe annullare.
+    await battito(jobId, { phase: 'MATCHING' });
+    const abbinamento = await proponiAbbinamenti(priceListId, async (fatte) => {
+      await battito(jobId, { progressCurrent: fatte });
+    });
+
     const prodotti = prodottiGrezzi.length;
     await systemPrisma.$transaction([
       systemPrisma.importJob.update({
@@ -211,7 +221,9 @@ export async function lavora(priceListId: string): Promise<EsitoLavorazione> {
       systemPrisma.priceList.update({
         where: { id: priceListId },
         data: {
-          status: 'EXTRACTED',
+          // `REVIEW`: le righe sono lette, interpretate e con una proposta di
+          // abbinamento. Manca solo che qualcuno la guardi (Fase 10).
+          status: 'REVIEW',
           stats: {
             righe: daScrivere.length,
             prodotti,
@@ -229,6 +241,10 @@ export async function lavora(priceListId: string): Promise<EsitoLavorazione> {
             conAvvisi: struttura.validazione.conAvvisi,
             chiamateIa: struttura.chiamateIa,
             costoUsd: struttura.costoUsd,
+            abbinati: abbinamento.automatici,
+            daAbbinare: abbinamento.daRivedere,
+            nuoviProdotti: abbinamento.nuovi,
+            giaNoti: abbinamento.giaNoti,
           },
         },
       }),

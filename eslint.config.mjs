@@ -76,6 +76,11 @@ export default [
       // `Prisma.sql`. Il filtro per organizzazione, che qui l'estensione non
       // puo' applicare, e' garantito dai test di ricerca-catalogo.test.ts.
       'src/server/database/ricerca-catalogo.ts',
+      // Stessa deroga, stesso motivo: i candidati all'abbinamento usano la
+      // somiglianza trigram, e senza indice sarebbe una scansione del catalogo
+      // per ogni riga importata. Il filtro per organizzazione e' garantito dai
+      // test di candidati-abbinamento.test.ts.
+      'src/server/database/candidati-abbinamento.ts',
       'src/server/health.ts',
       'src/app/api/auth/login/route.ts',
       // La ripresa dei job all'avvio non ha una sessione da cui ricavare
@@ -89,6 +94,12 @@ export default [
       // e il conteggio della spesa deve poter girare anche dalla ripresa
       // all'avvio, che di sessione non ne ha).
       'src/server/ai/index.ts',
+      // La cascata di abbinamento gira dentro la lavorazione del listino, che
+      // parte anche dalla ripresa all'avvio: nessuna sessione da cui ricavare
+      // l'organizzazione. Ogni query parte comunque da un organizationId
+      // esplicito, passato dal chiamante.
+      'src/server/import/matching/cascata.ts',
+      'src/server/import/matching/proposte.ts',
     ],
     rules: {
       'no-restricted-imports': 'off',

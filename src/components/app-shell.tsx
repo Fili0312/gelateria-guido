@@ -10,6 +10,7 @@ const NAV_ITEMS: { href: string; label: string; icon: AppIconName }[] = [
   { href: '/fornitori', label: 'Fornitori', icon: 'suppliers' },
   { href: '/prodotti', label: 'Prodotti', icon: 'products' },
   { href: '/listini', label: 'Listini', icon: 'lists' },
+  { href: '/abbinamenti', label: 'Da abbinare', icon: 'sparkles' },
   { href: '/ordini', label: 'Ordini', icon: 'orders' },
   { href: '/impostazioni', label: 'Impostazioni', icon: 'settings' },
 ];
@@ -154,7 +155,7 @@ export function AppShell({
             Ambiente protetto
           </div>
           <p className="mt-2 text-xs leading-5 text-neutral-600">
-            Fase 8 · Listini letti e interpretati, prima di toccare il catalogo.
+            Fase 9 · Listini letti, interpretati e abbinati — in attesa di revisione.
           </p>
         </div>
         <LogoutButton endpoint={logoutEndpoint} loginPath={loginPath} />

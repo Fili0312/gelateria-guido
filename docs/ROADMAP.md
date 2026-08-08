@@ -488,6 +488,11 @@ non una versione già interpretata.
 **Obiettivo.** Da riga strutturata a `supplier_product` + proposta di `product`
 canonico, con la cascata di ANALISI §5.
 
+**Stato (8 agosto 2026): FATTA e in produzione.** La cascata propone, non
+applica: le proposte vivono sulle righe di staging e la Fase 10 le riconcilia.
+Il formato e' un cancello, non un punto in piu' del punteggio. Dettagli in
+[FASE-9.md](FASE-9.md).
+
 **Cosa sviluppare**
 
 - `domain/matching/candidates.ts`: generazione candidati (GTIN → codice →
@@ -517,13 +522,13 @@ riproposto.
 
 **Completata quando**
 
-- [ ] i tre esempi della specifica ("Birra XYZ 33cl x12", "XYZ Birra cl.33
+- [x] i tre esempi della specifica ("Birra XYZ 33cl x12", "XYZ Birra cl.33
       conf. 12pz", "Birra XYZ bottiglia 0,33L 12 pezzi") si abbinano allo
       stesso `product`
-- [ ] 33 cl e 66 cl **non** si abbinano mai fra loro
-- [ ] confermare un abbinamento crea l'alias, e al secondo import quel prodotto
-      si abbina senza chiamate IA (verificato su `ai_call`)
-- [ ] un abbinamento si può annullare e non viene riproposto
+- [x] 33 cl e 66 cl **non** si abbinano mai fra loro
+- [x] confermare un abbinamento crea l'alias, e al secondo import quel prodotto
+      si abbina senza chiamate IA (da `NUOVO`/trigram a `AUTO`/alias)
+- [x] un abbinamento si può annullare e non viene riproposto
 
 ---
 

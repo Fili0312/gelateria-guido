@@ -101,9 +101,24 @@ const PAROLE_DI_CONFEZIONE = new Set([
  * ma solo una parola su due. Guardare entrambe le cose rende più difficile
  * confondere due prodotti della stessa categoria.
  */
+/**
+ * Il nucleo senza le parole di confezione.
+ *
+ * Serve **anche alla ricerca dei candidati**, non solo al punteggio finale:
+ * «xyz birra confezione» e «birra xyz» hanno una somiglianza per parole troppo
+ * bassa per superare la soglia della query, quindi il candidato giusto non
+ * arriverebbe nemmeno fra quelli da valutare. Ripulire prima di cercare è ciò
+ * che fa passare i tre modi di scrivere la stessa birra.
+ */
+export function nucleoPerAbbinamento(nucleo: string): string {
+  return nucleo
+    .split(/\s+/)
+    .filter((p) => p && !PAROLE_DI_CONFEZIONE.has(p))
+    .join(' ');
+}
+
 export function sovrapposizioneParole(a: string, b: string): number {
-  const utili = (testo: string) =>
-    new Set(testo.split(/\s+/).filter((p) => p && !PAROLE_DI_CONFEZIONE.has(p)));
+  const utili = (testo: string) => new Set(nucleoPerAbbinamento(testo).split(/\s+/).filter(Boolean));
   const paroleA = utili(a);
   const paroleB = utili(b);
   if (paroleA.size === 0 || paroleB.size === 0) return 0;
