@@ -1,0 +1,184 @@
+import assert from 'node:assert/strict';
+import { Decimal } from 'decimal.js';
+import { describe, it } from 'node:test';
+import { riconcilia, riepiloga, type OffertaACatalogo, type RigaDelFile } from './reconcile';
+
+/**
+ * La regola di riconciliazione, sui casi che la specifica chiama per nome.
+ *
+ * Ogni test qui corrisponde a un criterio della Fase 10: è la logica che
+ * decide se il catalogo resta pulito, e la si prova su casi costruiti a mano
+ * perché su dati veri non si può mai far succedere apposta il caso che serve.
+ */
+
+function aCatalogo(dati: Partial<OffertaACatalogo> = {}): OffertaACatalogo {
+  return {
+    supplierProductId: 'sp-1',
+    supplierCode: '20561',
+    unitaDiVendita: 'CO',
+    packQuantity: 24,
+    unitSize: new Decimal('50'),
+    unitOfMeasure: 'CL',
+    prezzoNetto: new Decimal('4.72'),
+    active: true,
+    ...dati,
+  };
+}
+
+function nelFile(dati: Partial<RigaDelFile> = {}): RigaDelFile {
+  return {
+    chiave: 'r-1',
+    supplierCode: '20561',
+    unitaDiVendita: 'CO',
+    packQuantity: 24,
+    unitSize: new Decimal('50'),
+    unitOfMeasure: 'CL',
+    prezzoNetto: new Decimal('4.90'),
+    inclusa: true,
+    ...dati,
+  };
+}
+
+describe('prodotto identico: si aggiorna solo il prezzo', () => {
+  const [c] = riconcilia([aCatalogo()], [nelFile()]);
+
+  it('l’esito è un aggiornamento di prezzo, non una creazione', () => {
+    assert.equal(c?.esito, 'PREZZO_AGGIORNATO');
+    assert.equal(c?.supplierProductId, 'sp-1');
+  });
+
+  it('porta con sé il prima e il dopo, e la variazione', () => {
+    assert.equal(c?.prezzoPrima?.toString(), '4.72');
+    assert.equal(c?.prezzoDopo?.toString(), '4.9');
+    assert.equal(c?.variazionePct?.toString(), '3.81');
+  });
+});
+
+describe('prezzo invariato: non si scrive niente', () => {
+  it('l’esito è INVARIATO', () => {
+    // Uno storico pieno di righe uguali non racconta niente e rende
+    // illeggibile il grafico.
+    const [c] = riconcilia([aCatalogo()], [nelFile({ prezzoNetto: new Decimal('4.72') })]);
+    assert.equal(c?.esito, 'INVARIATO');
+  });
+});
+
+describe('stesso codice ma confezione diversa: NON si decide da soli', () => {
+  it('finisce in revisione, con scritto cosa è cambiato', () => {
+    // È il ramo delicato: aggiornare in silenzio farebbe sembrare un
+    // dimezzamento di prezzo quello che è un dimezzamento di confezione.
+    const [c] = riconcilia([aCatalogo({ packQuantity: 24 })], [nelFile({ packQuantity: 12 })]);
+    assert.equal(c?.esito, 'CONFEZIONE_CAMBIATA');
+    assert.deepEqual(c?.differenze, ['pezzi per confezione: 24 → 12']);
+  });
+
+  it('vale anche quando cambia il formato', () => {
+    const [c] = riconcilia([aCatalogo()], [nelFile({ unitSize: new Decimal('33') })]);
+    assert.equal(c?.esito, 'CONFEZIONE_CAMBIATA');
+    assert.match(c!.differenze[0]!, /formato/);
+  });
+
+  it('e quando cambia l’unità di vendita', () => {
+    const [c] = riconcilia([aCatalogo({ unitaDiVendita: 'CO' })], [nelFile({ unitaDiVendita: 'BT' })]);
+    assert.equal(c?.esito, 'CONFEZIONE_CAMBIATA');
+    assert.match(c!.differenze[0]!, /unità di vendita/);
+  });
+});
+
+describe('codice mai visto: prodotto nuovo', () => {
+  it('non si aggancia a niente', () => {
+    const [c] = riconcilia([aCatalogo()], [nelFile({ supplierCode: 'NUOVO1', chiave: 'r-2' })]);
+    // La riga nuova più lo «sparito» del vecchio: due confronti.
+    assert.equal(c?.esito, 'NUOVO');
+    assert.equal(c?.supplierProductId, null);
+  });
+
+  it('un codice scritto con maiuscole diverse è lo stesso codice', () => {
+    // «ap112» e «AP112» sono lo stesso articolo: trattarli come due
+    // creerebbe un duplicato a ogni import.
+    const [c] = riconcilia(
+      [aCatalogo({ supplierCode: 'ap112' })],
+      [nelFile({ supplierCode: 'AP112' })],
+    );
+    assert.equal(c?.esito, 'PREZZO_AGGIORNATO');
+  });
+});
+
+describe('prodotto sparito dal listino', () => {
+  it('viene segnalato, non cancellato', () => {
+    const confronti = riconcilia([aCatalogo()], []);
+    assert.equal(confronti.length, 1);
+    assert.equal(confronti[0]?.esito, 'SPARITO');
+    assert.equal(confronti[0]?.supplierProductId, 'sp-1');
+  });
+
+  it('un’offerta già disattivata non risparisce ogni volta', () => {
+    assert.deepEqual(riconcilia([aCatalogo({ active: false })], []), []);
+  });
+
+  it('una riga ESCLUSA dall’operatore non fa sparire il prodotto', () => {
+    // «non l'ho importata» non è «non c'è più nel listino»: confonderle
+    // disattiverebbe prodotti che il fornitore vende ancora.
+    const confronti = riconcilia([aCatalogo()], [nelFile({ inclusa: false })]);
+    assert.equal(confronti.length, 1);
+    assert.equal(confronti[0]?.esito, 'SPARITO');
+  });
+});
+
+describe('il perimetro: due coperture dello stesso fornitore', () => {
+  it('quello che non è nel perimetro non risulta sparito', () => {
+    // Chi chiama passa solo le offerte di quella copertura: è lì che il
+    // perimetro viene imposto, ed è la ragione per cui la copertura esiste.
+    // Caricando «vini», i liquori non entrano nemmeno nel confronto.
+    const soloVini = [aCatalogo({ supplierProductId: 'vino-1', supplierCode: 'V1' })];
+    const confronti = riconcilia(soloVini, [nelFile({ supplierCode: 'V1' })]);
+    assert.equal(confronti.length, 1);
+    assert.equal(confronti[0]?.esito, 'PREZZO_AGGIORNATO');
+  });
+});
+
+describe('importare due volte lo stesso listino', () => {
+  it('la seconda volta è tutto invariato', () => {
+    const catalogo = [aCatalogo({ prezzoNetto: new Decimal('4.90') })];
+    const confronti = riconcilia(catalogo, [nelFile()]);
+    assert.equal(confronti.length, 1);
+    assert.equal(confronti[0]?.esito, 'INVARIATO');
+  });
+});
+
+describe('riepiloga', () => {
+  const confronti = riconcilia(
+    [
+      aCatalogo({ supplierProductId: 'a', supplierCode: 'A', prezzoNetto: new Decimal('10') }),
+      aCatalogo({ supplierProductId: 'b', supplierCode: 'B', prezzoNetto: new Decimal('10') }),
+      aCatalogo({ supplierProductId: 'c', supplierCode: 'C', prezzoNetto: new Decimal('10') }),
+      aCatalogo({ supplierProductId: 'd', supplierCode: 'D', prezzoNetto: new Decimal('10') }),
+    ],
+    [
+      nelFile({ chiave: '1', supplierCode: 'A', prezzoNetto: new Decimal('11') }),
+      nelFile({ chiave: '2', supplierCode: 'B', prezzoNetto: new Decimal('9') }),
+      nelFile({ chiave: '3', supplierCode: 'C', prezzoNetto: new Decimal('10') }),
+      nelFile({ chiave: '4', supplierCode: 'E' }),
+      nelFile({ chiave: '5', supplierCode: 'D', prezzoNetto: new Decimal('30') }),
+    ],
+  );
+  const r = riepiloga(confronti);
+
+  it('conta ogni esito', () => {
+    assert.equal(r.aggiornati, 3);
+    assert.equal(r.invariati, 1);
+    assert.equal(r.nuovi, 1);
+    assert.equal(r.spariti, 0);
+  });
+
+  it('distingue aumenti e diminuzioni', () => {
+    assert.equal(r.aumentati, 2);
+    assert.equal(r.diminuiti, 1);
+  });
+
+  it('segnala le variazioni anomale, che vanno guardate prima di applicare', () => {
+    // Da 10 a 30 è +200%: quasi sempre è una colonna letta male, non un
+    // aumento vero.
+    assert.equal(r.anomale, 1);
+  });
+});
