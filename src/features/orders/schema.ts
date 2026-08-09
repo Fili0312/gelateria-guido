@@ -28,11 +28,18 @@ export const rigaOrdinePatchSchema = z
   .object({
     quantityPacks: confezioni.optional(),
     note: z.string().trim().max(500).nullish(),
+    /** Mette a tacere l'avviso «lo trovi a meno» per questa riga. */
+    ignoraAvviso: z.boolean().optional(),
   })
   .strict()
-  .refine((v) => v.quantityPacks !== undefined || v.note !== undefined, {
-    message: 'Niente da modificare.',
-  });
+  .refine(
+    (v) => v.quantityPacks !== undefined || v.note !== undefined || v.ignoraAvviso !== undefined,
+    { message: 'Niente da modificare.' },
+  );
+
+export const cambioFornitoreSchema = z
+  .object({ supplierProductId: z.string().min(1, 'Indicare il fornitore a cui passare.') })
+  .strict();
 
 export const ricercaOrdinabileSchema = z
   .object({
@@ -56,3 +63,4 @@ export const ricercaOrdinabileSchema = z
 export type RigaOrdineInput = z.infer<typeof rigaOrdineInputSchema>;
 export type RigaOrdinePatch = z.infer<typeof rigaOrdinePatchSchema>;
 export type RicercaOrdinabile = z.infer<typeof ricercaOrdinabileSchema>;
+export type CambioFornitoreInput = z.infer<typeof cambioFornitoreSchema>;

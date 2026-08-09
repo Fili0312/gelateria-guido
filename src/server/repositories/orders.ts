@@ -9,7 +9,10 @@ import type {
 } from '@/features/orders/dto';
 import type { RicercaOrdinabile, RigaOrdineInput, RigaOrdinePatch } from '@/features/orders/schema';
 import { prismaForOrganization, transactionForOrganization, type OrganizationPrismaClient } from '@/server/db';
+import { calcolaCambio, confrontaPerAvviso, type OffertaPerAvviso } from '@/server/domain/orders/alert';
 import { totaliOrdine, totaliRiga } from '@/server/domain/orders/totals';
+import { SETTINGS_ALL_KEYS, valoriDaRighe } from '@/features/settings/schema';
+import { settingsRepository } from './settings';
 import { comparisonRepository } from './comparison';
 import { productsRepository } from './products';
 import { CATEGORY_REF_SELECT, mapCategoryRef } from './taxonomy';
@@ -60,6 +63,7 @@ const RIGA_SELECT = {
   quantityPacks: true,
   position: true,
   note: true,
+  overrideReason: true,
   bestAlternativeSnapshot: true,
   supplierProduct: { select: { packagingType: true, contentPerPack: true } },
 } as const;
@@ -83,6 +87,7 @@ type RigaRecord = {
   quantityPacks: number;
   position: number;
   note: string | null;
+  overrideReason: string | null;
   bestAlternativeSnapshot: unknown;
   supplierProduct: { packagingType: string | null; contentPerPack: { toString(): string } };
 };
@@ -115,8 +120,15 @@ function mapRiga(r: RigaRecord): RigaOrdine {
     position: r.position,
     note: r.note,
     migliorAlternativa: (r.bestAlternativeSnapshot as RigaOrdine['migliorAlternativa']) ?? null,
+    // L'avviso si calcola dopo, quando si conoscono le offerte vive: qui la
+    // riga non sa ancora cosa fanno gli altri fornitori.
+    avviso: null,
+    avvisoIgnorato: r.overrideReason !== null,
   };
 }
+
+/** L'etichetta con cui si registra «non avvisarmi più per questa riga». */
+const AVVISO_IGNORATO = 'avviso ignorato dall’operatore';
 
 /** I totali si ricalcolano **sempre** dalle righe, mai a incrementi. */
 async function ricalcolaTotali(tx: OrganizationPrismaClient, orderId: string): Promise<void> {
@@ -150,6 +162,15 @@ async function ricalcolaTotali(tx: OrganizationPrismaClient, orderId: string): P
 export function ordersRepository(organizationId: string) {
   const db = prismaForOrganization(organizationId);
   const confronti = comparisonRepository(organizationId);
+
+  /** Le soglie dell'avviso, lette una volta per richiesta. */
+  async function contesto() {
+    return {
+      impostazioni: valoriDaRighe(
+        await settingsRepository(organizationId).findMany(SETTINGS_ALL_KEYS),
+      ),
+    };
+  }
 
   /**
    * La bozza dell'utente, creata se non c'è.
@@ -229,6 +250,84 @@ export function ordersRepository(organizationId: string) {
     });
 
     const righe = (ordine.lines as unknown as RigaRecord[]).map(mapRiga);
+
+    // ── L'avviso «lo trovi a meno da un altro» ────────────────────────
+    //
+    // Si calcola **adesso** sulle offerte vive, non dallo snapshot della
+    // riga: i prezzi cambiano, e un avviso vecchio di un mese consiglierebbe
+    // un fornitore che nel frattempo è diventato il più caro.
+    const { impostazioni } = await contesto();
+    const soglie = {
+      percentuale: impostazioni.alertPercentage,
+      euro: impostazioni.alertEuro,
+    };
+    const prodottiInOrdine = [...new Set(righe.map((r) => r.productId).filter((id): id is string => id !== null))];
+    const confronti = await comparisonRepository(organizationId).perProdotti(prodottiInOrdine);
+
+    let risparmioPotenziale = new Decimal(0);
+    let righeConAvviso = 0;
+
+    for (const riga of righe) {
+      if (!riga.productId) continue;
+      const confronto = confronti.get(riga.productId);
+      if (!confronto) continue;
+
+      const perAvviso = (o: (typeof confronto.ranked)[number]): OffertaPerAvviso => ({
+        supplierProductId: o.supplierProductId,
+        supplierName: o.supplierName,
+        prezzoConfezione: o.priceNet,
+        contenutoPerConfezione: o.contentPerPack,
+        pezziPerConfezione: o.packQuantity,
+      });
+
+      const scelta = confronto.ranked.find((o) => o.supplierProductId === riga.supplierProductId);
+      if (!scelta) continue;
+
+      const esito = confrontaPerAvviso(
+        perAvviso(scelta),
+        confronto.ranked.map(perAvviso),
+        riga.quantityPacks,
+        soglie,
+      );
+      if (!esito) continue;
+
+      const migliore = confronto.ranked.find(
+        (o) => o.supplierProductId === esito.migliore.supplierProductId,
+      )!;
+      const cambio = calcolaCambio(perAvviso(scelta), perAvviso(migliore), riga.quantityPacks);
+
+      riga.avviso = {
+        risparmioPerConfezione: esito.risparmioPerConfezione.toString(),
+        risparmioPct: esito.risparmioPct.toString(),
+        risparmioTotale: esito.risparmioTotale.toString(),
+        meritaAvviso: esito.meritaAvviso,
+        migliore: {
+          supplierProductId: migliore.supplierProductId,
+          supplierName: migliore.supplierName,
+          priceNet: migliore.priceNet,
+          packQuantity: migliore.packQuantity,
+        },
+        cambio: {
+          confezioni: cambio.confezioni,
+          pezziPrima: cambio.pezziPrima,
+          pezziDopo: cambio.pezziDopo,
+          esatto: cambio.esatto,
+          descrizione: cambio.descrizione,
+          spesaPrima: cambio.spesaPrima.toString(),
+          spesaDopo: cambio.spesaDopo.toString(),
+          risparmio: cambio.risparmio.toString(),
+        },
+      };
+
+      // Il risparmio complessivo conta **solo** ciò che è oltre soglia e non
+      // messo a tacere: sommare anche i centesimi darebbe un totale che nessuno
+      // andrà mai a incassare.
+      if (esito.meritaAvviso && !riga.avvisoIgnorato) {
+        righeConAvviso += 1;
+        risparmioPotenziale = risparmioPotenziale.plus(esito.risparmioTotale);
+      }
+    }
+
     const t = totaliOrdine(
       righe.map((r) => ({
         prezzoConfezione: r.priceNet,
@@ -264,6 +363,8 @@ export function ordersRepository(organizationId: string) {
         netto: t.netto.toString(),
         iva: t.iva.toString(),
         lordo: t.lordo.toString(),
+        risparmioPotenziale: risparmioPotenziale.toDecimalPlaces(2).toString(),
+        righeConAvviso,
       },
       perFornitore: [...gruppi.entries()]
         .map(([supplierId, g]) => ({
@@ -574,6 +675,9 @@ export function ordersRepository(organizationId: string) {
                   lineTotalNet: t.netto.toString(),
                   lineTotalGross: t.lordo.toString(),
                   ...(patch.note !== undefined ? { note: patch.note ?? null } : {}),
+                  ...(patch.ignoraAvviso !== undefined
+                    ? { overrideReason: patch.ignoraAvviso ? AVVISO_IGNORATO : null }
+                    : {}),
                 },
               },
             },
@@ -584,6 +688,79 @@ export function ordersRepository(organizationId: string) {
       });
 
       return leggi(orderId);
+    },
+
+    /**
+     * Passa una riga all'altro fornitore, ricalcolando le confezioni.
+     *
+     * Quattro colli da 12 non sono quattro colli da 24: sono due. Il ricalcolo
+     * si fa qui, con la stessa funzione che l'avviso usa per **mostrare** il
+     * conto — così quello che si vede prima di premere è esattamente quello
+     * che succede dopo.
+     *
+     * La riga vecchia sparisce e ne nasce una nuova: è un altro articolo di un
+     * altro fornitore, con un altro codice e un altro prezzo. Modificare
+     * quella esistente lascerebbe uno snapshot che non corrisponde a niente.
+     */
+    async cambiaFornitore(
+      userId: string,
+      rigaId: string,
+      nuovoSupplierProductId: string,
+    ): Promise<OrdineCorrente> {
+      const orderId = await idBozza(userId);
+      const attuale = await leggi(orderId);
+      const riga = attuale.righe.find((r) => r.id === rigaId);
+      if (!riga) throw new OrderNotFoundError('Riga non trovata in questo ordine.');
+      if (riga.supplierProductId === nuovoSupplierProductId) {
+        throw new OrderValidationError('È già questo il fornitore della riga.');
+      }
+
+      // Si leggono **entrambe** le offerte: il contenuto per confezione è il
+      // numero su cui gira tutto il ricalcolo, e ricavarlo dividendo il netto
+      // per il prezzo unitario sarebbe fragile — basta un prezzo unitario
+      // mancante e il conto salta senza dirlo.
+      const offerte = await db.supplierProduct.findMany({
+        where: { id: { in: [riga.supplierProductId, nuovoSupplierProductId] } },
+        select: {
+          id: true,
+          packQuantity: true,
+          contentPerPack: true,
+          active: true,
+          currentPrice: { select: { priceNet: true } },
+        },
+      });
+      const vecchia = offerte.find((o) => o.id === riga.supplierProductId);
+      const nuova = offerte.find((o) => o.id === nuovoSupplierProductId);
+      if (!nuova || !vecchia) throw new OrderNotFoundError('L’offerta indicata non esiste.');
+      if (!nuova.currentPrice || !nuova.active) {
+        throw new OrderValidationError(
+          'Quell’offerta non ha un prezzo corrente o non è più a listino.',
+        );
+      }
+
+      const cambio = calcolaCambio(
+        {
+          supplierProductId: vecchia.id,
+          supplierName: riga.supplierName,
+          prezzoConfezione: riga.priceNet,
+          contenutoPerConfezione: vecchia.contentPerPack.toString(),
+          pezziPerConfezione: vecchia.packQuantity,
+        },
+        {
+          supplierProductId: nuova.id,
+          supplierName: '',
+          prezzoConfezione: nuova.currentPrice.priceNet.toString(),
+          contenutoPerConfezione: nuova.contentPerPack.toString(),
+          pezziPerConfezione: nuova.packQuantity,
+        },
+        riga.quantityPacks,
+      );
+
+      await this.rimuoviRiga(userId, rigaId);
+      return this.aggiungiRiga(userId, {
+        supplierProductId: nuovoSupplierProductId,
+        quantityPacks: cambio.confezioni,
+      });
     },
 
     async rimuoviRiga(userId: string, rigaId: string): Promise<OrdineCorrente> {

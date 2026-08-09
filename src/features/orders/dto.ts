@@ -89,6 +89,43 @@ export interface RigaOrdine {
     unitPrice: string | null;
     risparmioPerConfezione: string | null;
   } | null;
+  /**
+   * L'avviso **calcolato adesso**, non quello fotografato quando la riga è
+   * nata: i prezzi cambiano, e un avviso vecchio di un mese consiglierebbe un
+   * fornitore che nel frattempo è diventato il più caro.
+   *
+   * `null` quando non c'è niente da dire — nessuna alternativa, oppure quella
+   * scelta è già la più conveniente.
+   */
+  avviso: AvvisoRiga | null;
+  /** L'avviso è stato messo a tacere per questa riga. */
+  avvisoIgnorato: boolean;
+}
+
+export interface AvvisoRiga {
+  risparmioPerConfezione: string;
+  risparmioPct: string;
+  /** Sul totale della riga, alle quantità già scelte. */
+  risparmioTotale: string;
+  /** `false` sotto una delle due soglie: si mostra in piccolo, non si grida. */
+  meritaAvviso: boolean;
+  migliore: {
+    supplierProductId: string;
+    supplierName: string;
+    priceNet: string;
+    packQuantity: number;
+  };
+  /** Cosa cambierebbe passando all'altro: pezzi prima e dopo, spesa, resto. */
+  cambio: {
+    confezioni: number;
+    pezziPrima: number;
+    pezziDopo: number;
+    esatto: boolean;
+    descrizione: string;
+    spesaPrima: string;
+    spesaDopo: string;
+    risparmio: string;
+  };
 }
 
 export interface OrdineCorrente {
@@ -102,6 +139,10 @@ export interface OrdineCorrente {
     netto: string;
     iva: string;
     lordo: string;
+    /** Quanto si risparmierebbe scegliendo ovunque il fornitore migliore. */
+    risparmioPotenziale: string;
+    /** Su quante righe c'è un avviso oltre soglia. */
+    righeConAvviso: number;
   };
   /** Righe raggruppate per fornitore: è così che l'ordine verrà spedito. */
   perFornitore: {

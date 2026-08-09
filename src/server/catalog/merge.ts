@@ -55,6 +55,7 @@ export async function unisciProdotti(
       categoryId: true,
       createdAt: true,
       _count: { select: { supplierProducts: true } },
+      bestOffer: { select: { productId: true } },
     },
   });
   if (prodotti.length !== 2) throw new MergeError('Uno dei due prodotti non esiste.');
@@ -127,9 +128,17 @@ export async function unisciProdotti(
     // La miglior offerta dell'assorbito punta a un'offerta che ora appartiene
     // a un altro prodotto: va tolta prima, o la chiave esterna blocca. Si
     // ricalcola comunque subito dopo.
-    await tx.product
-      .update({ where: { id: assorbito.id }, data: { bestOffer: { delete: true } } })
-      .catch(() => {});
+    //
+    // Si guarda **prima** se c'è, invece di provare a cancellarla e ignorare
+    // l'errore: dentro una transazione un'operazione fallita fa scrivere una
+    // riga di errore a ogni prodotto senza miglior offerta, e cento righe di
+    // errore attese nascondono quella vera.
+    if (assorbito.bestOffer) {
+      await tx.product.update({
+        where: { id: assorbito.id },
+        data: { bestOffer: { delete: true } },
+      });
+    }
 
     await tx.product.delete({ where: { id: assorbito.id } });
   });

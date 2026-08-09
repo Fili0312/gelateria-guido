@@ -17,16 +17,88 @@ import { euro } from '@/features/products/format';
  * Cecconi?».
  */
 
+/**
+ * «Lo trovi a meno da un altro».
+ *
+ * Non blocca e non si mette in mezzo: sta sotto la riga, in una striscia
+ * gialla, e si può zittire per sempre su quel prodotto. Un avviso che
+ * costringe a rispondere per andare avanti viene chiuso senza leggerlo, e a
+ * quel punto non ha informato nessuno.
+ *
+ * Il conto delle confezioni si mostra **prima** di far premere: passare da
+ * 12 a 24 pezzi non è un cambio di prezzo, è un cambio di quantità, e un
+ * cambio di quantità fatto in silenzio si scopre alla consegna.
+ */
+function Avviso({
+  riga,
+  onCambia,
+  onIgnora,
+  inCorso,
+}: {
+  riga: OrdineCorrente['righe'][number];
+  onCambia: (rigaId: string, supplierProductId: string) => void;
+  onIgnora: (rigaId: string) => void;
+  inCorso: boolean;
+}) {
+  const a = riga.avviso;
+  if (!a || !a.meritaAvviso || riga.avvisoIgnorato) return null;
+
+  return (
+    <div className="border-t border-amber-100 bg-amber-50 px-3 py-2">
+      <p className="text-xs leading-5 text-amber-900">
+        Disponibile a <strong>{euro(a.migliore.priceNet)}</strong> da{' '}
+        <strong>{a.migliore.supplierName}</strong>. Risparmieresti{' '}
+        <strong>{euro(a.risparmioPerConfezione)}</strong> a confezione
+        {riga.quantityPacks > 1 && <> ({euro(a.risparmioTotale)} su {riga.quantityPacks})</>}.
+      </p>
+      {!a.cambio.esatto && (
+        <p className="mt-1 text-xs leading-5 text-amber-800">
+          ⚠ Le confezioni non coincidono: {a.cambio.descrizione}.
+        </p>
+      )}
+      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={inCorso}
+          onClick={() => onCambia(riga.id, a.migliore.supplierProductId)}
+          title={`${a.cambio.descrizione} · spesa ${euro(a.cambio.spesaPrima)} → ${euro(a.cambio.spesaDopo)}`}
+          className="min-h-8 cursor-pointer rounded-lg bg-amber-600 px-2.5 text-xs font-semibold text-white transition-colors hover:bg-amber-700 disabled:cursor-wait disabled:opacity-60"
+        >
+          {inCorso ? 'Cambio…' : 'Usa il più conveniente'}
+        </button>
+        <span className="tabellare text-xs text-amber-800">
+          {a.cambio.confezioni} × {a.migliore.packQuantity} pz ·{' '}
+          {euro(a.cambio.spesaPrima)} → {euro(a.cambio.spesaDopo)}
+        </span>
+        <button
+          type="button"
+          onClick={() => onIgnora(riga.id)}
+          className="ml-auto cursor-pointer text-xs text-amber-700 hover:underline"
+        >
+          non avvisarmi più
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Riga({
   riga,
   onCambiaQuantita,
   onRimuovi,
+  onCambiaFornitore,
+  onIgnoraAvviso,
+  inCorso,
 }: {
   riga: OrdineCorrente['righe'][number];
   onCambiaQuantita: (rigaId: string, quantita: number) => void;
   onRimuovi: (rigaId: string) => void;
+  onCambiaFornitore: (rigaId: string, supplierProductId: string) => void;
+  onIgnoraAvviso: (rigaId: string) => void;
+  inCorso: boolean;
 }) {
   return (
+    <>
     <li className="group flex items-center gap-2 py-1.5 pr-1 pl-3">
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm text-neutral-900">{riga.name}</p>
@@ -71,6 +143,13 @@ function Riga({
         {euro(riga.lineTotalNet)}
       </span>
     </li>
+    <Avviso
+      riga={riga}
+      onCambia={onCambiaFornitore}
+      onIgnora={onIgnoraAvviso}
+      inCorso={inCorso}
+    />
+    </>
   );
 }
 
@@ -79,14 +158,19 @@ export function OrderPanel({
   onCambiaQuantita,
   onRimuovi,
   onSvuota,
+  onCambiaFornitore,
+  onIgnoraAvviso,
+  inCorso,
 }: {
   ordine: OrdineCorrente;
   onCambiaQuantita: (rigaId: string, quantita: number) => void;
   onRimuovi: (rigaId: string) => void;
   onSvuota: () => void;
+  onCambiaFornitore: (rigaId: string, supplierProductId: string) => void;
+  onIgnoraAvviso: (rigaId: string) => void;
+  inCorso: boolean;
 }) {
   const t = ordine.totali;
-  const risparmiPersi = ordine.righe.filter((r) => r.migliorAlternativa).length;
 
   return (
     <div className="flex max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
@@ -128,6 +212,9 @@ export function OrderPanel({
                       riga={riga}
                       onCambiaQuantita={onCambiaQuantita}
                       onRimuovi={onRimuovi}
+                      onCambiaFornitore={onCambiaFornitore}
+                      onIgnoraAvviso={onIgnoraAvviso}
+                      inCorso={inCorso}
                     />
                   ))}
               </ul>
@@ -154,12 +241,14 @@ export function OrderPanel({
           </p>
         )}
 
-        {risparmiPersi > 0 && (
+        {/* Il risparmio dell'ordine intero: conta solo ciò che è oltre soglia
+            e non messo a tacere, o sarebbe un totale che nessuno incassa. */}
+        {t.righeConAvviso > 0 && (
           <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-amber-50 px-2 py-1.5 text-xs leading-4 text-amber-900">
             <AppIcon name="warning" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>
-              {risparmiPersi}{' '}
-              {risparmiPersi === 1 ? 'riga costa' : 'righe costano'} più del minimo possibile.
+              Su {t.righeConAvviso} {t.righeConAvviso === 1 ? 'riga' : 'righe'} risparmieresti{' '}
+              <strong>{euro(t.risparmioPotenziale)}</strong> cambiando fornitore.
             </span>
           </p>
         )}

@@ -179,6 +179,30 @@ export function OrderScreen({
     [endpointOrdine, muta],
   );
 
+  const cambiaFornitore = useCallback(
+    (rigaId: string, supplierProductId: string) =>
+      muta(
+        `${endpointOrdine}/lines/${rigaId}/switch-supplier`,
+        { method: 'POST', body: JSON.stringify({ supplierProductId }) },
+        `cambio:${rigaId}`,
+      ),
+    [endpointOrdine, muta],
+  );
+
+  const ignoraAvviso = useCallback(
+    (rigaId: string) =>
+      muta(
+        `${endpointOrdine}/lines/${rigaId}`,
+        { method: 'PATCH', body: JSON.stringify({ ignoraAvviso: true }) },
+        `zittisci:${rigaId}`,
+        (p) => ({
+          ...p,
+          righe: p.righe.map((r) => (r.id === rigaId ? { ...r, avvisoIgnorato: true } : r)),
+        }),
+      ),
+    [endpointOrdine, muta],
+  );
+
   const svuota = useCallback(
     () => muta(endpointOrdine, { method: 'DELETE' }, 'svuota', (p) => ({ ...p, righe: [] })),
     [endpointOrdine, muta],
@@ -312,6 +336,9 @@ export function OrderScreen({
           onCambiaQuantita={cambiaQuantita}
           onRimuovi={rimuovi}
           onSvuota={svuota}
+          onCambiaFornitore={cambiaFornitore}
+          onIgnoraAvviso={ignoraAvviso}
+          inCorso={inVolo.current.size > 0}
         />
       </aside>
 

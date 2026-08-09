@@ -805,10 +805,23 @@ mai rallentare l'aggiunta (si calcola dopo, non prima).
 
 **Completata quando**
 
-- [ ] l'esempio della specifica (€10,50 vs €9,80) produce l'avviso corretto
-- [ ] sotto soglia non compare alcun avviso
-- [ ] lo swap fra 12 e 24 pezzi mantiene i pezzi totali e lo dichiara
-- [ ] si può ignorare l'avviso e completare l'ordine col fornitore più caro
+- [x] l'esempio della specifica (€10,50 vs €9,80) produce l'avviso corretto —
+      0,70 € a confezione, 2,80 € su quattro
+- [x] sotto soglia non compare alcun avviso — e il risparmio dell'ordine non
+      promette quello che non segnala
+- [x] lo swap fra 12 e 24 pezzi mantiene i pezzi totali e lo dichiara — e
+      quando non torna esatto lo dice invece di arrotondare in silenzio
+- [x] si può ignorare l'avviso e completare l'ordine col fornitore più caro
+
+**Fatta il 2026-08-09** (`docs/FASE-13.md`). L'avviso si calcola **a ogni
+lettura dell'ordine** sulle offerte vive, non dallo snapshot della riga: i
+prezzi cambiano, e un avviso vecchio di un mese consiglierebbe un fornitore
+diventato nel frattempo il più caro. Lo snapshot resta a giustificare
+l'ordine dopo, che è il suo mestiere.
+
+Nota onesta: il collaudo sui dati veri prova lo swap su confezioni da un
+pezzo, perché il catalogo non ha ancora una coppia 12-contro-24 con entrambe
+le confezioni dichiarate. Il caso è coperto dal test puro.
 
 ---
 
