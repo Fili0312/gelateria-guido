@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { getCurrentUser } from '@/server/auth';
+import { SETTINGS_KEYS } from '@/features/settings/schema';
 import { settingsRepository } from '@/server/repositories/settings';
 
 export interface SettingsActionState {
@@ -18,14 +19,6 @@ const settingsSchema = z.object({
   staleMonths: z.coerce.number().int().min(1).max(60),
   priceChangePercentage: z.coerce.number().min(0).max(1_000),
 });
-
-const KEYS = {
-  defaultVat: 'ordini.ivaPredefinita',
-  alertPercentage: 'avviso.sogliaPercentuale',
-  alertEuro: 'avviso.sogliaEuro',
-  staleMonths: 'prezzi.mesiPrimaDiConsiderarloFermo',
-  priceChangePercentage: 'import.variazioneDaConfermare',
-} as const;
 
 export async function saveSettings(
   _previousState: SettingsActionState,
@@ -56,11 +49,11 @@ export async function saveSettings(
     };
   }
 
-  const entries = Object.entries(parsed.data) as [keyof typeof KEYS, number][];
+  const entries = Object.entries(parsed.data) as [keyof typeof SETTINGS_KEYS, number][];
 
   try {
     await settingsRepository(user.organizationId).setMany(
-      entries.map(([field, value]) => [KEYS[field], value] as const),
+      entries.map(([field, value]) => [SETTINGS_KEYS[field], value] as const),
     );
   } catch {
     return {

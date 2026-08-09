@@ -9,6 +9,7 @@ import { formatoUnitario } from '@/features/products/format';
 import { getCurrentUser } from '@/server/auth';
 import { withBasePath } from '@/server/base-path';
 import { pricesRepository } from '@/server/repositories/prices';
+import { comparisonRepository } from '@/server/repositories/comparison';
 import { productsRepository } from '@/server/repositories/products';
 
 export const dynamic = 'force-dynamic';
@@ -30,6 +31,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const prodotto = await productsRepository(user.organizationId).get(id);
   if (!prodotto) notFound();
   const storiciPrezzo = await pricesRepository(user.organizationId).forProduct(id);
+  // Il confronto arriva dal dominio, come per l'elenco «Convenienti»: due
+  // calcoli separati potrebbero indicare due «più conveniente» diversi.
+  const confronto = (await comparisonRepository(user.organizationId).perProdotto(id))!;
 
   const daDefinire = prodotto.offersCount - prodotto.comparableOffersCount;
 
@@ -86,7 +90,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             Collega un’offerta
           </Link>
         </div>
-        <ProductOffers offers={prodotto.offers} />
+        <ProductOffers offers={prodotto.offers} confronto={confronto} />
       </section>
 
       <section id="storico-prezzi" className="scroll-mt-6 space-y-3">

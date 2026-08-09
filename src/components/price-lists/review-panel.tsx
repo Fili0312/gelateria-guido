@@ -69,11 +69,19 @@ export function ReviewPanel({
   stato,
   endpointApply,
   endpointRevert,
+  endpointRematch,
+  prodottiACatalogo,
+  righeAgganciate,
 }: {
   anteprima: Anteprima;
   stato: string;
   endpointApply: string;
   endpointRevert: string;
+  endpointRematch: string;
+  /** Quanti prodotti ci sono già in catalogo: serve a spiegare il riabbinamento. */
+  prodottiACatalogo: number;
+  /** Righe che propongono un prodotto **già a catalogo**. */
+  righeAgganciate: number;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -166,6 +174,28 @@ export function ReviewPanel({
         </div>
       )}
 
+      {/* Il caso che rovina il catalogo in silenzio.
+          L'abbinamento avviene al momento dell'import, contro il catalogo di
+          allora. Un listino caricato quando il catalogo era vuoto non ha
+          trovato niente, e applicandolo creerebbe un prodotto nuovo per ogni
+          riga — compresi quelli che un altro fornitore vende già. Nessuno se
+          ne accorgerebbe: l'import riuscirebbe, i numeri tornerebbero, e
+          semplicemente non ci sarebbe mai niente da confrontare. */}
+      {!applicato && prodottiACatalogo > 0 && righeAgganciate === 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm leading-6 text-amber-900">
+            <strong className="font-semibold">
+              Nessuna riga si aggancia a un prodotto già a catalogo
+            </strong>
+            , eppure di prodotti ce ne sono {prodottiACatalogo}. Se questo listino è stato caricato
+            quando il catalogo era più vuoto, gli abbinamenti sono stati cercati contro quello di
+            allora. Ricalcolali prima di applicare: altrimenti i prodotti che un altro fornitore
+            vende già verranno <strong>duplicati invece che affiancati</strong>, e senza
+            affiancamento non c’è niente da confrontare.
+          </p>
+        </div>
+      )}
+
       {r.duplicati > 0 && (
         <p className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm leading-6 text-neutral-600">
           {r.duplicati} {r.duplicati === 1 ? 'riga ripete' : 'righe ripetono'} un codice già
@@ -211,6 +241,21 @@ export function ReviewPanel({
             }
           >
             Applica al catalogo
+          </Button>
+        )}
+        {!applicato && (
+          <Button
+            variant="secondary"
+            disabled={attesa}
+            onClick={() =>
+              chiama(
+                endpointRematch,
+                'Ricalcolare gli abbinamenti di questo listino contro il catalogo di adesso? Le righe già confermate a mano non si toccano.',
+                'Abbinamenti ricalcolati',
+              )
+            }
+          >
+            Ricalcola gli abbinamenti
           </Button>
         )}
         <span className="self-center text-xs text-neutral-500">

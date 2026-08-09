@@ -1,43 +1,19 @@
 import { AppIcon } from '@/components/app-icon';
-import { SettingsForm, type SettingsValues } from '@/components/settings-form';
+import { SettingsForm } from '@/components/settings-form';
 import { Badge } from '@/components/ui';
 import { getCurrentUser } from '@/server/auth';
 import { SESSION_COOKIE_NAME } from '@/server/auth';
+import { SETTINGS_ALL_KEYS, valoriDaRighe } from '@/features/settings/schema';
 import { settingsRepository } from '@/server/repositories/settings';
 
 export const dynamic = 'force-dynamic';
-
-const DEFAULTS: SettingsValues = {
-  defaultVat: 22,
-  alertPercentage: 3,
-  alertEuro: 0.3,
-  staleMonths: 6,
-  priceChangePercentage: 40,
-};
-
-const SETTING_KEYS = new Map<string, keyof SettingsValues>([
-  ['ordini.ivaPredefinita', 'defaultVat'],
-  ['avviso.sogliaPercentuale', 'alertPercentage'],
-  ['avviso.sogliaEuro', 'alertEuro'],
-  ['prezzi.mesiPrimaDiConsiderarloFermo', 'staleMonths'],
-  ['import.variazioneDaConfermare', 'priceChangePercentage'],
-]);
-
-function numericSetting(value: unknown, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-}
 
 export default async function SettingsPage() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const rows = await settingsRepository(user.organizationId).findMany([...SETTING_KEYS.keys()]);
-
-  const values = { ...DEFAULTS };
-  for (const row of rows) {
-    const field = SETTING_KEYS.get(row.key);
-    if (field) values[field] = numericSetting(row.value, DEFAULTS[field]);
-  }
+  const rows = await settingsRepository(user.organizationId).findMany(SETTINGS_ALL_KEYS);
+  const values = valoriDaRighe(rows);
 
   return (
     <div className="space-y-7">

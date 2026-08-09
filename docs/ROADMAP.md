@@ -691,11 +691,31 @@ se fossero attuali. Il "risparmio annuo stimato" richiede lo storico ordini
 
 **Completata quando**
 
-- [ ] per un prodotto con 3 offerte il migliore è corretto anche a confezioni
-      diverse (verifica con il caso 12/24)
-- [ ] la pagina convenienti è ordinata per impatto e filtrabile
-- [ ] i prodotti non confrontabili sono elencati a parte, non fusi coi confronti
-- [ ] il ricalcolo su tutto il catalogo resta sotto qualche secondo
+- [x] per un prodotto con 3 offerte il migliore è corretto anche a confezioni
+      diverse (verifica con il caso 12/24) — vince il collo da 24, che ha il
+      netto più alto di tutti
+- [x] la pagina convenienti è ordinata per impatto e filtrabile
+- [x] i prodotti non confrontabili sono elencati a parte, non fusi coi confronti
+- [x] il ricalcolo su tutto il catalogo resta sotto qualche secondo — 710
+      prodotti in 2,2 s; a dati fermi non scrive e impiega 10 ms
+
+**Fatta il 2026-08-09** (`docs/FASE-11.md`). Due difetti trovati strada
+facendo, entrambi silenziosi:
+
+- **l'annullamento di un import non funzionava** (difetto della Fase 10, in
+  produzione): `product_best_offer` referenzia le offerte create dall'import e
+  la chiave esterna ne bloccava la cancellazione. Non si vedeva con il
+  catalogo vuoto. Corretto e coperto dal collaudo della Fase 10;
+- **l'abbinamento guarda il catalogo del momento dell'import**: un listino
+  caricato quando il catalogo era vuoto, applicato dopo, duplicherebbe i
+  prodotti invece di affiancarli — e non ci sarebbe mai niente da confrontare.
+  Aggiunto `POST /api/price-lists/[id]/rematch` e il pulsante «Ricalcola gli
+  abbinamenti», con avviso quando nessuna riga si aggancia a un prodotto
+  esistente.
+
+In più: il catalogo mostra ora prezzo, prezzo per unità e confezione; le
+soglie dell'avviso e i mesi del «prezzo fermo» erano nel form dalla Fase 1 ma
+nessuno le leggeva, e ora le legge il confronto.
 
 ---
 

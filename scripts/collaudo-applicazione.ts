@@ -59,7 +59,17 @@ async function main() {
   if (listini.length === 0) throw new Error('Servono listini gia estratti.');
   const primo = listini[0]!;
 
-  console.log(`\nStato di partenza: ${conta('product')} prodotti · ${conta('supplier_product')} offerte · ${conta('supplier_product_price')} prezzi`);
+  // I conteggi di partenza non sono zero: la copia arriva da una produzione
+  // che ha gia' un import applicato. I criteri si misurano quindi come
+  // **differenze**, non come totali — altrimenti mostrano rosso su un
+  // comportamento corretto, e un collaudo che segna rosso a torto insegna a
+  // ignorarlo.
+  const partenza = {
+    prodotti: conta('product'),
+    offerte: conta('supplier_product'),
+    prezzi: conta('supplier_product_price'),
+  };
+  console.log(`\nStato di partenza: ${partenza.prodotti} prodotti · ${partenza.offerte} offerte · ${partenza.prezzi} prezzi`);
   const prima = fotografia();
 
   console.log(`\n═══ criterio 1: un import reale arriva ad APPLIED ═══`);
@@ -74,12 +84,15 @@ async function main() {
   console.log(`     creati ${applicato.creati} offerte · ${applicato.prodottiCreati} prodotti · ${applicato.prezziScritti} prezzi`);
 
   console.log('\n═══ criterio 7: i prezzi finiscono nello storico ═══');
-  const prezzi = conta('supplier_product_price');
-  esito(prezzi === applicato.prezziScritti, `${prezzi} righe di storico`);
+  const prezzi = conta('supplier_product_price') - partenza.prezzi;
+  esito(prezzi === applicato.prezziScritti, `${prezzi} righe di storico in piu`);
   const correnti = Number(
     execFileSync('psql', [url!, '-Atc', 'select count(*) from supplier_product where current_price_id is not null'], { encoding: 'utf8' }).trim(),
   );
-  esito(correnti === applicato.creati, `${correnti} offerte con un prezzo corrente`);
+  esito(
+    correnti - partenza.offerte === applicato.creati,
+    `${correnti - partenza.offerte} offerte con un prezzo corrente in piu`,
+  );
 
   console.log('\n═══ criterio 10: applicare due volte non duplica ne altera ═══');
   let bloccato = false;
@@ -89,7 +102,10 @@ async function main() {
     bloccato = true;
   }
   esito(bloccato, 'il secondo tentativo viene rifiutato');
-  esito(conta('supplier_product') === applicato.creati, 'nessuna offerta in piu');
+  esito(
+    conta('supplier_product') - partenza.offerte === applicato.creati,
+    'nessuna offerta in piu del previsto',
+  );
 
   console.log('\n═══ criteri 2, 3: reimportando lo stesso listino, tutto invariato ═══');
   // Si riporta il listino a REVIEW e si rifà l'anteprima: le stesse righe
@@ -178,8 +194,11 @@ async function main() {
   const disattivate = Number(
     execFileSync('psql', [url!, '-Atc', 'select count(*) from supplier_product where active = false'], { encoding: 'utf8' }).trim(),
   );
-  const totali = conta('supplier_product');
-  esito(disattivate === 1 && totali === applicato.creati, `disattivata ma non cancellata (${totali} offerte in tutto)`);
+  const totali = conta('supplier_product') - partenza.offerte;
+  esito(
+    disattivate === 1 && totali === applicato.creati,
+    `disattivata ma non cancellata (${totali} offerte create da questo import)`,
+  );
 
   console.log('\n═══ criterio 9: revert riporta il database allo stato precedente ═══');
   const annullato = await annullaImport(org.id, primo.id);

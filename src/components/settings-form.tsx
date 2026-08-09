@@ -5,13 +5,9 @@ import { saveSettings, type SettingsActionState } from '@/app/(app)/impostazioni
 import { AppIcon } from '@/components/app-icon';
 import { Button, Stepper, useToast } from '@/components/ui';
 
-export interface SettingsValues {
-  defaultVat: number;
-  alertPercentage: number;
-  alertEuro: number;
-  staleMonths: number;
-  priceChangePercentage: number;
-}
+import type { SettingsValues } from '@/features/settings/schema';
+
+export type { SettingsValues };
 
 const INITIAL_STATE: SettingsActionState = { status: 'idle' };
 

@@ -6,6 +6,7 @@ import { ReviewPanel } from '@/components/price-lists/review-panel';
 import { Badge } from '@/components/ui';
 import { getCurrentUser } from '@/server/auth';
 import { withBasePath } from '@/server/base-path';
+import { prismaForOrganization } from '@/server/db';
 import type { PriceListDetail } from '@/features/price-lists/dto';
 import { priceListsRepository } from '@/server/repositories/price-lists';
 import { anteprima } from '@/server/import/apply';
@@ -108,6 +109,21 @@ export default async function PriceListPage({ params }: { params: Promise<{ id: 
   // pagina si mostra lo stesso: il pannello sparisce, le righe restano.
   const revisione = await anteprima(user.organizationId, id).catch(() => null);
 
+  // Quanti prodotti esistono già: serve a capire se questo listino è stato
+  // abbinato contro un catalogo più vuoto di quello di adesso.
+  const db = prismaForOrganization(user.organizationId);
+  const prodottiACatalogo = await db.product.count();
+  // Quante righe propongono un prodotto che esiste già. Zero, con un catalogo
+  // pieno, è il segnale che l'abbinamento è stato fatto contro un catalogo
+  // diverso da quello di adesso. «Prodotti nuovi» non serve a questo: conta i
+  // codici fornitore mai visti, e resta alto anche quando l'aggancio c'è.
+  const righeAgganciate = await db.priceList
+    .findFirst({
+      where: { id },
+      select: { _count: { select: { rows: { where: { productId: { not: null } } } } } },
+    })
+    .then((l) => l?._count.rows ?? 0);
+
   return (
     <div className="space-y-7">
       <header>
@@ -154,6 +170,9 @@ export default async function PriceListPage({ params }: { params: Promise<{ id: 
           stato={listino.status}
           endpointApply={withBasePath(`/api/price-lists/${listino.id}/apply`)}
           endpointRevert={withBasePath(`/api/price-lists/${listino.id}/revert`)}
+          endpointRematch={withBasePath(`/api/price-lists/${listino.id}/rematch`)}
+          prodottiACatalogo={prodottiACatalogo}
+          righeAgganciate={righeAgganciate}
         />
       )}
 

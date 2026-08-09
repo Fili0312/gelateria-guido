@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { ComparisonRow } from '@/features/reports/dto';
 import {
   Badge,
   Table,
@@ -12,8 +13,10 @@ import type { SupplierOffer } from '@/features/products/dto';
 import {
   catenaSconti,
   contenutoConfezione,
+  etichettaBasis,
   euro,
   formatoConfezione,
+  numero,
   prezzoUnitario,
 } from '@/features/products/format';
 
@@ -25,14 +28,62 @@ import {
  * perché il loro prezzo per unità sarebbe calcolato su pezzi inventati. È la
  * stessa regola che applica `confrontaOfferte` nel dominio, qui resa visibile.
  */
-function ordina(offerte: readonly SupplierOffer[]): SupplierOffer[] {
-  const confrontabili = offerte.filter((o) => o.packQuantityConfirmed && o.price);
-  const resto = offerte.filter((o) => !(o.packQuantityConfirmed && o.price));
-  confrontabili.sort((a, b) => Number(a.price!.unitPrice) - Number(b.price!.unitPrice));
-  return [...confrontabili, ...resto];
+/**
+ * La risposta, in una riga, prima della tabella.
+ *
+ * La tabella contiene già tutto, ma «tutto» va letto: chi apre la scheda
+ * vuole sapere dove conviene comprarlo, non ricostruirlo confrontando sette
+ * colonne. Quando invece un confronto non c'è, si dice **perché** — un vuoto
+ * lascerebbe pensare a un errore.
+ */
+function Riepilogo({ confronto }: { confronto: ComparisonRow }) {
+  if (confronto.state !== 'CONFRONTATO') {
+    return (
+      <p className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm leading-6 text-neutral-600">
+        {confronto.reason}
+      </p>
+    );
+  }
+
+  return (
+    <p className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm leading-6 text-green-900">
+      Conviene da <strong>{confronto.best!.supplierName}</strong>: {euro(confronto.best!.priceNet)}{' '}
+      a confezione, cioè{' '}
+      <strong>
+        {`${euro(confronto.best!.unitPrice, 4)}${etichettaBasis(confronto.best!.unitPriceBasis).slice(1)}`}
+      </strong>
+      . Sono <strong>{euro(confronto.savingPerPack!)}</strong> in meno su una confezione rispetto a{' '}
+      {confronto.worst!.supplierName} ({numero(confronto.savingPct!, 1)}%).
+      {confronto.anyStale && ' Attenzione: almeno uno dei prezzi confrontati è fermo da tempo.'}
+    </p>
+  );
 }
 
-export function ProductOffers({ offers }: { offers: SupplierOffer[] }) {
+/**
+ * L'ordine è quello deciso dal dominio, non uno locale.
+ *
+ * Riordinare qui per conto proprio sembrerebbe innocuo — è pur sempre il
+ * prezzo unitario — ma basterebbe una regola diversa su un caso di pareggio o
+ * su un'unità non confrontabile perché questa scheda indicasse come «più
+ * conveniente» un fornitore diverso da quello dell'elenco «Convenienti». Due
+ * schermate in disaccordo, e nessuna delle due sbagliata a guardarla da sola.
+ */
+function ordina(offerte: readonly SupplierOffer[], classifica: readonly string[]): SupplierOffer[] {
+  const posizione = new Map(classifica.map((id, indice) => [id, indice]));
+  const confrontate = offerte
+    .filter((o) => posizione.has(o.id))
+    .sort((a, b) => posizione.get(a.id)! - posizione.get(b.id)!);
+  const escluse = offerte.filter((o) => !posizione.has(o.id));
+  return [...confrontate, ...escluse];
+}
+
+export function ProductOffers({
+  offers,
+  confronto,
+}: {
+  offers: SupplierOffer[];
+  confronto: ComparisonRow;
+}) {
   if (offers.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-neutral-300 bg-white px-4 py-8 text-center text-sm text-neutral-500">
@@ -42,12 +93,13 @@ export function ProductOffers({ offers }: { offers: SupplierOffer[] }) {
     );
   }
 
-  const ordinate = ordina(offers);
-  const migliore = ordinate.find((o) => o.packQuantityConfirmed && o.price);
-  const confrontabili = ordinate.filter((o) => o.packQuantityConfirmed && o.price).length;
+  const ordinate = ordina(offers, confronto.rankedOfferIds);
+  const idMigliore = confronto.best?.supplierProductId;
+  const confrontabili = confronto.offersCompared;
 
   return (
     <div className="space-y-3">
+      <Riepilogo confronto={confronto} />
       <Table>
         <TableHeader>
           <TableRow>
@@ -62,7 +114,7 @@ export function ProductOffers({ offers }: { offers: SupplierOffer[] }) {
         </TableHeader>
         <TableBody>
           {ordinate.map((offerta) => {
-            const eMigliore = migliore?.id === offerta.id && confrontabili > 1;
+            const eMigliore = idMigliore === offerta.id && confrontabili > 1;
             return (
               <TableRow key={offerta.id}>
                 <TableCell>
@@ -125,11 +177,11 @@ export function ProductOffers({ offers }: { offers: SupplierOffer[] }) {
         </TableBody>
       </Table>
 
-      {confrontabili < offers.length && (
-        <p className="text-xs text-neutral-500">
-          {offers.length - confrontabili} offerte non entrano nel confronto: manca il numero di
-          pezzi per confezione, oppure il prezzo. Un prezzo per unità calcolato su una confezione
-          ignota sarebbe indistinguibile da uno vero.
+      {confronto.excluded.length > 0 && (
+        <p className="text-xs leading-5 text-neutral-500">
+          Fuori dal confronto:{' '}
+          {confronto.excluded.map((e) => `${e.supplierName} (${e.reason})`).join(' · ')}. Un prezzo
+          per unità calcolato su una confezione ignota sarebbe indistinguibile da uno vero.
         </p>
       )}
     </div>

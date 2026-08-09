@@ -507,6 +507,22 @@ export async function annullaImport(
 
     for (const offerta of create) {
       if (offerta._count.prices > 0) continue;
+
+      // La miglior offerta punta a questa riga: va tolta **prima**, o la
+      // chiave esterna blocca la cancellazione e l'annullamento fallisce a
+      // metà. Si ricalcola comunque in fondo a questa funzione, quindi non si
+      // sta buttando via niente che non venga riscritto.
+      //
+      // Non si vedeva finché non c'era un import applicato per davvero: con il
+      // catalogo vuoto nessuna miglior offerta puntava a nulla.
+      if (offerta.productId) {
+        await tx.product
+          .update({ where: { id: offerta.productId }, data: { bestOffer: { delete: true } } })
+          .catch(() => {
+            // Non ce n'era una: va bene così.
+          });
+      }
+
       await tx.supplierProduct.delete({ where: { id: offerta.id } });
       esito.offerteRimosse += 1;
 
