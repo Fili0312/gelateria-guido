@@ -123,8 +123,8 @@ async function main() {
     `il risparmio su una confezione è 2,00 € — calcolato: ${conTre?.savingPerPack}`,
   );
   esito(
-    conTre!.rankedOfferIds.length >= 3,
-    `la classifica contiene tutte e tre le offerte (${conTre!.rankedOfferIds.length})`,
+    conTre!.ranked.length >= 3,
+    `la classifica contiene tutte e tre le offerte (${conTre!.ranked.length})`,
   );
 
   console.log('\n── Criterio 2: ordinamento per impatto e filtri ─────────────────\n');

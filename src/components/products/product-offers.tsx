@@ -93,7 +93,7 @@ export function ProductOffers({
     );
   }
 
-  const ordinate = ordina(offers, confronto.rankedOfferIds);
+  const ordinate = ordina(offers, confronto.ranked.map((o) => o.supplierProductId));
   const idMigliore = confronto.best?.supplierProductId;
   const confrontabili = confronto.offersCompared;
 

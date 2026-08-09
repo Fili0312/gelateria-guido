@@ -755,11 +755,23 @@ deve essere ordinabile (o va segnalato chiaramente).
 
 **Completata quando**
 
-- [ ] da ricerca ad "aggiunto all'ordine" servono ≤2 interazioni
-- [ ] l'ordine sopravvive a refresh, chiusura e cambio dispositivo
-- [ ] i totali della barra sono sempre coerenti con le righe
-- [ ] tutto è utilizzabile con la sola tastiera
-- [ ] provata su tablet: nessun bersaglio troppo piccolo
+- [x] da ricerca ad "aggiunto all'ordine" servono ≤2 interazioni — scrivere,
+      Invio
+- [x] l'ordine sopravvive a refresh, chiusura e cambio dispositivo
+- [x] i totali della barra sono sempre coerenti con le righe — verificato al
+      centesimo, nel browser e nel database
+- [x] tutto è utilizzabile con la sola tastiera — ↑↓, Invio, Tab
+- [x] provata su tablet: nessun bersaglio troppo piccolo — tutti ≥ 44×44
+
+**Fatta il 2026-08-09** (`docs/FASE-12.md`). Un difetto grave trovato dal
+collaudo: **dieci aggiunte simultanee ne perdevano nove**, abortite a vicenda
+dall'isolamento serializzabile e nascoste da un `catch`. Corretto prendendo il
+lock sulla riga dell'ordine e passando a `read committed` — e scoprendo che
+`update({ data: {} })` non prende nessun lock, perché Prisma non emette
+nessuna `UPDATE` quando non c'è niente da aggiornare.
+
+Restano fuori: i filtri rapidi «per categoria» e «già ordinati di recente»
+(il secondo richiede la Fase 15) e la griglia con le foto, che non ci sono.
 
 ---
 

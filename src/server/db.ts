@@ -73,28 +73,50 @@ function prismaErrorCode(error: unknown): string | undefined {
 }
 
 /**
- * Esegue una scrittura atomica mantenendo lo scope dell'organizzazione.
+ * Il livello di isolamento di una scrittura.
  *
- * `Serializable` serve per gli intervalli temporali: due prezzi inseriti in
- * contemporanea devono entrambi rileggere lo storico dopo l'altro, non
- * chiudere la stessa riga producendo due periodi aperti. PostgreSQL ne aborta
- * uno con P2034; il retry rilegge la nuova catena e la ricostruisce.
+ * `serializable` serve quando la correttezza dipende da **cosa altri stanno
+ * facendo altrove**: gli intervalli temporali dei prezzi, per esempio, dove
+ * due inserimenti simultanei devono entrambi rileggere lo storico dopo
+ * l'altro invece di chiudere la stessa riga producendo due periodi aperti.
+ * PostgreSQL ne aborta uno con P2034 e il retry ricostruisce.
+ *
+ * `riga-bloccata` serve quando la correttezza dipende da **una riga sola** e
+ * quella riga viene aggiornata per prima: chi arriva dopo aspetta il lock,
+ * e quando entra vede tutto ciò che il precedente ha scritto. È il caso
+ * dell'ordine, dove ogni modifica passa da `order` prima di toccare le righe.
+ *
+ * La distinzione conta: a isolamento serializzabile dieci aggiunte
+ * simultanee allo stesso ordine si abortiscono a vicenda, e con un numero
+ * finito di tentativi qualcuna **si perde in silenzio**. Con il lock si
+ * mettono semplicemente in fila.
+ */
+export type Isolamento = 'serializable' | 'riga-bloccata';
+
+/**
+ * Esegue una scrittura atomica mantenendo lo scope dell'organizzazione.
  */
 export async function transactionForOrganization<T>(
   organizationId: string,
   operation: (tx: OrganizationPrismaClient) => Promise<T>,
-  maxAttempts = 3,
+  opzioni: { maxAttempts?: number; isolamento?: Isolamento } = {},
 ): Promise<T> {
+  const { maxAttempts = 3, isolamento = 'serializable' } = opzioni;
   if (!Number.isInteger(maxAttempts) || maxAttempts < 1) {
     throw new Error('maxAttempts deve essere almeno 1.');
   }
+
+  const isolationLevel =
+    isolamento === 'serializable'
+      ? Prisma.TransactionIsolationLevel.Serializable
+      : Prisma.TransactionIsolationLevel.ReadCommitted;
 
   const db = createOrganizationPrismaClient(organizationId);
   for (let attempt = 1; ; attempt++) {
     try {
       return await db.$transaction(
         async (tx) => operation(tx as unknown as OrganizationPrismaClient),
-        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        { isolationLevel },
       );
     } catch (error) {
       if (prismaErrorCode(error) !== 'P2034' || attempt >= maxAttempts) throw error;

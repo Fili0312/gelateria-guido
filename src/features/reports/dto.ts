@@ -14,6 +14,9 @@ export interface ComparedOffer {
   supplierId: string;
   supplierName: string;
   supplierCode: string | null;
+  /** La descrizione **come la scrive il fornitore**: è quella che finisce
+   *  sull'ordine, perché è quella che lui riconosce. */
+  rawName: string;
   priceNet: string;
   unitPrice: string;
   unitPriceBasis: PriceBasisValue;
@@ -23,6 +26,8 @@ export interface ComparedOffer {
   unitOfMeasure: UnitOfMeasureValue;
   contentPerPack: string;
   baseUnit: BaseUnitValue;
+  /** Aliquota IVA dichiarata dal listino, quando c'è. */
+  vatRate: string | null;
   /** Il prezzo non si aggiorna da più dei mesi impostati. */
   stale: boolean;
   validFrom: string;
@@ -50,11 +55,16 @@ export interface ComparisonRow {
   worst: ComparedOffer | null;
   offersCompared: number;
   /**
-   * Gli id delle offerte confrontate, dalla più conveniente alla meno.
-   * Serve alla scheda prodotto per elencarle nell'ordine deciso dal dominio
-   * invece di riordinarle per conto suo.
+   * Le offerte confrontate per intero, dalla più conveniente alla meno.
+   *
+   * Non solo gli id, e non solo i due estremi: la schermata ordine deve poter
+   * proporre anche il secondo fornitore su tre, che è una scelta legittima, e
+   * la scheda prodotto deve elencarle nell'ordine deciso dal dominio invece
+   * di riordinarle per conto suo.
+   *
+   * `best` e `worst` sono il primo e l'ultimo di questa lista.
    */
-  rankedOfferIds: string[];
+  ranked: ComparedOffer[];
   excluded: ExcludedOffer[];
   /** Differenza di prezzo per unità base. */
   unitDifference: string | null;

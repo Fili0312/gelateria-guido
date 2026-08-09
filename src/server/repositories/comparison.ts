@@ -44,6 +44,8 @@ const OFFERTE_SELECT = {
   id: true,
   supplierId: true,
   supplierCode: true,
+  rawName: true,
+  vatRate: true,
   packQuantity: true,
   packQuantityConfirmed: true,
   packagingType: true,
@@ -67,6 +69,8 @@ type OffertaRecord = {
   id: string;
   supplierId: string;
   supplierCode: string | null;
+  rawName: string;
+  vatRate: { toString(): string } | null;
   packQuantity: number;
   packQuantityConfirmed: boolean;
   packagingType: string | null;
@@ -90,6 +94,7 @@ function mapOfferta(o: OffertaRecord, fermo: boolean): ComparedOffer {
     supplierId: o.supplierId,
     supplierName: o.supplier.name,
     supplierCode: o.supplierCode,
+    rawName: o.rawName,
     priceNet: o.currentPrice!.priceNet.toString(),
     unitPrice: o.currentPrice!.unitPrice.toString(),
     unitPriceBasis: o.currentPrice!.unitPriceBasis as ComparedOffer['unitPriceBasis'],
@@ -99,6 +104,7 @@ function mapOfferta(o: OffertaRecord, fermo: boolean): ComparedOffer {
     unitOfMeasure: o.unitOfMeasure as ComparedOffer['unitOfMeasure'],
     contentPerPack: o.contentPerPack.toString(),
     baseUnit: o.baseUnit as ComparedOffer['baseUnit'],
+    vatRate: o.vatRate?.toString() ?? null,
     stale: fermo,
     validFrom: o.currentPrice!.validFrom.toISOString(),
   };
@@ -169,7 +175,7 @@ function costruisciRiga(
     best: esito.migliore ? mapOfferta(perId.get(esito.migliore.id)!, esito.migliore.fermo) : null,
     worst: esito.piuCara ? mapOfferta(perId.get(esito.piuCara.id)!, esito.piuCara.fermo) : null,
     offersCompared: esito.classifica.length,
-    rankedOfferIds: esito.classifica.map((r) => r.id),
+    ranked: esito.classifica.map((r) => mapOfferta(perId.get(r.id)!, r.fermo)),
     excluded: escluse,
     unitDifference: esito.differenzaUnitaria?.toString() ?? null,
     savingPerPack: esito.risparmioPerConfezione?.toString() ?? null,
@@ -195,6 +201,25 @@ export function comparisonRepository(organizationId: string) {
   }
 
   return {
+    /**
+     * Il confronto di più prodotti in una query sola.
+     *
+     * La schermata ordine ne interroga venti a ogni tasto premuto: una query
+     * per prodotto sarebbe venti andate e ritorni per battuta, e la ricerca
+     * smetterebbe di sembrare istantanea proprio mentre si digita.
+     */
+    async perProdotti(productIds: readonly string[]): Promise<Map<string, ComparisonRow>> {
+      if (productIds.length === 0) return new Map();
+      const { opzioni, soglie } = await contesto();
+      const prodotti = (await db.product.findMany({
+        where: { id: { in: [...productIds] } },
+        select: PRODOTTO_SELECT,
+      })) as unknown as ProdottoRecord[];
+      return new Map(
+        prodotti.map((p) => [p.id, costruisciRiga(p, opzioni, soglie)] as const),
+      );
+    },
+
     /** Il confronto di un prodotto solo, con la stessa regola del report. */
     async perProdotto(productId: string): Promise<ComparisonRow | null> {
       const { opzioni, soglie } = await contesto();
