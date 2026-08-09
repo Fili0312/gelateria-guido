@@ -51,20 +51,15 @@ export default async function SuppliersPage({
         </Link>
       </header>
 
-      <section aria-label="Riepilogo fornitori" className="grid gap-3 sm:grid-cols-3">
-        <article className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold tracking-wide text-neutral-500 uppercase">Totali</p>
-          <p className="tabellare mt-1 text-2xl font-black text-neutral-950">{result.total}</p>
-        </article>
-        <article className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold tracking-wide text-neutral-500 uppercase">Attivi</p>
-          <p className="tabellare mt-1 text-2xl font-black text-emerald-700">{result.active}</p>
-        </article>
-        <article className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold tracking-wide text-neutral-500 uppercase">Inattivi</p>
-          <p className="tabellare mt-1 text-2xl font-black text-neutral-600">{result.inactive}</p>
-        </article>
-      </section>
+      {/* Tre riquadri per tre numeri erano tre volte lo spazio di una riga
+          che li dice tutti, e nessuno dei tre faceva decidere niente. */}
+      <p className="text-sm text-neutral-600">
+        <strong className="text-neutral-950">{result.total}</strong>{' '}
+        {result.total === 1 ? 'fornitore' : 'fornitori'}
+        {result.inactive > 0 && (
+          <> · {result.active} attivi · <span className="text-neutral-500">{result.inactive} non più usati</span></>
+        )}
+      </p>
 
       <form
         method="get"

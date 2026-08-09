@@ -1,22 +1,208 @@
+'use client';
+
 import Link from 'next/link';
-import {
-  Badge,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { AppIcon } from '@/components/app-icon';
+import { CategoryBadge } from '@/components/taxonomy/category-badge';
+import { useToast } from '@/components/ui';
 import type { ProductListItem } from '@/features/products/dto';
 import {
   confezioneDelPrezzo,
+  etichettaBasis,
   euro,
   formatoUnitario,
   numero,
-  prezzoUnitarioDiCatalogo,
 } from '@/features/products/format';
-import { CategoryBadge } from '@/components/taxonomy/category-badge';
+
+/**
+ * Il catalogo: una riga per prodotto, densa.
+ *
+ * Prima era una scheda alta ottanta pixel: su trecento prodotti significava
+ * vederne sei per schermata e scorrere all'infinito. Ora tutto quello che
+ * serve a riconoscere un prodotto sta su due righe di testo, e le azioni sono
+ * tre icone a destra sempre nello stesso posto — la mano impara dove sono e
+ * smette di cercarle.
+ *
+ * Cosa deve dire una riga, in ordine di importanza: **cos'è**, **quanto
+ * costa**, **a cosa si riferisce quel prezzo**. La confezione sta accanto al
+ * prezzo perché «4,72 €» letto come bottiglia quando è un collo da 24 sbaglia
+ * di ventiquattro volte.
+ */
+
+function Azione({
+  href,
+  onClick,
+  icona,
+  titolo,
+  pericolo = false,
+}: {
+  href?: string;
+  onClick?: () => void;
+  icona: 'arrow-right' | 'edit' | 'trash';
+  titolo: string;
+  pericolo?: boolean;
+}) {
+  const classi = `grid h-9 w-9 place-items-center rounded-lg transition-colors ${
+    pericolo
+      ? 'text-neutral-400 hover:bg-red-50 hover:text-red-600'
+      : 'text-neutral-400 hover:bg-neutral-100 hover:text-neutral-800'
+  }`;
+
+  const contenuto = <AppIcon name={icona} className="h-4 w-4" />;
+
+  return href ? (
+    <Link href={href} title={titolo} aria-label={titolo} className={`cursor-pointer ${classi}`}>
+      {contenuto}
+    </Link>
+  ) : (
+    <button
+      type="button"
+      onClick={onClick}
+      title={titolo}
+      aria-label={titolo}
+      className={`cursor-pointer ${classi}`}
+    >
+      {contenuto}
+    </button>
+  );
+}
+
+/** Il prezzo e la confezione, su una riga sola. */
+function Prezzo({ prodotto }: { prodotto: ProductListItem }) {
+  const p = prodotto.price;
+  if (!p) {
+    return <span className="text-xs text-neutral-400">senza prezzo</span>;
+  }
+
+  return (
+    <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+      <span className="tabellare text-sm font-bold text-neutral-950">{euro(p.priceNet)}</span>
+      {p.unitPrice && p.unitPriceBasis ? (
+        <span className="tabellare text-xs text-neutral-400">
+          {`${euro(p.unitPrice, 4)}${etichettaBasis(p.unitPriceBasis).slice(1)}`}
+        </span>
+      ) : (
+        <span
+          className="text-xs text-amber-700"
+          title="Senza i pezzi per confezione il prezzo per unità sarebbe inventato"
+        >
+          confezione da definire
+        </span>
+      )}
+      <span className="text-xs text-neutral-500">{confezioneDelPrezzo(p)}</span>
+      <span className="text-xs text-neutral-400">{p.supplierName}</span>
+      {p.compared && p.savingPct && Number(p.savingPct) > 0 && (
+        <span
+          className="rounded bg-green-100 px-1.5 py-0.5 text-[11px] font-semibold text-green-800"
+          title={`Il più conveniente fra ${p.offersWithPrice}: costa il ${numero(p.savingPct, 1)}% in meno del più caro`}
+        >
+          −{numero(p.savingPct, 1)}%
+        </span>
+      )}
+    </span>
+  );
+}
+
+function Riga({ prodotto, endpoint }: { prodotto: ProductListItem; endpoint: string }) {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [attesa, setAttesa] = useState(false);
+
+  async function elimina() {
+    if (
+      !confirm(
+        `Eliminare «${prodotto.name}»?\n\n` +
+          (prodotto.offersCount > 0
+            ? `Ci sono ${prodotto.offersCount} offerte collegate: resteranno senza prodotto e andranno riabbinate.`
+            : 'Non ha offerte collegate.'),
+      )
+    ) {
+      return;
+    }
+    setAttesa(true);
+    try {
+      const risposta = await fetch(`${endpoint}/${prodotto.id}`, {
+        method: 'DELETE',
+        headers: { Accept: 'application/json' },
+      });
+      const corpo = (await risposta.json().catch(() => null)) as
+        | { ok: boolean; error?: string }
+        | null;
+      if (!risposta.ok || !corpo?.ok) {
+        toast({ title: 'Non è stato possibile eliminare', description: corpo?.error, tone: 'error' });
+        return;
+      }
+      toast({ title: 'Prodotto eliminato', tone: 'success' });
+      router.refresh();
+    } catch {
+      toast({ title: 'Server non raggiungibile', tone: 'error' });
+    } finally {
+      setAttesa(false);
+    }
+  }
+
+  const incomplete = prodotto.offersCount - prodotto.comparableOffersCount;
+
+  return (
+    <li className="group flex items-center gap-3 px-3 py-2 transition-colors hover:bg-neutral-50">
+      <div className="min-w-0 flex-1">
+        <p className="flex flex-wrap items-baseline gap-x-2">
+          <Link
+            href={`/prodotti/${prodotto.id}`}
+            className="focus-visible:ring-brand-600 cursor-pointer truncate text-sm font-semibold text-neutral-950 hover:underline focus-visible:ring-2 focus-visible:outline-none"
+          >
+            {prodotto.name}
+          </Link>
+          <span className="text-xs text-neutral-500">
+            {formatoUnitario(prodotto.unitSize, prodotto.unitOfMeasure)}
+          </span>
+          {prodotto.brand && <span className="text-xs text-neutral-400">{prodotto.brand}</span>}
+          <CategoryBadge categoria={prodotto.category} />
+        </p>
+        <p className="mt-0.5">
+          <Prezzo prodotto={prodotto} />
+        </p>
+      </div>
+
+      <span className="hidden w-24 shrink-0 text-right text-xs text-neutral-500 sm:block">
+        {prodotto.offersCount === 0 ? (
+          <span className="text-neutral-400">nessuna offerta</span>
+        ) : (
+          <>
+            {prodotto.offersCount} {prodotto.offersCount === 1 ? 'offerta' : 'offerte'}
+            {incomplete > 0 && (
+              <span
+                className="block text-amber-600"
+                title="Confezione non dichiarata: non entrano nel confronto"
+              >
+                {incomplete} da definire
+              </span>
+            )}
+          </>
+        )}
+      </span>
+
+      {/* Le azioni restano sempre nello stesso posto, anche quando non sono
+          evidenziate: farle comparire solo al passaggio del mouse le rende
+          invisibili su tablet, dove il mouse non c'è. */}
+      <span className="flex shrink-0 items-center gap-0.5">
+        <Azione href={`/prodotti/${prodotto.id}`} icona="arrow-right" titolo={`Apri ${prodotto.name}`} />
+        <Azione
+          href={`/prodotti/${prodotto.id}/modifica`}
+          icona="edit"
+          titolo={`Modifica ${prodotto.name}`}
+        />
+        <Azione
+          onClick={attesa ? undefined : elimina}
+          icona="trash"
+          titolo={`Elimina ${prodotto.name}`}
+          pericolo
+        />
+      </span>
+    </li>
+  );
+}
 
 function Vuoto({ conFiltri }: { conFiltri: boolean }) {
   return (
@@ -27,12 +213,12 @@ function Vuoto({ conFiltri }: { conFiltri: boolean }) {
       <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-neutral-500">
         {conFiltri
           ? 'Prova a cambiare ricerca, categoria o stato.'
-          : 'Il catalogo raccoglie i prodotti «canonici»: un articolo con il suo formato, ' +
-            'a cui si collegano le offerte dei diversi fornitori. È quello che rende possibile confrontare i prezzi.'}
+          : 'Il catalogo raccoglie i prodotti «canonici»: un articolo col suo formato, a cui si ' +
+            'collegano le offerte dei diversi fornitori. È quello che rende possibile confrontare i prezzi.'}
       </p>
       <Link
         href={conFiltri ? '/prodotti' : '/prodotti/nuovo'}
-        className="bg-brand-600 hover:bg-brand-700 focus-visible:ring-brand-600 mt-5 inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+        className="bg-brand-600 hover:bg-brand-700 focus-visible:ring-brand-600 mt-5 inline-flex min-h-11 cursor-pointer items-center rounded-lg px-4 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
       >
         {conFiltri ? 'Azzera i filtri' : 'Nuovo prodotto'}
       </Link>
@@ -40,176 +226,25 @@ function Vuoto({ conFiltri }: { conFiltri: boolean }) {
   );
 }
 
-/**
- * Il numero di offerte è affiancato da quante sono confrontabili. Le due cifre
- * coincidono quasi sempre; quando non coincidono, la differenza è esattamente
- * ciò che impedisce un confronto di prezzo — e va vista subito, non scoperta
- * dopo in una schermata che dice «—».
- */
-function Offerte({ prodotto }: { prodotto: ProductListItem }) {
-  if (prodotto.offersCount === 0) {
-    return <Badge variant="neutral">nessuna offerta</Badge>;
-  }
-  const incomplete = prodotto.offersCount - prodotto.comparableOffersCount;
-  return (
-    <span className="inline-flex items-center gap-2">
-      <span className="font-semibold text-neutral-900">{prodotto.offersCount}</span>
-      {incomplete > 0 && (
-        <Badge
-          variant="warning"
-          title="Confezione non dichiarata: il prezzo per unità non è calcolabile"
-        >
-          {incomplete} da definire
-        </Badge>
-      )}
-    </span>
-  );
-}
-
-/**
- * Il prezzo, e subito sotto **a cosa si riferisce**.
- *
- * Le tre righe non sono ridondanti: il netto è quello che si paga, il prezzo
- * unitario è quello che si confronta, e la confezione è ciò che rende il primo
- * leggibile. Toglierne una lascia un numero che sembra chiaro e non lo è.
- */
-function Prezzo({ prodotto }: { prodotto: ProductListItem }) {
-  const p = prodotto.price;
-  if (!p) {
-    return (
-      <span className="text-sm text-neutral-400" title="Nessuna offerta attiva ha un prezzo">
-        —
-      </span>
-    );
-  }
-
-  const unitario = prezzoUnitarioDiCatalogo(p);
-  // Solo elementi in linea: su telefono questo blocco sta dentro il `<a>`
-  // della scheda, e un `<div>` dentro uno `<span>` è annidamento non valido —
-  // il genere di errore che si manifesta solo in idratazione, a pagina viva.
-  return (
-    <span className="block min-w-40">
-      <span className="flex items-baseline gap-2">
-        <span className="tabellare font-semibold text-neutral-950">{euro(p.priceNet)}</span>
-        {p.compared && p.savingPct && Number(p.savingPct) > 0 && (
-          <Badge
-            variant="success"
-            title={`Costa il ${numero(p.savingPct, 1)}% in meno dell’offerta più cara`}
-          >
-            {`−${numero(p.savingPct, 1)}%`}
-          </Badge>
-        )}
-      </span>
-      <span className="tabellare mt-0.5 block text-xs text-neutral-600">
-        {unitario ?? (
-          <span
-            className="text-amber-700"
-            title="Senza i pezzi per confezione il prezzo per litro sarebbe calcolato su un numero inventato"
-          >
-            confezione da definire
-          </span>
-        )}
-      </span>
-      <span className="mt-1 block text-xs text-neutral-500">
-        {`${confezioneDelPrezzo(p)} · ${p.supplierName}`}
-      </span>
-      {p.offersWithPrice > 1 && (
-        <span className="mt-0.5 block text-xs text-neutral-400">
-          {p.compared
-            ? `il più conveniente fra ${p.offersWithPrice}`
-            : `${p.offersWithPrice} offerte, non confrontabili`}
-        </span>
-      )}
-    </span>
-  );
-}
-
 export function ProductList({
   items,
   conFiltri,
+  endpoint,
 }: {
   items: ProductListItem[];
   conFiltri: boolean;
+  endpoint: string;
 }) {
   if (items.length === 0) return <Vuoto conFiltri={conFiltri} />;
 
   return (
-    <>
-      {/* Su schermo stretto la tabella diventa un elenco di schede: la
-          decisione D12 mette il telefono fra i dispositivi previsti. */}
-      <ul className="space-y-3 md:hidden" aria-label="Elenco prodotti">
-        {items.map((prodotto) => (
-          <li key={prodotto.id}>
-            <Link
-              href={`/prodotti/${prodotto.id}`}
-              className="focus-visible:ring-brand-600 block rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm focus-visible:ring-2 focus-visible:outline-none"
-            >
-              <span className="block font-semibold text-neutral-950">{prodotto.name}</span>
-              <span className="mt-1 block text-sm text-neutral-500">
-                {formatoUnitario(prodotto.unitSize, prodotto.unitOfMeasure)}
-              </span>
-              <span className="mt-2 block">
-                <CategoryBadge categoria={prodotto.category} />
-              </span>
-              <span className="mt-3 block border-t border-neutral-100 pt-3">
-                <Prezzo prodotto={prodotto} />
-              </span>
-              <span className="mt-3 flex items-center gap-2 text-sm">
-                <Offerte prodotto={prodotto} />
-                <span className="text-neutral-400">offerte</span>
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-
-      <div className="hidden md:block">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Prodotto</TableHead>
-              <TableHead>Formato</TableHead>
-              <TableHead>Categoria</TableHead>
-              <TableHead>Prezzo e confezione</TableHead>
-              <TableHead>Offerte</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((prodotto) => (
-              <TableRow key={prodotto.id}>
-                <TableCell>
-                  <Link
-                    href={`/prodotti/${prodotto.id}`}
-                    className="focus-visible:ring-brand-600 font-semibold text-neutral-950 hover:underline focus-visible:ring-2 focus-visible:outline-none"
-                  >
-                    {prodotto.name}
-                  </Link>
-                  {prodotto.createdBy === 'AI' && (
-                    <Badge variant="neutral" className="ml-2">
-                      creato dall’IA
-                    </Badge>
-                  )}
-                  {prodotto.brand && (
-                    <span className="mt-0.5 block text-xs text-neutral-500">{prodotto.brand}</span>
-                  )}
-                </TableCell>
-                <TableCell className="tabellare">
-                  {formatoUnitario(prodotto.unitSize, prodotto.unitOfMeasure)}
-                </TableCell>
-                <TableCell>
-                  <CategoryBadge categoria={prodotto.category} />
-                </TableCell>
-                <TableCell>
-                  <Prezzo prodotto={prodotto} />
-                </TableCell>
-                <TableCell>
-                  <Offerte prodotto={prodotto} />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    </>
+    <ul
+      className="divide-y divide-neutral-100 overflow-hidden rounded-2xl border border-neutral-200 bg-white"
+      aria-label="Elenco prodotti"
+    >
+      {items.map((prodotto) => (
+        <Riga key={prodotto.id} prodotto={prodotto} endpoint={endpoint} />
+      ))}
+    </ul>
   );
 }

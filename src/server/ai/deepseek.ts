@@ -82,6 +82,19 @@ export function creaDeepSeek(): ProviderAi {
         const testo = corpo.choices?.[0]?.message?.content;
         if (typeof testo !== 'string') throw new AiError('Il modello non ha restituito testo.');
 
+        // Risposta vuota avendo speso tutto il tetto: il modello ha ragionato
+        // fino a esaurire i token e non è arrivato a scrivere niente. Va detto
+        // così com'è, perché l'errore che ne usciva a valle — «la risposta non
+        // contiene JSON» — manda a cercare un difetto nel formato quando il
+        // problema è la dimensione della richiesta.
+        if (testo.trim() === '') {
+          const usati = corpo.usage?.completion_tokens ?? 0;
+          throw new AiError(
+            `Il modello non ha risposto: ha esaurito i ${usati} token disponibili ragionando. ` +
+              'Riduci quanti elementi si mandano in una volta, oppure alza il tetto.',
+          );
+        }
+
         const tokenIngresso = corpo.usage?.prompt_tokens ?? 0;
         const tokenUscita = corpo.usage?.completion_tokens ?? 0;
 

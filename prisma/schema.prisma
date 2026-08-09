@@ -193,6 +193,10 @@ enum AiPurpose {
   EXTRACT_ROWS
   MATCH_PRODUCT
   ANOMALY
+  /// Classificazione di un prodotto in reparto e categoria.
+  CLASSIFY
+  /// Lettura di un report: il modello commenta numeri già calcolati.
+  ANALYZE
 }
 
 // ═══════════════════════════════════════════════════════════════════════

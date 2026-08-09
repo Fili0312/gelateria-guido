@@ -1,37 +1,15 @@
 import Link from 'next/link';
+import { AiReading } from '@/components/comparison/ai-reading';
 import { ComparisonTable, NoComparisonTable } from '@/components/comparison/comparison-table';
 import { Badge, Input, Select } from '@/components/ui';
 import { euro, numero } from '@/features/products/format';
 import type { ComparisonSort } from '@/features/reports/dto';
 import { getCurrentUser } from '@/server/auth';
+import { withBasePath } from '@/server/base-path';
 import { comparisonRepository } from '@/server/repositories/comparison';
 import { taxonomyRepository } from '@/server/repositories/taxonomy';
 
 export const dynamic = 'force-dynamic';
-
-function Riquadro({
-  etichetta,
-  valore,
-  nota,
-  tono = 'neutro',
-}: {
-  etichetta: string;
-  valore: string;
-  nota?: string;
-  tono?: 'neutro' | 'buono';
-}) {
-  return (
-    <div
-      className={`rounded-xl border px-4 py-3 ${
-        tono === 'buono' ? 'border-green-200 bg-green-50' : 'border-neutral-200 bg-white'
-      }`}
-    >
-      <dt className="text-xs text-neutral-600">{etichetta}</dt>
-      <dd className="tabellare mt-1 text-2xl font-black text-neutral-950">{valore}</dd>
-      {nota && <p className="mt-1 text-xs leading-4 text-neutral-500">{nota}</p>}
-    </div>
-  );
-}
 
 const ORDINI: ComparisonSort[] = ['saving-desc', 'saving-pct-desc', 'name-asc'];
 
@@ -85,43 +63,42 @@ export default async function ConvenientiPage({
         </h1>
         <p className="mt-2 max-w-2xl leading-6 text-neutral-500">
           Dove conviene comprare, prodotto per prodotto. Il confronto è sul{' '}
-          <strong>prezzo per litro o per chilo</strong>, non sul prezzo della confezione: dodici
-          bottiglie a 9 euro e ventiquattro a 16 si ordinano al contrario a seconda di quale dei due
-          si guarda.
+          <strong>prezzo per litro o per chilo</strong>, non su quello della confezione.
         </p>
       </header>
 
-      <dl className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <Riquadro
-          etichetta="Confronti possibili"
-          valore={String(t.compared)}
-          nota={`su ${t.products} prodotti con offerte`}
-        />
-        <Riquadro
-          etichetta="Vale il cambio"
-          valore={String(t.worthAlert)}
-          nota={`oltre ${numero(report.thresholds.percentage, 1)}% e ${euro(report.thresholds.euro)}`}
-          tono={t.worthAlert > 0 ? 'buono' : 'neutro'}
-        />
-        <Riquadro
-          etichetta="Risparmio totale"
-          valore={euro(t.savingPerPack)}
-          nota="una confezione per prodotto"
-          tono={Number(t.savingPerPack) > 0 ? 'buono' : 'neutro'}
-        />
-        <Riquadro
-          etichetta="Un solo fornitore"
-          valore={String(t.singleOffer)}
-          nota="niente da confrontare"
-        />
-        <Riquadro
-          etichetta="Prezzi fermi"
-          valore={String(t.stale)}
-          nota={`da oltre ${report.thresholds.staleMonths} mesi`}
-        />
-      </dl>
+      {/* Cinque riquadri per cinque numeri erano cinque volte lo spazio di una
+          riga che li dice tutti. Quello che conta è uno solo: quanto si
+          risparmia. Il resto è contesto, e sta in piccolo di fianco. */}
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 rounded-2xl border border-neutral-200 bg-white px-5 py-4">
+        <span className="tabellare text-3xl font-black tracking-[-0.03em] text-neutral-950">
+          {euro(t.savingPerPack)}
+        </span>
+        <span className="text-sm text-neutral-600">
+          risparmiabili su <strong>{t.compared}</strong> confronti, una confezione per prodotto
+        </span>
+        <span className="ml-auto flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-500">
+          {t.worthAlert > 0 && (
+            <span className="font-semibold text-green-700">
+              {t.worthAlert} oltre {numero(report.thresholds.percentage, 1)}% e{' '}
+              {euro(report.thresholds.euro)}
+            </span>
+          )}
+          <span>{t.singleOffer} con un solo fornitore</span>
+          {t.stale > 0 && (
+            <span className="text-amber-700">
+              {t.stale} con prezzi fermi da oltre {report.thresholds.staleMonths} mesi
+            </span>
+          )}
+        </span>
+      </div>
 
-      <form className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5" role="search">
+      <details className="group rounded-2xl border border-neutral-200 bg-white px-4 py-3">
+        <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-neutral-800">
+          Filtra e ordina
+          <span aria-hidden className="text-neutral-400 group-open:rotate-90">›</span>
+        </summary>
+      <form className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-5" role="search">
         <Input
           name="q"
           label="Filtra l’elenco"
@@ -186,6 +163,12 @@ export default async function ConvenientiPage({
           </button>
         </div>
       </form>
+      </details>
+
+      <AiReading
+        endpoint={withBasePath('/api/reports/convenient/analyze')}
+        disponibile={t.compared > 0}
+      />
 
       <section className="space-y-3">
         <h2 className="text-lg font-black text-neutral-950">

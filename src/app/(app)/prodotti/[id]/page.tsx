@@ -14,15 +14,6 @@ import { productsRepository } from '@/server/repositories/products';
 
 export const dynamic = 'force-dynamic';
 
-function Riquadro({ etichetta, valore }: { etichetta: string; valore: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-neutral-200 bg-white px-4 py-3">
-      <dt className="text-xs text-neutral-500">{etichetta}</dt>
-      <dd className="mt-1 font-semibold text-neutral-950">{valore}</dd>
-    </div>
-  );
-}
-
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
   if (!user) return null;
@@ -34,8 +25,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   // Il confronto arriva dal dominio, come per l'elenco «Convenienti»: due
   // calcoli separati potrebbero indicare due «più conveniente» diversi.
   const confronto = (await comparisonRepository(user.organizationId).perProdotto(id))!;
-
-  const daDefinire = prodotto.offersCount - prodotto.comparableOffersCount;
 
   return (
     <div className="space-y-7">
@@ -51,77 +40,58 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             <span>{formatoUnitario(prodotto.unitSize, prodotto.unitOfMeasure)}</span>
             {prodotto.brand && <span>· {prodotto.brand}</span>}
             <CategoryBadge categoria={prodotto.category} />
+            {prodotto.gtin && <span className="tabellare text-xs">EAN {prodotto.gtin}</span>}
             {prodotto.createdBy === 'AI' && <Badge variant="neutral">creato dall’IA</Badge>}
           </p>
         </div>
-        <Link
-          href={`/prodotti/${prodotto.id}/modifica`}
-          className="focus-visible:ring-brand-600 inline-flex min-h-11 items-center justify-center rounded-lg border border-neutral-300 bg-white px-4 text-sm font-semibold text-neutral-800 hover:border-neutral-400 focus-visible:ring-2 focus-visible:outline-none"
-        >
-          Modifica
-        </Link>
-      </header>
-
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Riquadro etichetta="Offerte" valore={prodotto.offersCount} />
-        <Riquadro etichetta="Confrontabili" valore={prodotto.comparableOffersCount} />
-        <Riquadro
-          etichetta="Confezione da definire"
-          valore={
-            daDefinire > 0 ? <span className="text-amber-900">{daDefinire}</span> : <span>0</span>
-          }
-        />
-        <Riquadro etichetta="Codice a barre" valore={prodotto.gtin ?? '—'} />
-      </dl>
-
-      <section className="space-y-3">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-black text-neutral-950">Offerte dei fornitori</h2>
-            <p className="mt-1 text-sm text-neutral-500">
-              Ordinate dal prezzo per unità più basso. È il confronto che risponde alla domanda
-              «dove conviene comprarlo».
-            </p>
-          </div>
+        <div className="flex shrink-0 gap-2">
           <Link
             href={`/prodotti/${prodotto.id}/offerte/nuova`}
-            className="bg-brand-600 hover:bg-brand-700 focus-visible:ring-brand-600 inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:outline-none"
+            className="focus-visible:ring-brand-600 inline-flex min-h-11 items-center justify-center rounded-lg border border-neutral-300 bg-white px-4 text-sm font-semibold text-neutral-800 transition-colors hover:border-neutral-400 focus-visible:ring-2 focus-visible:outline-none"
           >
             Collega un’offerta
           </Link>
+          <Link
+            href={`/prodotti/${prodotto.id}/modifica`}
+            className="bg-brand-600 hover:bg-brand-700 focus-visible:ring-brand-600 inline-flex min-h-11 items-center justify-center rounded-lg px-4 text-sm font-semibold text-white transition-colors focus-visible:ring-2 focus-visible:outline-none"
+          >
+            Modifica
+          </Link>
         </div>
-        <ProductOffers offers={prodotto.offers} confronto={confronto} />
-      </section>
+      </header>
+
+      <ProductOffers offers={prodotto.offers} confronto={confronto} />
 
       <section id="storico-prezzi" className="scroll-mt-6 space-y-3">
-        <div>
-          <h2 className="text-xl font-black text-neutral-950">Storico prezzi</h2>
-          <p className="mt-1 max-w-3xl text-sm text-neutral-500">
-            Ogni variazione resta visibile: il grafico segue il prezzo netto effettivo e la tabella
-            conserva listino, sconti e prezzo per unità. Puoi inserire anche una data passata o
-            correggere un prezzo registrato nello stesso giorno.
-          </p>
-        </div>
+        <h2 className="text-lg font-black text-neutral-950">Storico prezzi</h2>
         <ProductPriceHistory
           histories={storiciPrezzo}
           endpoint={withBasePath('/api/supplier-products')}
         />
       </section>
 
-      <section className="space-y-3">
-        <div>
-          <h2 className="text-xl font-black text-neutral-950">Sinonimi</h2>
-          <p className="mt-1 text-sm text-neutral-500">
-            Fanno trovare il prodotto anche quando è scritto in un altro modo. Dalla Fase 9 saranno
-            anche la memoria degli abbinamenti già confermati.
-          </p>
-        </div>
+      {/* I sinonimi servono di rado e occupavano un terzo della pagina:
+          ripiegati restano a portata senza stare in mezzo. */}
+      <details className="group rounded-2xl border border-neutral-200 bg-white">
+        <summary className="flex cursor-pointer items-center justify-between gap-2 px-4 py-3 text-sm font-semibold text-neutral-800">
+          <span>
+            Sinonimi{' '}
+            <span className="font-normal text-neutral-500">
+              ({prodotto.aliases.length}) — fanno trovare il prodotto anche scritto in un altro modo
+            </span>
+          </span>
+          <span aria-hidden className="text-neutral-400 group-open:rotate-90">
+            ›
+          </span>
+        </summary>
+        <div className="border-t border-neutral-100 p-4">
         <ProductAliases
           productId={prodotto.id}
           aliases={prodotto.aliases}
           endpoint={withBasePath('/api/products')}
         />
-      </section>
+        </div>
+      </details>
     </div>
   );
 }

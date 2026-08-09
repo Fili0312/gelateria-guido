@@ -14,7 +14,9 @@ export type AppIconName =
   | 'warning'
   | 'check'
   | 'arrow-right'
-  | 'savings';
+  | 'savings'
+  | 'edit'
+  | 'trash';
 
 export function AppIcon({ name, ...props }: SVGProps<SVGSVGElement> & { name: AppIconName }) {
   const common = {
@@ -93,6 +95,19 @@ export function AppIcon({ name, ...props }: SVGProps<SVGSVGElement> & { name: Ap
         </>
       )}
       {name === 'check' && <path d="m5 12.5 4.2 4L19 7" />}
+      {name === 'edit' && (
+        <>
+          <path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17v3Z" />
+          <path d="m14.5 7.5 2 2" />
+        </>
+      )}
+      {name === 'trash' && (
+        <>
+          <path d="M4.5 6.5h15M9.5 6.5V4.5h5v2" />
+          <path d="M6.5 6.5 7.5 20h9l1-13.5" />
+          <path d="M10.5 10v6M13.5 10v6" />
+        </>
+      )}
       {name === 'savings' && (
         <>
           <path d="M4.5 9.5h11a4.5 4.5 0 0 1 0 9h-11a4.5 4.5 0 0 1 0-9Z" />

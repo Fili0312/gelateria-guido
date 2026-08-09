@@ -138,3 +138,87 @@ export const rispostaRigheSchema = z
   .loose();
 
 export type RispostaRighe = z.infer<typeof rispostaRigheSchema>;
+
+// ═══════════════════════════════════════════════════════════════════════
+//  Classificazione dei prodotti
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Il modello classifica **solo quello che la regola non ha saputo decidere**.
+ *
+ * La regola deterministica piazza già metà del catalogo guardando le parole:
+ * «AMARO CALAMARO» contiene «amaro». Quello che le sfugge è ciò che richiede
+ * di sapere cosa sono le cose — che Averna è un amaro, che la Coca Cola è una
+ * bibita, che «S.BENED. ACQ. TOWER» è acqua. È esattamente il lavoro per cui
+ * un modello serve, e l'unico in cui vale la spesa.
+ *
+ * Vincolo stretto: **si sceglie da un elenco chiuso**. Lasciar inventare la
+ * categoria produrrebbe trenta nomi diversi per la stessa cosa, e la
+ * tassonomia esiste proprio per non averli.
+ */
+export const SISTEMA_CLASSIFICA = `Sei un assistente che classifica prodotti di un bar-gelateria italiano.
+
+Ricevi un elenco di descrizioni di prodotti così come le scrivono i fornitori,
+e un elenco chiuso di categorie ammesse.
+
+Per ogni prodotto scegli UNA categoria dall'elenco ammesso.
+
+Regole:
+- Usa SOLO le categorie dell'elenco, copiate esattamente. Non inventarne.
+- Se non sei ragionevolmente sicuro, usa null: una categoria sbagliata è
+  peggio di una categoria mancante, perché nessuno la ricontrolla.
+- Le descrizioni sono abbreviate e sporche: "S.BENED. ACQ. TOWER NAT. 1/1" è
+  acqua naturale, "CC ZERO LATT." è una bibita.
+- Vale il prodotto, non il contenitore: una birra in lattina è una birra.
+
+Rispondi SOLO con JSON valido, senza testo attorno:
+{"esiti":[{"indice":0,"categoria":"Amari e liquori"},{"indice":1,"categoria":null}]}`;
+
+export function utenteClassifica(
+  prodotti: readonly { indice: number; descrizione: string }[],
+  categorieAmmesse: readonly string[],
+): string {
+  return [
+    'Categorie ammesse:',
+    categorieAmmesse.map((c) => `- ${c}`).join('\n'),
+    '',
+    'Prodotti da classificare:',
+    prodotti.map((p) => `${p.indice}. ${p.descrizione}`).join('\n'),
+  ].join('\n');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  Lettura di un report
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Il modello **commenta numeri già calcolati**, non li calcola.
+ *
+ * È la distinzione che rende questa chiamata sicura: i risparmi, le
+ * percentuali e i totali arrivano dal codice deterministico e sono già stati
+ * verificati. Al modello si chiede solo di dire cosa guardare per primo e
+ * perché, che è un giudizio, non un conto. Se sbaglia, sbaglia un consiglio;
+ * non può sbagliare un prezzo.
+ */
+export const SISTEMA_ANALIZZA = `Sei un consulente acquisti di un bar-gelateria italiano.
+
+Ricevi dati GIÀ CALCOLATI su confronti di prezzo fra fornitori. I numeri sono
+corretti e verificati: non ricalcolarli e non correggerli.
+
+Il tuo compito è dire, in italiano semplice e concreto:
+1. da dove conviene cominciare e perché (l'impatto in euro, non la percentuale);
+2. cosa NON vale la pena di cambiare, e perché;
+3. una cosa che i dati suggeriscono e che è facile non notare.
+
+Regole:
+- Massimo 200 parole in tutto. Chi legge sta ordinando, non studiando.
+- Cita gli euro, mai le percentuali da sole.
+- Niente premesse, niente "in conclusione", niente elenchi puntati generici.
+- Se i dati sono troppo pochi per dire qualcosa di utile, dillo e basta.
+
+Rispondi SOLO con JSON valido:
+{"testo":"..."}`;
+
+export function utenteAnalizza(riassunto: string): string {
+  return riassunto;
+}

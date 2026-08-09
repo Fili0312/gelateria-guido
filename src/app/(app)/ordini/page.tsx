@@ -1,4 +1,4 @@
-import { OrderBuilder } from '@/components/orders/order-builder';
+import { OrderScreen } from '@/components/orders/order-screen';
 import { Badge } from '@/components/ui';
 import { getCurrentUser } from '@/server/auth';
 import { withBasePath } from '@/server/base-path';
@@ -18,7 +18,14 @@ export default async function OrdiniPage() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const ordine = await ordersRepository(user.organizationId).corrente(user.id);
+  const repo = ordersRepository(user.organizationId);
+  // Ordine **e** catalogo dal server: la schermata si apre già piena, senza il
+  // lampo di elenco vuoto che si avrebbe caricandolo dal browser dopo il primo
+  // disegno.
+  const [ordine, catalogo] = await Promise.all([
+    repo.corrente(user.id),
+    repo.cerca(user.id, { limite: 300, soloConfrontabili: false }),
+  ]);
 
   return (
     <div className="space-y-5">
@@ -30,14 +37,15 @@ export default async function OrdiniPage() {
           Ordini
         </h1>
         <p className="mt-2 max-w-2xl leading-6 text-neutral-500">
-          Cerca, aggiungi, vai avanti. L’ordine resta dov’è anche se chiudi la pagina o passi a un
-          altro dispositivo, e accanto a ogni prodotto c’è già scritto{' '}
-          <strong>da chi conviene comprarlo</strong>.
+          Il catalogo è già qui: premi <strong>+</strong> per aggiungere. L’ordine sta di fianco e
+          resta dov’è anche se chiudi la pagina, e accanto a ogni prodotto c’è già scritto da chi
+          conviene comprarlo.
         </p>
       </header>
 
-      <OrderBuilder
+      <OrderScreen
         ordineIniziale={ordine}
+        catalogoIniziale={catalogo}
         endpointRicerca={withBasePath('/api/orders/current/search')}
         endpointOrdine={withBasePath('/api/orders/current')}
       />

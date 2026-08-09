@@ -12,6 +12,7 @@ import { prismaForOrganization, transactionForOrganization, type OrganizationPri
 import { totaliOrdine, totaliRiga } from '@/server/domain/orders/totals';
 import { comparisonRepository } from './comparison';
 import { productsRepository } from './products';
+import { CATEGORY_REF_SELECT, mapCategoryRef } from './taxonomy';
 
 /**
  * L'ordine in corso.
@@ -292,11 +293,41 @@ export function ordersRepository(organizationId: string) {
      * sparire farebbe cercare ancora.
      */
     async cerca(userId: string, query: RicercaOrdinabile): Promise<RisultatoOrdinabile[]> {
-      const esito = await productsRepository(organizationId).search({
-        q: query.q,
-        limite: query.limite,
-      });
-      if (esito.items.length === 0) return [];
+      // Senza termine si mostra il catalogo in ordine alfabetico: è l'elenco
+      // da cui si ordina scorrendo, e deve esserci già all'apertura.
+      const trovati = query.q
+        ? (await productsRepository(organizationId).search({ q: query.q, limite: query.limite }))
+            .items
+        : ((await db.product.findMany({
+            where: { supplierProducts: { some: { active: true, currentPriceId: { not: null } } } },
+            select: {
+              id: true,
+              name: true,
+              brand: true,
+              unitSize: true,
+              unitOfMeasure: true,
+              category: { select: CATEGORY_REF_SELECT },
+            },
+            orderBy: { name: 'asc' },
+            take: query.limite,
+          })) as unknown as {
+            id: string;
+            name: string;
+            brand: string | null;
+            unitSize: { toString(): string };
+            unitOfMeasure: string;
+            category: Parameters<typeof mapCategoryRef>[0];
+          }[]).map((p) => ({
+            id: p.id,
+            name: p.name,
+            brand: p.brand,
+            unitSize: p.unitSize.toString(),
+            unitOfMeasure: p.unitOfMeasure as RisultatoOrdinabile['unitOfMeasure'],
+            category: mapCategoryRef(p.category),
+          }));
+
+      if (trovati.length === 0) return [];
+      const esito = { items: trovati };
 
       const ids = esito.items.map((i) => i.id);
       const [mappa, ordine] = await Promise.all([

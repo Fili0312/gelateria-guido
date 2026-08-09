@@ -1,0 +1,260 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import { AppIcon } from '@/components/app-icon';
+import type { OffertaOrdinabile, RisultatoOrdinabile } from '@/features/orders/dto';
+import { CONFEZIONI_MAX, CONFEZIONI_MIN } from '@/features/orders/schema';
+import { etichettaBasis, euro, formatoConfezione } from '@/features/products/format';
+
+/**
+ * Il catalogo da cui si ordina: una riga per prodotto, minimale.
+ *
+ * Una riga sola in altezza, non una scheda. Con trecento prodotti la
+ * differenza fra 44 e 96 pixel di riga è fra vederne dodici e vederne cinque,
+ * e vederne dodici è la ragione per cui si scorre invece di cercare.
+ *
+ * Tutto ciò che serve a decidere sta su una riga: nome, formato, prezzo,
+ * prezzo per unità e fornitore. Quello che serve a **capire** — gli altri
+ * fornitori — si apre solo se lo si chiede.
+ */
+
+function Quantita({
+  quantita,
+  onCambia,
+  onTogli,
+}: {
+  quantita: number;
+  onCambia: (q: number) => void;
+  onTogli: () => void;
+}) {
+  return (
+    <span className="border-brand-200 bg-brand-50 flex items-center gap-0.5 rounded-lg border">
+      <button
+        type="button"
+        onClick={() => (quantita <= CONFEZIONI_MIN ? onTogli() : onCambia(quantita - 1))}
+        aria-label={quantita <= CONFEZIONI_MIN ? 'Togli dall’ordine' : 'Una confezione in meno'}
+        className="text-brand-800 hover:bg-brand-100 grid h-11 w-9 cursor-pointer place-items-center rounded-l-lg transition-colors"
+      >
+        <AppIcon name={quantita <= CONFEZIONI_MIN ? 'warning' : 'chevron'} className="hidden" />
+        <span aria-hidden className="text-lg leading-none font-bold">
+          {quantita <= CONFEZIONI_MIN ? '×' : '−'}
+        </span>
+      </button>
+      <span className="tabellare w-7 text-center text-sm font-black text-neutral-950">
+        {quantita}
+      </span>
+      <button
+        type="button"
+        onClick={() => onCambia(Math.min(quantita + 1, CONFEZIONI_MAX))}
+        aria-label="Una confezione in più"
+        className="text-brand-800 hover:bg-brand-100 grid h-11 w-9 cursor-pointer place-items-center rounded-r-lg transition-colors"
+      >
+        <span aria-hidden className="text-lg leading-none font-bold">
+          +
+        </span>
+      </button>
+    </span>
+  );
+}
+
+function Offerta({ offerta, compatta = false }: { offerta: OffertaOrdinabile; compatta?: boolean }) {
+  return (
+    <>
+      <span className="tabellare font-semibold text-neutral-950">{euro(offerta.priceNet)}</span>
+      {offerta.unitPrice && offerta.unitPriceBasis && (
+        <span className="tabellare text-neutral-400">
+          {`${euro(offerta.unitPrice, 4)}${etichettaBasis(offerta.unitPriceBasis).slice(1)}`}
+        </span>
+      )}
+      <span className={compatta ? 'text-neutral-500' : 'text-neutral-500'}>
+        {offerta.supplierName}
+      </span>
+      {offerta.migliore && (
+        <span className="rounded bg-green-100 px-1.5 py-0.5 text-[11px] font-semibold text-green-800">
+          migliore
+        </span>
+      )}
+      {offerta.stale && (
+        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800">
+          fermo
+        </span>
+      )}
+    </>
+  );
+}
+
+function Riga({
+  risultato,
+  attiva,
+  perOfferta,
+  onSeleziona,
+  onAggiungi,
+  onCambiaQuantita,
+}: {
+  risultato: RisultatoOrdinabile;
+  attiva: boolean;
+  perOfferta: Map<string, { rigaId: string; quantita: number }>;
+  onSeleziona: () => void;
+  onAggiungi: (supplierProductId: string) => void;
+  onCambiaQuantita: (rigaId: string, quantita: number) => void;
+}) {
+  const [aperto, setAperto] = useState(false);
+  const elemento = useRef<HTMLLIElement>(null);
+
+  useEffect(() => {
+    if (attiva) elemento.current?.scrollIntoView({ block: 'nearest' });
+  }, [attiva]);
+
+  const prima = risultato.offerte[0];
+  const altre = risultato.offerte.slice(1);
+  const gia = prima ? perOfferta.get(prima.supplierProductId) : undefined;
+
+  return (
+    <li
+      ref={elemento}
+      onMouseEnter={onSeleziona}
+      className={`border-l-2 transition-colors ${
+        attiva ? 'border-brand-500 bg-brand-50/40' : 'border-transparent hover:bg-neutral-50'
+      }`}
+    >
+      <div className="flex items-center gap-3 py-1.5 pr-2 pl-3">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-neutral-950">{risultato.name}</p>
+          <p className="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-xs">
+            <span className="text-neutral-500">
+              {formatoConfezione(risultato.unitSize, risultato.unitOfMeasure, 1)}
+            </span>
+            {prima ? (
+              <>
+                <span className="text-neutral-300">·</span>
+                <Offerta offerta={prima} />
+                {prima.packQuantity > 1 && (
+                  <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] font-semibold text-neutral-600">
+                    collo da {prima.packQuantity}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="text-amber-700">{risultato.nonOrdinabile}</span>
+            )}
+          </p>
+        </div>
+
+        {altre.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setAperto((v) => !v)}
+            aria-expanded={aperto}
+            aria-label={`Mostra gli altri ${altre.length} fornitori di ${risultato.name}`}
+            title={`Altri ${altre.length} fornitori`}
+            className="grid h-11 w-8 shrink-0 cursor-pointer place-items-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
+          >
+            <AppIcon
+              name="chevron"
+              className={`h-4 w-4 transition-transform ${aperto ? 'rotate-90' : ''}`}
+            />
+          </button>
+        )}
+
+        {prima &&
+          (gia ? (
+            <Quantita
+              quantita={gia.quantita}
+              onCambia={(q) => onCambiaQuantita(gia.rigaId, q)}
+              onTogli={() => onCambiaQuantita(gia.rigaId, CONFEZIONI_MIN)}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => onAggiungi(prima.supplierProductId)}
+              aria-label={`Aggiungi ${risultato.name} all’ordine`}
+              className="bg-brand-600 hover:bg-brand-700 focus-visible:ring-brand-600 grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-lg text-white transition-colors focus-visible:ring-2 focus-visible:outline-none"
+            >
+              <span aria-hidden className="text-xl leading-none font-bold">
+                +
+              </span>
+            </button>
+          ))}
+      </div>
+
+      {aperto && altre.length > 0 && (
+        <ul className="space-y-1 border-t border-neutral-100 bg-neutral-50/70 py-1.5 pr-2 pl-6">
+          {altre.map((offerta) => {
+            const suo = perOfferta.get(offerta.supplierProductId);
+            return (
+              <li key={offerta.supplierProductId} className="flex items-center gap-3">
+                <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 text-xs">
+                  <Offerta offerta={offerta} compatta />
+                  <span className="text-neutral-400">
+                    {formatoConfezione(offerta.unitSize, offerta.unitOfMeasure, offerta.packQuantity)}
+                  </span>
+                </span>
+                {suo ? (
+                  <Quantita
+                    quantita={suo.quantita}
+                    onCambia={(q) => onCambiaQuantita(suo.rigaId, q)}
+                    onTogli={() => onCambiaQuantita(suo.rigaId, CONFEZIONI_MIN)}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onAggiungi(offerta.supplierProductId)}
+                    aria-label={`Aggiungi ${risultato.name} da ${offerta.supplierName}`}
+                    className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-lg border border-neutral-300 bg-white text-neutral-700 transition-colors hover:border-neutral-400"
+                  >
+                    <span aria-hidden className="text-lg leading-none font-bold">
+                      +
+                    </span>
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </li>
+  );
+}
+
+export function ProductRail({
+  risultati,
+  selezione,
+  perOfferta,
+  onSeleziona,
+  onAggiungi,
+  onCambiaQuantita,
+}: {
+  risultati: RisultatoOrdinabile[];
+  selezione: number;
+  perOfferta: Map<string, { rigaId: string; quantita: number }>;
+  onSeleziona: (indice: number) => void;
+  onAggiungi: (supplierProductId: string) => void;
+  onCambiaQuantita: (rigaId: string, quantita: number) => void;
+}) {
+  if (risultati.length === 0) {
+    return (
+      <p className="rounded-2xl border border-dashed border-neutral-300 bg-white px-5 py-12 text-center text-sm leading-6 text-neutral-500">
+        Nessun prodotto con questo nome. Prova col codice del fornitore, o con una parola sola.
+      </p>
+    );
+  }
+
+  return (
+    <ul
+      className="divide-y divide-neutral-100 overflow-hidden rounded-2xl border border-neutral-200 bg-white"
+      aria-label="Prodotti da ordinare"
+    >
+      {risultati.map((risultato, indice) => (
+        <Riga
+          key={risultato.productId}
+          risultato={risultato}
+          attiva={indice === selezione}
+          perOfferta={perOfferta}
+          onSeleziona={() => onSeleziona(indice)}
+          onAggiungi={onAggiungi}
+          onCambiaQuantita={onCambiaQuantita}
+        />
+      ))}
+    </ul>
+  );
+}

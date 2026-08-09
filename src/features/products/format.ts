@@ -126,6 +126,12 @@ const SIGLE_CONFEZIONE: Record<string, string> = {
   PZ: 'pezzo',
   LT: 'latta',
   FU: 'fusto',
+  UN: 'unità',
+  CO: 'collo',
+  CR: 'cassa',
+  BA: 'barattolo',
+  BU: 'busta',
+  SH: 'shopper',
 };
 
 export function etichettaImballo(packagingType: string | null): string | null {

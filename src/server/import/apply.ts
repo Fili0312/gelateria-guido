@@ -7,6 +7,7 @@ import { applicaPrezzoInTransazione } from '@/server/repositories/prices';
 import { nucleoDescrizione } from '@/server/domain/packaging/parse';
 import { normalizzaTesto } from '@/server/domain/packaging/normalize';
 import { baseDi, type UnitOfMeasure } from '@/server/domain/packaging/units';
+import { categoriaSuggerita } from '@/server/domain/catalog/categorie';
 import { improntaDaDescrizione } from '@/server/domain/packaging/fingerprint';
 import { ricalcolaMiglioriOfferte } from './best-offer';
 import {
@@ -236,6 +237,26 @@ export async function applicaImport(
   let disattivati = 0;
   let prodottiCreati = 0;
 
+  // La categoria si assegna già alla nascita del prodotto: farlo dopo
+  // significa un catalogo che passa da «tutto da classificare» a
+  // «quasi tutto da classificare» a ogni import, e una coda che non
+  // scende mai. La regola decide su poco più della metà; il resto
+  // resta senza categoria, che è onesto, e si sistema dalla schermata
+  // prodotti con un clic.
+  const categorie = await prismaForOrganization(organizationId).category.findMany({
+    where: { active: true },
+    select: { id: true, name: true },
+  });
+  const categoriaPerNome = new Map(categorie.map((c) => [c.name.toLowerCase(), c.id] as const));
+  const categoriaDi = (testoFornitore: string | null, descrizione: string): string | null => {
+    // La descrizione è l'unico testo disponibile qui: i listini di Cecconi e
+    // Barzelli non hanno una colonna categoria, e le intestazioni di sezione
+    // sono una sola in tutto il documento. `testoFornitore` resta nella firma
+    // perché il giorno che un listino la porta, si aggancia in un punto solo.
+    const nome = categoriaSuggerita(testoFornitore) ?? categoriaSuggerita(descrizione);
+    return nome ? (categoriaPerNome.get(nome.toLowerCase()) ?? null) : null;
+  };
+
   await transactionForOrganization(organizationId, async (tx) => {
     for (const confronto of confronti) {
       if (confronto.esito === 'SPARITO') {
@@ -273,6 +294,7 @@ export async function applicaImport(
               unitOfMeasure: (c.unitOfMeasure ?? 'PIECE') as UnitOfMeasure,
               baseUnit: baseDi((c.unitOfMeasure ?? 'PIECE') as UnitOfMeasure),
               normalizedName: nucleo || 'senza nome',
+              categoryId: categoriaDi(null, c.descrizione!),
               createdBy: 'IMPORT',
             },
             select: { id: true },

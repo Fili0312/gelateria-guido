@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ClassifyButton } from '@/components/products/classify-button';
 import { ProductList } from '@/components/products/product-list';
 import { ProductSearch } from '@/components/products/product-search';
 import { Badge, Input, Select } from '@/components/ui';
@@ -77,26 +78,35 @@ export default async function ProductsPage({
 
       <ProductSearch endpoint={withBasePath('/api/products/search')} />
 
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
-          { etichetta: 'Prodotti', valore: risultato.total },
-          { etichetta: 'Con almeno un’offerta', valore: risultato.linked },
-          { etichetta: 'Senza offerte', valore: risultato.orphan },
-          { etichetta: 'Da classificare', valore: risultato.unclassified },
-        ].map((riquadro) => (
-          <div
-            key={riquadro.etichetta}
-            className="rounded-xl border border-neutral-200 bg-white px-4 py-3"
-          >
-            <dt className="text-xs text-neutral-500">{riquadro.etichetta}</dt>
-            <dd className="tabellare mt-1 text-2xl font-black text-neutral-950">
-              {riquadro.valore}
-            </dd>
-          </div>
-        ))}
-      </dl>
+      {/* I quattro riquadri di prima («Prodotti», «Con offerte», «Senza
+          offerte», «Da classificare») erano conteggi d'anagrafica: veri e
+          inerti. Quello che resta è la sola riga che fa fare qualcosa. */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-neutral-600">
+          <strong className="text-neutral-950">{risultato.total}</strong> prodotti ·{' '}
+          {risultato.orphan > 0 && <>{risultato.orphan} senza offerte · </>}
+          {risultato.unclassified > 0 ? (
+            <span className="text-amber-700">{risultato.unclassified} senza categoria</span>
+          ) : (
+            <span className="text-green-700">tutti classificati</span>
+          )}
+        </p>
+        <ClassifyButton
+          endpoint={withBasePath('/api/products/classify')}
+          daClassificare={risultato.unclassified}
+        />
+      </div>
 
-      <form className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5" role="search">
+      {/* Due caselle di ricerca sulla stessa schermata fanno chiedere ogni
+          volta quale delle due cerca «davvero». Quella grande sopra è la
+          ricerca vera — nomi, sinonimi, codici; qui restano i filtri, che si
+          usano di rado e stavano occupando mezza pagina. */}
+      <details className="group rounded-2xl border border-neutral-200 bg-white px-4 py-3">
+        <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-neutral-800">
+          Filtra e ordina l’elenco
+          <span aria-hidden className="text-neutral-400 group-open:rotate-90">›</span>
+        </summary>
+      <form className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-5" role="search">
         <Input
           name="q"
           label="Filtra l’elenco"
@@ -151,8 +161,13 @@ export default async function ProductsPage({
           </button>
         </div>
       </form>
+      </details>
 
-      <ProductList items={risultato.items} conFiltri={conFiltri} />
+      <ProductList
+        items={risultato.items}
+        conFiltri={conFiltri}
+        endpoint={withBasePath('/api/products')}
+      />
     </div>
   );
 }

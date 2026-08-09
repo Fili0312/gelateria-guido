@@ -35,23 +35,22 @@ export function RawRows({ righe }: { righe: RigheListino }) {
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-wrap gap-2">
+      {/* Tre riquadri grandi con dentro tre numeri sembravano statistiche e
+          invece erano un selettore: ora sembrano quello che sono. */}
+      <div className="inline-flex flex-wrap gap-1 rounded-xl border border-neutral-200 bg-neutral-50 p-1">
         {schede.map((scheda) => (
           <button
             key={scheda.chiave}
             type="button"
             onClick={() => setVista(scheda.chiave)}
             aria-pressed={vista === scheda.chiave}
-            className={`focus-visible:ring-brand-600 min-h-tap rounded-xl border px-4 py-2 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none ${
+            className={`focus-visible:ring-brand-600 min-h-11 cursor-pointer rounded-lg px-3 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none ${
               vista === scheda.chiave
-                ? 'border-brand-600 bg-brand-50'
-                : 'border-neutral-200 bg-white hover:border-neutral-400'
+                ? 'bg-white font-semibold text-neutral-950 shadow-sm'
+                : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
-            <span className="block text-xs text-neutral-500">{scheda.etichetta}</span>
-            <span className="tabellare block text-xl font-black text-neutral-950">
-              {scheda.valore}
-            </span>
+            {scheda.etichetta} <span className="tabellare font-bold">{scheda.valore}</span>
           </button>
         ))}
       </div>

@@ -43,17 +43,44 @@ export default async function AbbinamentiPage({
         <h1 className="mt-3 text-3xl font-black tracking-[-0.035em] text-neutral-950 sm:text-4xl">
           Da abbinare
         </h1>
-        <p className="mt-2 max-w-2xl leading-6 text-neutral-500">
-          Le righe su cui l’app non se l’è sentita di decidere da sola. Ogni conferma{' '}
-          <strong>insegna</strong>: al listino successivo quella descrizione si abbina da sé, senza
-          punteggi e senza modelli.
+        <p className="mt-2 max-w-3xl leading-6 text-neutral-500">
+          Ogni fornitore chiama le cose a modo suo. Qui si decide{' '}
+          <strong>quali righe di un listino sono lo stesso articolo</strong> di un prodotto già a
+          catalogo — ed è l’unico modo perché due prezzi si possano confrontare.
         </p>
+
+        <div className="mt-4 grid gap-3 rounded-2xl border border-neutral-200 bg-white p-4 sm:grid-cols-3">
+          <div>
+            <p className="text-xs font-semibold text-neutral-900">Perché serve</p>
+            <p className="mt-1 text-xs leading-5 text-neutral-600">
+              «BOLS PEACH 17% CL.70» di Cecconi e «bols PEACH LIQUEUR 0.700» di Barzelli sono la
+              stessa bottiglia. Finché restano due prodotti separati, nessuno può dirti quale
+              costa meno.
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-neutral-900">Cosa succede se premi</p>
+            <p className="mt-1 text-xs leading-5 text-neutral-600">
+              <strong>È questo</strong> collega la riga a quel prodotto. Le due offerte restano
+              separate, ognuna col suo codice e il suo prezzo: si affiancano, non si fondono.{' '}
+              <strong>È un prodotto nuovo</strong> gli dà un prodotto suo.
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-neutral-900">Ogni conferma insegna</p>
+            <p className="mt-1 text-xs leading-5 text-neutral-600">
+              La descrizione confermata diventa un sinonimo: al listino successivo quella scritta
+              si abbina da sola, senza punteggi e senza modelli. Il catalogo non tocca niente
+              finché non applichi l’import.
+            </p>
+          </div>
+        </div>
       </header>
 
       <dl className="grid grid-cols-3 gap-3">
-        <Riquadro etichetta="Da decidere" valore={coda.daRivedere} />
+        <Riquadro etichetta="Aspettano una tua decisione" valore={coda.daRivedere} />
         <Riquadro etichetta="Abbinate da sole" valore={coda.automatici} />
-        <Riquadro etichetta="Prodotti nuovi" valore={coda.nuovi} />
+        <Riquadro etichetta="Diventeranno prodotti nuovi" valore={coda.nuovi} />
       </dl>
 
       <MatchingQueue iniziale={coda} endpoint={withBasePath('/api/matching')} />

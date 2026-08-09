@@ -36,8 +36,15 @@ export const rigaOrdinePatchSchema = z
 
 export const ricercaOrdinabileSchema = z
   .object({
-    q: z.string().trim().min(1, 'Indicare un termine di ricerca.').max(MAX_QUERY_LENGTH),
-    limite: z.coerce.number().int().min(1).max(50).default(20),
+    /**
+     * Vuoto significa «tutto il catalogo».
+     *
+     * La schermata d'ordine mostra l'elenco **prima** che si scriva qualcosa:
+     * chi ordina spesso sa già cosa gli serve e lo trova scorrendo, e una
+     * pagina che comincia vuota costringe a inventarsi una parola da cercare.
+     */
+    q: z.string().trim().max(MAX_QUERY_LENGTH).optional(),
+    limite: z.coerce.number().int().min(1).max(500).default(60),
     /** Solo i prodotti con un confronto e con almeno un'alternativa. */
     soloConfrontabili: z.coerce.boolean().default(false),
     supplierId: z.string().min(1).optional(),
