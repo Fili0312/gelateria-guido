@@ -1,9 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Input, useToast } from '@/components/ui';
+import { AppIcon } from '@/components/app-icon';
+import { useToast } from '@/components/ui';
 import type { OrderApiBody, OrdineCorrente, RisultatoOrdinabile } from '@/features/orders/dto';
 import { CONFEZIONI_MAX } from '@/features/orders/schema';
+import { CatalogFilters, raggruppa } from './catalog-filters';
 import { OrderPanel } from './order-panel';
 import { ProductRail } from './product-rail';
 
@@ -45,6 +47,8 @@ export function OrderScreen({
   const [cercando, setCercando] = useState(false);
   const [selezione, setSelezione] = useState(0);
   const [schedaOrdine, setSchedaOrdine] = useState(false);
+  const [reparto, setReparto] = useState<string | null>(null);
+  const [categoria, setCategoria] = useState<string | null>(null);
 
   const campo = useRef<HTMLInputElement>(null);
   const richiestaInCorso = useRef<AbortController | null>(null);
@@ -67,7 +71,10 @@ export function OrderScreen({
       try {
         const url = new URL(endpointRicerca, window.location.origin);
         if (q.trim()) url.searchParams.set('q', q.trim());
-        url.searchParams.set('limite', q.trim() ? '40' : '300');
+        // Senza termine si carica **tutto** il catalogo: un tetto più basso
+        // farebbe dire «289 su 300» quando i prodotti sono 326, e i conteggi
+        // dei reparti sarebbero tagliati senza che si veda.
+        url.searchParams.set('limite', q.trim() ? '40' : '500');
         const risposta = await fetch(url, {
           signal: controller.signal,
           headers: { Accept: 'application/json' },
@@ -177,6 +184,21 @@ export function OrderScreen({
     [endpointOrdine, muta],
   );
 
+  // Reparti e categorie si calcolano su **tutto** ciò che è arrivato, non su
+  // ciò che resta dopo il filtro: altrimenti scegliendo «Birre» sparirebbero
+  // tutte le altre voci e non si potrebbe più tornare indietro.
+  const { reparti, categoriePerReparto } = useMemo(() => raggruppa(risultati), [risultati]);
+  const categorie = reparto ? (categoriePerReparto.get(reparto) ?? []) : [];
+
+  const mostrati = useMemo(() => {
+    if (!reparto && !categoria) return risultati;
+    return risultati.filter((r) => {
+      if (reparto && (r.category?.departmentId ?? 'senza') !== reparto) return false;
+      if (categoria && (r.category?.id ?? 'senza') !== categoria) return false;
+      return true;
+    });
+  }, [risultati, reparto, categoria]);
+
   const perOfferta = useMemo(() => {
     const mappa = new Map<string, { rigaId: string; quantita: number }>();
     for (const riga of ordine.righe) {
@@ -186,16 +208,16 @@ export function OrderScreen({
   }, [ordine.righe]);
 
   function tasti(evento: React.KeyboardEvent<HTMLInputElement>) {
-    if (risultati.length === 0) return;
+    if (mostrati.length === 0) return;
     if (evento.key === 'ArrowDown') {
       evento.preventDefault();
-      setSelezione((s) => Math.min(s + 1, risultati.length - 1));
+      setSelezione((s) => Math.min(s + 1, mostrati.length - 1));
     } else if (evento.key === 'ArrowUp') {
       evento.preventDefault();
       setSelezione((s) => Math.max(s - 1, 0));
     } else if (evento.key === 'Enter') {
       evento.preventDefault();
-      const offerta = risultati[selezione]?.offerte[0];
+      const offerta = mostrati[selezione]?.offerte[0];
       if (!offerta) return;
       const gia = perOfferta.get(offerta.supplierProductId);
       if (gia) void cambiaQuantita(gia.rigaId, Math.min(gia.quantita + 1, CONFEZIONI_MAX));
@@ -211,40 +233,70 @@ export function OrderScreen({
     <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-5 xl:grid-cols-[minmax(0,1fr)_25rem]">
       {/* ── Colonna sinistra: il catalogo ─────────────────────────────── */}
       <div className={schedaOrdine ? 'hidden lg:block' : ''}>
-        <div className="bg-neutral-50/95 sticky top-0 z-20 -mx-4 px-4 pt-1 pb-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-2 lg:px-2">
-          <Input
-            ref={campo}
-            label="Cerca"
-            value={termine}
-            onChange={(e) => setTermine(e.target.value)}
-            onKeyDown={tasti}
-            placeholder="Cerca per nome, sinonimo o codice…"
-            autoComplete="off"
-            inputMode="search"
-            className="h-12"
-          />
-          <p className="mt-1.5 flex items-center gap-2 text-xs text-neutral-500">
-            <span>
-              {cercando
-                ? 'Sto cercando…'
-                : `${risultati.length} ${risultati.length === 1 ? 'prodotto' : 'prodotti'}`}
-            </span>
-            <span className="text-neutral-300">·</span>
-            <span>↑↓ e Invio per aggiungere</span>
+        <div className="bg-neutral-50/95 sticky top-0 z-20 -mx-4 space-y-2.5 px-4 pt-1 pb-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-2 lg:px-2">
+          <div className="relative">
+            <AppIcon
+              name="search"
+              className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-neutral-400"
+            />
+            <input
+              ref={campo}
+              type="text"
+              value={termine}
+              onChange={(e) => setTermine(e.target.value)}
+              onKeyDown={tasti}
+              placeholder="Cerca un prodotto, un codice, un sinonimo…"
+              aria-label="Cerca nel catalogo"
+              autoComplete="off"
+              inputMode="search"
+              className="focus:border-brand-500 focus:ring-brand-500/30 h-12 w-full rounded-xl border border-neutral-200 bg-white pr-11 pl-10 text-[15px] text-neutral-950 shadow-sm transition-colors outline-none placeholder:text-neutral-400 focus:ring-4"
+            />
             {termine && (
               <button
                 type="button"
                 onClick={() => setTermine('')}
-                className="text-brand-700 ml-auto cursor-pointer font-semibold hover:underline"
+                aria-label="Azzera la ricerca"
+                className="absolute top-1/2 right-2 grid h-9 w-9 -translate-y-1/2 cursor-pointer place-items-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
               >
-                Mostra tutti
+                <span aria-hidden className="text-lg leading-none">
+                  ×
+                </span>
               </button>
             )}
+          </div>
+
+          <CatalogFilters
+            reparti={reparti}
+            categorie={categorie}
+            repartoScelto={reparto}
+            categoriaScelta={categoria}
+            onReparto={(id) => {
+              setReparto(id);
+              setCategoria(null);
+              setSelezione(0);
+            }}
+            onCategoria={(id) => {
+              setCategoria(id);
+              setSelezione(0);
+            }}
+            totale={risultati.length}
+          />
+
+          <p className="flex items-center gap-2 text-xs text-neutral-500">
+            <span>
+              {cercando
+                ? 'Sto cercando…'
+                : `${mostrati.length} ${mostrati.length === 1 ? 'prodotto' : 'prodotti'}`}
+              {mostrati.length !== risultati.length && ` su ${risultati.length}`}
+            </span>
+            <span className="text-neutral-300">·</span>
+            <span>↑↓ per scegliere, Invio per aggiungere</span>
           </p>
         </div>
 
         <ProductRail
-          risultati={risultati}
+          risultati={mostrati}
+          raggruppa={!categoria}
           selezione={selezione}
           perOfferta={perOfferta}
           onSeleziona={setSelezione}

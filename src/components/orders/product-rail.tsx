@@ -216,8 +216,20 @@ function Riga({
   );
 }
 
+/**
+ * L'elenco, spezzato per categoria.
+ *
+ * Un elenco di trecento righe di fila non ha appigli: si scorre e si perde il
+ * segno. Le intestazioni di categoria restano appiccicate in cima mentre si
+ * scorre, così si sa **sempre** in che parte del catalogo si è — e per saltare
+ * altrove ci sono i filtri, non il rotolamento.
+ *
+ * Quando si è già scelta una categoria non si raggruppa: sarebbe un gruppo
+ * solo, con l'intestazione a ripetere il filtro appena premuto.
+ */
 export function ProductRail({
   risultati,
+  raggruppa = true,
   selezione,
   perOfferta,
   onSeleziona,
@@ -225,6 +237,7 @@ export function ProductRail({
   onCambiaQuantita,
 }: {
   risultati: RisultatoOrdinabile[];
+  raggruppa?: boolean;
   selezione: number;
   perOfferta: Map<string, { rigaId: string; quantita: number }>;
   onSeleziona: (indice: number) => void;
@@ -234,27 +247,72 @@ export function ProductRail({
   if (risultati.length === 0) {
     return (
       <p className="rounded-2xl border border-dashed border-neutral-300 bg-white px-5 py-12 text-center text-sm leading-6 text-neutral-500">
-        Nessun prodotto con questo nome. Prova col codice del fornitore, o con una parola sola.
+        Nessun prodotto qui. Prova col codice del fornitore, con una parola sola, o togli un filtro.
       </p>
     );
   }
 
+  const riga = (risultato: RisultatoOrdinabile, indice: number) => (
+    <Riga
+      key={risultato.productId}
+      risultato={risultato}
+      attiva={indice === selezione}
+      perOfferta={perOfferta}
+      onSeleziona={() => onSeleziona(indice)}
+      onAggiungi={onAggiungi}
+      onCambiaQuantita={onCambiaQuantita}
+    />
+  );
+
+  if (!raggruppa) {
+    return (
+      <ul
+        className="divide-y divide-neutral-100 overflow-hidden rounded-2xl border border-neutral-200 bg-white"
+        aria-label="Prodotti da ordinare"
+      >
+        {risultati.map(riga)}
+      </ul>
+    );
+  }
+
+  // I gruppi conservano l'ordine in cui i prodotti sono arrivati: la ricerca
+  // li dà per pertinenza, e riordinarli per categoria butterebbe via proprio
+  // l'informazione per cui si è cercato.
+  const gruppi: { chiave: string; nome: string; indici: number[] }[] = [];
+  const posizione = new Map<string, number>();
+  risultati.forEach((r, indice) => {
+    const chiave = r.category?.id ?? 'senza';
+    let dove = posizione.get(chiave);
+    if (dove === undefined) {
+      dove = gruppi.length;
+      posizione.set(chiave, dove);
+      gruppi.push({ chiave, nome: r.category?.name ?? 'Senza categoria', indici: [] });
+    }
+    gruppi[dove]!.indici.push(indice);
+  });
+
   return (
-    <ul
-      className="divide-y divide-neutral-100 overflow-hidden rounded-2xl border border-neutral-200 bg-white"
+    <div
+      className="overflow-hidden rounded-2xl border border-neutral-200 bg-white"
       aria-label="Prodotti da ordinare"
     >
-      {risultati.map((risultato, indice) => (
-        <Riga
-          key={risultato.productId}
-          risultato={risultato}
-          attiva={indice === selezione}
-          perOfferta={perOfferta}
-          onSeleziona={() => onSeleziona(indice)}
-          onAggiungi={onAggiungi}
-          onCambiaQuantita={onCambiaQuantita}
-        />
+      {gruppi.map((gruppo, i) => (
+        <section key={gruppo.chiave} className={i === 0 ? '[&>h3]:border-t-0' : undefined}>
+          {/* Non appiccicate in cima: sopra c'è già una barra sticky di
+              altezza variabile — ricerca, reparti, categorie — e qualunque
+              scostamento fisso finisce per coprire una riga. Una riga coperta
+              è la riga che si stava per premere. */}
+          <h3 className="flex items-baseline justify-between gap-2 border-y border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs font-semibold tracking-wide text-neutral-600 uppercase">
+            <span className="truncate">{gruppo.nome}</span>
+            <span className="tabellare shrink-0 font-normal text-neutral-400">
+              {gruppo.indici.length}
+            </span>
+          </h3>
+          <ul className="divide-y divide-neutral-100">
+            {gruppo.indici.map((indice) => riga(risultati[indice]!, indice))}
+          </ul>
+        </section>
       ))}
-    </ul>
+    </div>
   );
 }

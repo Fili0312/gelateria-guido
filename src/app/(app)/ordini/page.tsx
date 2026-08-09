@@ -24,7 +24,7 @@ export default async function OrdiniPage() {
   // disegno.
   const [ordine, catalogo] = await Promise.all([
     repo.corrente(user.id),
-    repo.cerca(user.id, { limite: 300, soloConfrontabili: false }),
+    repo.cerca(user.id, { limite: 500, soloConfrontabili: false }),
   ]);
 
   return (
