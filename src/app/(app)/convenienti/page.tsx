@@ -1,19 +1,37 @@
 import Link from 'next/link';
-import { AiReading } from '@/components/comparison/ai-reading';
 import { ComparisonTable } from '@/components/comparison/comparison-table';
+import { DuplicatesFinder } from '@/components/matching/duplicates-finder';
+import { MatchingQueue } from '@/components/matching/queue';
 import { Badge, Input, Select } from '@/components/ui';
+import { codaQuerySchema } from '@/features/matching/schema';
 import { euro, numero } from '@/features/products/format';
 import type { ComparisonSort } from '@/features/reports/dto';
 import { getCurrentUser } from '@/server/auth';
 import { withBasePath } from '@/server/base-path';
 import { comparisonRepository } from '@/server/repositories/comparison';
+import { matchingRepository } from '@/server/repositories/matching';
 import { taxonomyRepository } from '@/server/repositories/taxonomy';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Confronti: il lavoro e il risultato, sulla stessa pagina.
+ *
+ * Prima erano due voci di menu — «Da abbinare» e «Convenienti» — e la
+ * separazione era comoda per chi ha scritto il codice, non per chi lo usa:
+ * la prima è **il motivo per cui** la seconda è mezza vuota. Chi guardava i
+ * confronti non aveva modo di sapere che ne mancavano venti, e che stavano
+ * dietro un'altra voce di menu.
+ *
+ * L'ordine è quello del lavoro: **analizza** cosa si può ancora collegare,
+ * **decidi** ciò su cui serve una persona, **guarda** dove conviene comprare.
+ * Le prime due sezioni spariscono quando non c'è niente da fare — una
+ * sezione che dice «zero» occupa lo spazio di una che dice qualcosa.
+ */
+
 const ORDINI: ComparisonSort[] = ['saving-desc', 'saving-pct-desc', 'name-asc'];
 
-export default async function ConvenientiPage({
+export default async function ConfrontiPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -34,14 +52,20 @@ export default async function ConvenientiPage({
     sort: sortGrezzo && ORDINI.includes(sortGrezzo) ? sortGrezzo : ('saving-desc' as const),
   };
 
-  const [report, tassonomia] = await Promise.all([
+  const codaQuery = codaQuerySchema.safeParse({
+    priceListId: primo(grezzi.priceListId),
+    stato: primo(grezzi.stato),
+  });
+
+  const [report, tassonomia, coda] = await Promise.all([
     comparisonRepository(user.organizationId).report(query),
     taxonomyRepository(user.organizationId).tree({ includiInattivi: false }),
+    matchingRepository(user.organizationId).coda(
+      codaQuery.success ? codaQuery.data : codaQuerySchema.parse({}),
+    ),
   ]);
   const t = report.totals;
 
-  // I fornitori del filtro sono quelli che **vincono** almeno un confronto:
-  // elencare tutti farebbe scegliere opzioni che danno sempre zero risultati.
   const fornitori = [
     ...new Map(
       report.comparisons
@@ -53,13 +77,13 @@ export default async function ConvenientiPage({
     .sort((a, b) => a.name.localeCompare(b.name, 'it'));
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-5">
       <header>
         <Badge variant="brand" dot>
           Confronto prezzi
         </Badge>
         <h1 className="mt-3 text-3xl font-black tracking-[-0.035em] text-neutral-950 sm:text-4xl">
-          Convenienti
+          Confronti
         </h1>
         <p className="mt-2 max-w-2xl leading-6 text-neutral-500">
           Dove conviene comprare, prodotto per prodotto. Il confronto è sul{' '}
@@ -67,9 +91,6 @@ export default async function ConvenientiPage({
         </p>
       </header>
 
-      {/* Cinque riquadri per cinque numeri erano cinque volte lo spazio di una
-          riga che li dice tutti. Quello che conta è uno solo: quanto si
-          risparmia. Il resto è contesto, e sta in piccolo di fianco. */}
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 rounded-2xl border border-neutral-200 bg-white px-5 py-4">
         <span className="tabellare text-3xl font-black tracking-[-0.03em] text-neutral-950">
           {euro(t.savingPerPack)}
@@ -84,9 +105,7 @@ export default async function ConvenientiPage({
               {euro(report.thresholds.euro)}
             </span>
           )}
-          <span>
-            {t.singleOffer} con un solo fornitore: niente da confrontare
-          </span>
+          <span>{t.singleOffer} con un solo fornitore: niente da confrontare</span>
           {t.stale > 0 && (
             <span className="text-amber-700">
               {t.stale} con prezzi fermi da oltre {report.thresholds.staleMonths} mesi
@@ -95,89 +114,109 @@ export default async function ConvenientiPage({
         </span>
       </div>
 
-      <details className="group rounded-2xl border border-neutral-200 bg-white px-4 py-3">
-        <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-neutral-800">
-          Filtra e ordina
-          <span aria-hidden className="text-neutral-400 group-open:rotate-90">›</span>
-        </summary>
-      <form className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-5" role="search">
-        <Input
-          name="q"
-          label="Filtra l’elenco"
-          defaultValue={query.q ?? ''}
-          placeholder="Nome del prodotto"
-        />
-        <Select name="departmentId" label="Reparto" defaultValue={query.departmentId ?? ''}>
-          <option value="">Tutti</option>
-          {tassonomia.departments.map((reparto) => (
-            <option key={reparto.id} value={reparto.id}>
-              {reparto.name}
-            </option>
-          ))}
-        </Select>
-        <Select name="categoryId" label="Categoria" defaultValue={query.categoryId ?? ''}>
-          <option value="">Tutte</option>
-          {tassonomia.departments.map((reparto) => (
-            <optgroup key={reparto.id} label={reparto.name}>
-              {reparto.categories.map((categoria) => (
-                <option key={categoria.id} value={categoria.id}>
-                  {categoria.name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </Select>
-        {/* Solo i fornitori che vincono almeno un confronto: elencarli tutti
-            offrirebbe scelte che danno sempre zero risultati. */}
-        <Select
-          name="bestSupplierId"
-          label="Conviene da"
-          defaultValue={query.bestSupplierId ?? ''}
-        >
-          <option value="">Tutti</option>
-          {fornitori.map((fornitore) => (
-            <option key={fornitore.id} value={fornitore.id}>
-              {fornitore.name}
-            </option>
-          ))}
-        </Select>
-        <Select name="sort" label="Ordina" defaultValue={query.sort}>
-          <option value="saving-desc">Risparmio in euro</option>
-          <option value="saving-pct-desc">Risparmio in percentuale</option>
-          <option value="name-asc">Nome (A→Z)</option>
-        </Select>
-        <label className="flex items-center gap-2 text-sm text-neutral-700 sm:col-span-2">
-          <input
-            type="checkbox"
-            name="onlyAlert"
-            value="1"
-            defaultChecked={query.onlyAlert}
-            className="text-brand-600 focus-visible:ring-brand-600 h-4 w-4 rounded border-neutral-300"
-          />
-          Solo quelli che superano entrambe le soglie
-        </label>
-        <div className="sm:col-span-3 lg:col-span-5">
-          <button
-            type="submit"
-            className="focus-visible:ring-brand-600 min-h-11 rounded-lg border border-neutral-300 bg-white px-4 text-sm font-semibold text-neutral-800 hover:border-neutral-400 focus-visible:ring-2 focus-visible:outline-none"
-          >
-            Applica i filtri
-          </button>
-        </div>
-      </form>
-      </details>
-
-      <AiReading
-        endpoint={withBasePath('/api/products/duplicates')}
-        confrontiAttuali={t.compared}
+      {/* 1. Analizza: cosa si può ancora portare dentro i confronti. */}
+      <DuplicatesFinder
+        endpointCerca={withBasePath('/api/products/duplicates')}
+        endpointUnisci={withBasePath('/api/products/merge')}
       />
 
+      {/* 2. Decidi: le righe di listino su cui l'app non se l'è sentita. */}
+      {coda.items.length > 0 && (
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-lg font-black text-neutral-950">
+              {coda.daRivedere} righe di listino aspettano una decisione
+            </h2>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-neutral-500">
+              Ogni fornitore chiama le cose a modo suo. Qui si decide{' '}
+              <strong>quali righe sono lo stesso articolo</strong> di un prodotto già a catalogo:
+              confermando, le due offerte si affiancano e cominciano a confrontarsi — restano
+              separate, ognuna col suo codice e il suo prezzo. Ogni conferma diventa un sinonimo, e
+              al listino successivo quella scritta si abbina da sola. Il catalogo non cambia finché
+              non applichi l’import.
+            </p>
+          </div>
+          <MatchingQueue iniziale={coda} endpoint={withBasePath('/api/matching')} />
+        </section>
+      )}
+
+      {/* 3. Guarda: il risultato. */}
       <section className="space-y-3">
-        <h2 className="text-lg font-black text-neutral-950">
-          {report.comparisons.length === t.compared
-            ? `${t.compared} confronti`
-            : `${report.comparisons.length} confronti su ${t.compared}`}
-        </h2>
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <h2 className="text-lg font-black text-neutral-950">
+            {report.comparisons.length === t.compared
+              ? `${t.compared} confronti`
+              : `${report.comparisons.length} confronti su ${t.compared}`}
+          </h2>
+          <details className="group text-sm">
+            <summary className="cursor-pointer font-semibold text-neutral-700 hover:text-neutral-950">
+              Filtra e ordina
+            </summary>
+            <form className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-5" role="search">
+              <Input
+                name="q"
+                label="Filtra l’elenco"
+                defaultValue={query.q ?? ''}
+                placeholder="Nome del prodotto"
+              />
+              <Select name="departmentId" label="Reparto" defaultValue={query.departmentId ?? ''}>
+                <option value="">Tutti</option>
+                {tassonomia.departments.map((reparto) => (
+                  <option key={reparto.id} value={reparto.id}>
+                    {reparto.name}
+                  </option>
+                ))}
+              </Select>
+              <Select name="categoryId" label="Categoria" defaultValue={query.categoryId ?? ''}>
+                <option value="">Tutte</option>
+                {tassonomia.departments.map((reparto) => (
+                  <optgroup key={reparto.id} label={reparto.name}>
+                    {reparto.categories.map((categoria) => (
+                      <option key={categoria.id} value={categoria.id}>
+                        {categoria.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </Select>
+              <Select
+                name="bestSupplierId"
+                label="Conviene da"
+                defaultValue={query.bestSupplierId ?? ''}
+              >
+                <option value="">Tutti</option>
+                {fornitori.map((fornitore) => (
+                  <option key={fornitore.id} value={fornitore.id}>
+                    {fornitore.name}
+                  </option>
+                ))}
+              </Select>
+              <Select name="sort" label="Ordina" defaultValue={query.sort}>
+                <option value="saving-desc">Risparmio in euro</option>
+                <option value="saving-pct-desc">Risparmio in percentuale</option>
+                <option value="name-asc">Nome (A→Z)</option>
+              </Select>
+              <label className="flex min-h-11 cursor-pointer items-center gap-2 px-1 text-sm text-neutral-700 sm:col-span-2">
+                <input
+                  type="checkbox"
+                  name="onlyAlert"
+                  value="1"
+                  defaultChecked={query.onlyAlert}
+                  className="text-brand-600 focus-visible:ring-brand-600 h-5 w-5 rounded border-neutral-300"
+                />
+                Solo quelli che superano entrambe le soglie
+              </label>
+              <div className="sm:col-span-3 lg:col-span-5">
+                <button
+                  type="submit"
+                  className="focus-visible:ring-brand-600 min-h-11 cursor-pointer rounded-lg border border-neutral-300 bg-white px-4 text-sm font-semibold text-neutral-800 hover:border-neutral-400 focus-visible:ring-2 focus-visible:outline-none"
+                >
+                  Applica i filtri
+                </button>
+              </div>
+            </form>
+          </details>
+        </div>
         <ComparisonTable righe={report.comparisons} confrontiTotali={t.compared} />
       </section>
 

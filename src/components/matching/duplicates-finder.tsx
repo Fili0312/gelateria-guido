@@ -49,6 +49,7 @@ interface Esito {
   chiamate: number;
   doppioni: Doppione[];
   daDecidere: Doppione[];
+  collegati: number;
 }
 
 /** Un lato della coppia: nome, formato e cosa costa da chi. */
@@ -179,10 +180,10 @@ export function DuplicatesFinder({
   async function cerca() {
     if (
       !confirm(
-        'Cercare lo stesso articolo venduto da due fornitori?\n\n' +
-          'Le coppie col formato diverso sono già escluse dalla regola: al modello si chiede ' +
-          'solo di giudicare i nomi. È una chiamata a pagamento, e non cambia niente da sola — ' +
-          'ogni coppia va confermata.',
+        'Analizzare il catalogo per trovare altri confronti?\n\n' +
+          'Cerca lo stesso articolo venduto da due fornitori con nomi diversi. Le coppie di cui ' +
+          'il modello è sicuro vengono collegate subito; quelle incerte restano qui da ' +
+          'confermare.\n\nÈ una chiamata a pagamento, contata sul budget mensile.',
       )
     ) {
       return;
@@ -192,7 +193,7 @@ export function DuplicatesFinder({
       const risposta = await fetch(endpointCerca, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ usaModello: true }),
+        body: JSON.stringify({ usaModello: true, collegaSicuri: true }),
       });
       const corpo = (await risposta.json()) as { ok: boolean; data?: Esito; error?: string };
       if (!corpo.ok || !corpo.data) {
@@ -203,12 +204,16 @@ export function DuplicatesFinder({
       setFatti(new Set());
       toast({
         title:
-          corpo.data.doppioni.length + corpo.data.daDecidere.length === 0
-            ? 'Nessun doppione trovato'
-            : `${corpo.data.doppioni.length} sicure, ${corpo.data.daDecidere.length} da decidere`,
-        description: `${corpo.data.coppieCandidate} coppie esaminate su ${corpo.data.prodottiEsaminati} prodotti`,
+          corpo.data.collegati > 0
+            ? `${corpo.data.collegati} prodotti entrati nei confronti`
+            : 'Nessun collegamento nuovo',
+        description:
+          corpo.data.daDecidere.length > 0
+            ? `${corpo.data.daDecidere.length} coppie aspettano una tua conferma qui sotto.`
+            : `${corpo.data.coppieCandidate} coppie esaminate su ${corpo.data.prodottiEsaminati} prodotti.`,
         tone: 'success',
       });
+      router.refresh();
     } catch {
       toast({ title: 'Server non raggiungibile', tone: 'error' });
     } finally {
@@ -249,7 +254,6 @@ export function DuplicatesFinder({
   }
 
   const vivi = (elenco: Doppione[]) => elenco.filter((d) => !fatti.has(`${d.aId}|${d.bId}`));
-  const certi = vivi(esito?.doppioni ?? []);
   const incerti = vivi(esito?.daDecidere ?? []);
 
   return (
@@ -258,7 +262,7 @@ export function DuplicatesFinder({
         <div>
           <h2 className="flex items-center gap-2 font-black text-neutral-950">
             <AppIcon name="sparkles" className="h-4 w-4 text-violet-600" />
-            Trova lo stesso prodotto da due fornitori
+            Analizza il catalogo
           </h2>
           <p className="mt-1 max-w-2xl text-xs leading-5 text-neutral-600">
             Cerca nel catalogo intero, non solo nell’ultimo listino. Il <strong>formato</strong>{' '}
@@ -275,7 +279,7 @@ export function DuplicatesFinder({
           className="inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-2 rounded-lg bg-violet-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-violet-700 disabled:cursor-wait disabled:opacity-60 focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:outline-none"
         >
           <AppIcon name="sparkles" className="h-4 w-4" />
-          {attesa ? 'Sto cercando…' : esito ? 'Cerca di nuovo' : 'Trova le corrispondenze con IA'}
+          {attesa ? 'Sto analizzando…' : esito ? 'Analizza di nuovo' : 'Analizza con IA'}
         </button>
       </div>
 
@@ -283,40 +287,26 @@ export function DuplicatesFinder({
         <div className="mt-3">
           <p className="text-xs text-neutral-500">
             {esito.coppieCandidate} coppie col formato compatibile su {esito.prodottiEsaminati}{' '}
-            prodotti · {esito.chiamate} chiamate · {esito.coppieConfermate} riconosciute come stesso
-            articolo
+            prodotti · {esito.chiamate} chiamate ·{' '}
+            <strong className="text-green-700">{esito.collegati} collegate</strong>
           </p>
 
-          {certi.length === 0 && incerti.length === 0 ? (
+          {incerti.length === 0 ? (
             <p className="mt-2 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-600">
-              {esito.doppioni.length + esito.daDecidere.length === 0
-                ? 'Nessuna coppia riconosciuta come stesso articolo.'
-                : 'Tutte le coppie trovate sono state collegate.'}
+              {esito.collegati > 0
+                ? `${esito.collegati} prodotti collegati: ora si confrontano. Niente da decidere a mano.`
+                : 'Nessuna coppia nuova da collegare.'}
             </p>
           ) : (
-            <div className="mt-3 space-y-4">
-              {certi.length > 0 && (
-                <Gruppo
-                  titolo={`${certi.length} sicure`}
-                  spiega="Il modello le ha riconosciute senza riserve. Controlla e collega."
-                  doppioni={certi}
-                  inCorso={inCorso}
-                  onUnisci={unisci}
-                />
-              )}
-              {/* Le incerte stanno a parte e non si mescolano con le sicure:
-                  «non ne sono sicuro» è una risposta utile solo se si vede
-                  che è quella, e sepolta in mezzo alle altre non si vede. */}
-              {incerti.length > 0 && (
-                <Gruppo
-                  titolo={`${incerti.length} da decidere tu`}
-                  spiega="Il modello pensa che siano lo stesso articolo ma non se la sente di garantirlo. Guarda i nomi: se sono la stessa cosa, collegali."
-                  doppioni={incerti}
-                  inCorso={inCorso}
-                  onUnisci={unisci}
-                  incerto
-                />
-              )}
+            <div className="mt-3">
+              <Gruppo
+                titolo={`${incerti.length} da decidere tu`}
+                spiega="Il modello pensa che siano lo stesso articolo ma non se la sente di garantirlo. Guarda i nomi: se sono la stessa cosa, collegali."
+                doppioni={incerti}
+                inCorso={inCorso}
+                onUnisci={unisci}
+                incerto
+              />
             </div>
           )}
         </div>

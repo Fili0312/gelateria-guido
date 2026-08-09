@@ -58,10 +58,10 @@ function Riquadro({
 function DaFareList({ daFare }: { daFare: DaFare }) {
   const voci = ([
     {
-      href: '/abbinamenti',
+      href: '/convenienti',
       icona: 'sparkles',
       quante: daFare.righeDaAbbinare,
-      testo: 'righe da abbinare a un prodotto',
+      testo: 'righe da abbinare: finché restano, quei prezzi non si confrontano',
     },
     {
       href: '/listini',
@@ -173,7 +173,7 @@ export default async function DashboardPage() {
           nota={`su ${p.catalogo.prodotti} a catalogo, da ${p.catalogo.fornitori} fornitori`}
         />
         <Riquadro
-          href="/abbinamenti"
+          href="/convenienti"
           etichetta="Da sistemare"
           valore={String(
             p.daFare.righeDaAbbinare + p.daFare.listiniInRevisione + p.daFare.confezioniDaDefinire,

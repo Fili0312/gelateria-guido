@@ -10,8 +10,7 @@ const NAV_ITEMS: { href: string; label: string; icon: AppIconName }[] = [
   { href: '/fornitori', label: 'Fornitori', icon: 'suppliers' },
   { href: '/prodotti', label: 'Prodotti', icon: 'products' },
   { href: '/listini', label: 'Listini', icon: 'lists' },
-  { href: '/abbinamenti', label: 'Da abbinare', icon: 'sparkles' },
-  { href: '/convenienti', label: 'Convenienti', icon: 'savings' },
+  { href: '/convenienti', label: 'Confronti', icon: 'savings' },
   { href: '/ordini', label: 'Ordini', icon: 'orders' },
   { href: '/impostazioni', label: 'Impostazioni', icon: 'settings' },
 ];
