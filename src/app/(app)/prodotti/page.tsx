@@ -167,6 +167,7 @@ export default async function ProductsPage({
         items={risultato.items}
         conFiltri={conFiltri}
         endpoint={withBasePath('/api/products')}
+        endpointOfferte={withBasePath('/api/supplier-products')}
       />
     </div>
   );

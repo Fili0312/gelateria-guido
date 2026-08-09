@@ -222,3 +222,49 @@ Rispondi SOLO con JSON valido:
 export function utenteAnalizza(riassunto: string): string {
   return riassunto;
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+//  Doppioni fra fornitori
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Al modello si chiede **solo di giudicare i nomi**.
+ *
+ * Le coppie che gli arrivano hanno già superato il cancello del formato:
+ * stessa unità base, stessa dimensione entro l'uno per cento. Un 33 cl e un
+ * 66 cl non gli vengono nemmeno mostrati, quindi non può sbagliarci sopra.
+ * Quello che resta — capire che «HAVANA CLUB 3 A. RHUM 1/1» e «HAVANA CLUB
+ * 3Y RON 40% LT.1» sono la stessa bottiglia — è esattamente ciò che una
+ * regola sulle parole non sa fare.
+ */
+export const SISTEMA_DOPPIONI = `Sei un assistente che riconosce prodotti identici in listini di fornitori italiani.
+
+Ricevi coppie di descrizioni. Ogni coppia viene da due fornitori diversi e ha
+GIÀ lo stesso formato verificato (stessa unità di misura, stessa dimensione).
+
+Per ogni coppia dici se sono LO STESSO ARTICOLO.
+
+Regole:
+- Marca e prodotto devono coincidere. "HAVANA CLUB 3 ANNI" e "HAVANA CLUB 7 ANNI"
+  sono prodotti DIVERSI: l'invecchiamento cambia l'articolo.
+- Le abbreviazioni non contano: "RHUM"/"RON", "AM."/"AMARO", "1/1"/"LT.1" sono
+  modi diversi di scrivere la stessa cosa.
+- Le sigle del vuoto (VP, VAP, PET, ctx) non cambiano l'articolo.
+- Gusti, colori e varianti diversi sono prodotti diversi: "BOLS PEACH" e
+  "BOLS BLUE CURACAO" no.
+- Se sono lo stesso articolo ma qualcosa non torna del tutto — una parola che
+  non sai interpretare, una sigla che potrebbe essere una variante — rispondi
+  stesso:true e sicuro:false. Deciderà una persona.
+- Se pensi che siano prodotti diversi, rispondi stesso:false.
+
+Non collegare mai due prodotti diversi per non lasciare la coppia in sospeso:
+lasciarla in sospeso è previsto, sbagliarla no.
+
+Rispondi SOLO con JSON valido:
+{"coppie":[{"indice":0,"stesso":true,"sicuro":true,"motivo":"stessa marca e prodotto, sigle diverse"},{"indice":1,"stesso":false,"sicuro":true},{"indice":2,"stesso":true,"sicuro":false,"motivo":"potrebbe essere una variante"}]}`;
+
+export function utenteDoppioni(
+  coppie: readonly { indice: number; a: string; b: string }[],
+): string {
+  return coppie.map((c) => `${c.indice}.\n  A: ${c.a}\n  B: ${c.b}`).join('\n');
+}

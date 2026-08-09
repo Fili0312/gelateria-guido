@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { DuplicatesFinder } from '@/components/matching/duplicates-finder';
 import { MatchingQueue } from '@/components/matching/queue';
 import { Badge } from '@/components/ui';
 import { codaQuerySchema } from '@/features/matching/schema';
@@ -84,6 +85,11 @@ export default async function AbbinamentiPage({
       </dl>
 
       <MatchingQueue iniziale={coda} endpoint={withBasePath('/api/matching')} />
+
+      <DuplicatesFinder
+        endpointCerca={withBasePath('/api/products/duplicates')}
+        endpointUnisci={withBasePath('/api/products/merge')}
+      />
 
       <Link href="/listini" className="inline-block text-sm text-neutral-500 hover:underline">
         ← Listini

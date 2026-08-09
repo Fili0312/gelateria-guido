@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { AppIcon } from '@/components/app-icon';
 import { CategoryBadge } from '@/components/taxonomy/category-badge';
+import { PackagingQuickSet } from './packaging-quick-set';
 import { useToast } from '@/components/ui';
 import type { ProductListItem } from '@/features/products/dto';
 import {
@@ -69,7 +70,7 @@ function Azione({
 }
 
 /** Il prezzo e la confezione, su una riga sola. */
-function Prezzo({ prodotto }: { prodotto: ProductListItem }) {
+function Prezzo({ prodotto, endpointOfferte }: { prodotto: ProductListItem; endpointOfferte: string }) {
   const p = prodotto.price;
   if (!p) {
     return <span className="text-xs text-neutral-400">senza prezzo</span>;
@@ -83,12 +84,11 @@ function Prezzo({ prodotto }: { prodotto: ProductListItem }) {
           {`${euro(p.unitPrice, 4)}${etichettaBasis(p.unitPriceBasis).slice(1)}`}
         </span>
       ) : (
-        <span
-          className="text-xs text-amber-700"
-          title="Senza i pezzi per confezione il prezzo per unità sarebbe inventato"
-        >
-          confezione da definire
-        </span>
+        <PackagingQuickSet
+          supplierProductId={p.supplierProductId}
+          supplierName={p.supplierName}
+          endpoint={endpointOfferte}
+        />
       )}
       <span className="text-xs text-neutral-500">{confezioneDelPrezzo(p)}</span>
       <span className="text-xs text-neutral-400">{p.supplierName}</span>
@@ -104,7 +104,15 @@ function Prezzo({ prodotto }: { prodotto: ProductListItem }) {
   );
 }
 
-function Riga({ prodotto, endpoint }: { prodotto: ProductListItem; endpoint: string }) {
+function Riga({
+  prodotto,
+  endpoint,
+  endpointOfferte,
+}: {
+  prodotto: ProductListItem;
+  endpoint: string;
+  endpointOfferte: string;
+}) {
   const router = useRouter();
   const { toast } = useToast();
   const [attesa, setAttesa] = useState(false);
@@ -161,7 +169,7 @@ function Riga({ prodotto, endpoint }: { prodotto: ProductListItem; endpoint: str
           <CategoryBadge categoria={prodotto.category} />
         </p>
         <p className="mt-0.5">
-          <Prezzo prodotto={prodotto} />
+          <Prezzo prodotto={prodotto} endpointOfferte={endpointOfferte} />
         </p>
       </div>
 
@@ -230,10 +238,12 @@ export function ProductList({
   items,
   conFiltri,
   endpoint,
+  endpointOfferte,
 }: {
   items: ProductListItem[];
   conFiltri: boolean;
   endpoint: string;
+  endpointOfferte: string;
 }) {
   if (items.length === 0) return <Vuoto conFiltri={conFiltri} />;
 
@@ -243,7 +253,12 @@ export function ProductList({
       aria-label="Elenco prodotti"
     >
       {items.map((prodotto) => (
-        <Riga key={prodotto.id} prodotto={prodotto} endpoint={endpoint} />
+        <Riga
+          key={prodotto.id}
+          prodotto={prodotto}
+          endpoint={endpoint}
+          endpointOfferte={endpointOfferte}
+        />
       ))}
     </ul>
   );
