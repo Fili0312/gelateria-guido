@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { AiReading } from '@/components/comparison/ai-reading';
-import { ComparisonTable, NoComparisonTable } from '@/components/comparison/comparison-table';
+import { ComparisonTable } from '@/components/comparison/comparison-table';
 import { Badge, Input, Select } from '@/components/ui';
 import { euro, numero } from '@/features/products/format';
 import type { ComparisonSort } from '@/features/reports/dto';
@@ -84,7 +84,9 @@ export default async function ConvenientiPage({
               {euro(report.thresholds.euro)}
             </span>
           )}
-          <span>{t.singleOffer} con un solo fornitore</span>
+          <span>
+            {t.singleOffer} con un solo fornitore: niente da confrontare
+          </span>
           {t.stale > 0 && (
             <span className="text-amber-700">
               {t.stale} con prezzi fermi da oltre {report.thresholds.staleMonths} mesi
@@ -166,8 +168,8 @@ export default async function ConvenientiPage({
       </details>
 
       <AiReading
-        endpoint={withBasePath('/api/reports/convenient/analyze')}
-        disponibile={t.compared > 0}
+        endpoint={withBasePath('/api/products/duplicates')}
+        confrontiAttuali={t.compared}
       />
 
       <section className="space-y-3">
@@ -178,19 +180,6 @@ export default async function ConvenientiPage({
         </h2>
         <ComparisonTable righe={report.comparisons} confrontiTotali={t.compared} />
       </section>
-
-      {report.withoutComparison.length > 0 && (
-        <section className="space-y-3 border-t border-neutral-200 pt-7">
-          <h2 className="text-lg font-black text-neutral-950">
-            Senza confronto: {report.withoutComparison.length}
-          </h2>
-          <p className="max-w-2xl text-sm leading-6 text-neutral-500">
-            Tenuti separati di proposito. Un prodotto che ha un solo fornitore non è «pari»: è un
-            prodotto su cui non si può ancora scegliere, ed è un’informazione diversa.
-          </p>
-          <NoComparisonTable righe={report.withoutComparison} />
-        </section>
-      )}
 
       <Link href="/prodotti" className="inline-block text-sm text-neutral-500 hover:underline">
         ← Catalogo

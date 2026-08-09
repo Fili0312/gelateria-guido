@@ -98,15 +98,21 @@ function Riga({
   onAggiungi: (supplierProductId: string) => void;
   onCambiaQuantita: (rigaId: string, quantita: number) => void;
 }) {
-  const [aperto, setAperto] = useState(false);
+  const prima0 = risultato.offerte[0];
+  const altre0 = risultato.offerte.slice(1);
+  // Quando due fornitori vendono lo stesso articolo si vedono **entrambi**,
+  // aperti. Nasconderne uno dietro una freccia significa che nove volte su
+  // dieci non lo si guarda — e quel confronto è la ragione per cui il
+  // prodotto è stato collegato.
+  const [aperto, setAperto] = useState(altre0.length > 0);
   const elemento = useRef<HTMLLIElement>(null);
 
   useEffect(() => {
     if (attiva) elemento.current?.scrollIntoView({ block: 'nearest' });
   }, [attiva]);
 
-  const prima = risultato.offerte[0];
-  const altre = risultato.offerte.slice(1);
+  const prima = prima0;
+  const altre = altre0;
   const gia = prima ? perOfferta.get(prima.supplierProductId) : undefined;
 
   return (
@@ -145,8 +151,12 @@ function Riga({
             type="button"
             onClick={() => setAperto((v) => !v)}
             aria-expanded={aperto}
-            aria-label={`Mostra gli altri ${altre.length} fornitori di ${risultato.name}`}
-            title={`Altri ${altre.length} fornitori`}
+            aria-label={
+              aperto
+                ? `Nascondi gli altri fornitori di ${risultato.name}`
+                : `Mostra gli altri ${altre.length} fornitori di ${risultato.name}`
+            }
+            title={aperto ? 'Nascondi gli altri fornitori' : `Altri ${altre.length} fornitori`}
             className="grid h-11 w-8 shrink-0 cursor-pointer place-items-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
           >
             <AppIcon
@@ -178,6 +188,16 @@ function Riga({
       </div>
 
       {aperto && altre.length > 0 && (
+        <>
+          {/* Perché guardare le alternative: senza questa riga sono solo altri
+              numeri, e restano lì senza far decidere niente. */}
+          {risultato.confrontato && risultato.risparmioPerConfezione && (
+            <p className="border-t border-neutral-100 bg-green-50/60 px-6 py-1 text-xs text-green-900">
+              Conviene da <strong>{prima!.supplierName}</strong>:{' '}
+              <strong>{euro(risultato.risparmioPerConfezione)}</strong> in meno a confezione
+              rispetto all’altro fornitore.
+            </p>
+          )}
         <ul className="space-y-1 border-t border-neutral-100 bg-neutral-50/70 py-1.5 pr-2 pl-6">
           {altre.map((offerta) => {
             const suo = perOfferta.get(offerta.supplierProductId);
@@ -211,6 +231,7 @@ function Riga({
             );
           })}
         </ul>
+        </>
       )}
     </li>
   );

@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { chiediAlModello, leggiRisposta, type ProviderAi } from '@/server/ai';
 import { SISTEMA_DOPPIONI, utenteDoppioni, VERSIONE_PROMPT } from '@/server/ai/prompts';
 import { prismaForOrganization } from '@/server/db';
+import { unisciProdotti } from './merge';
 import { formatiCompatibili, nucleoPerAbbinamento, sovrapposizioneParole } from '@/server/domain/matching/score';
 import { inUnitaBase, type BaseUnit, type UnitOfMeasure } from '@/server/domain/packaging/units';
 
@@ -98,6 +99,8 @@ export interface EsitoDoppioni {
   doppioni: Doppione[];
   /** Coppie riconosciute con riserva: le decide una persona. */
   daDecidere: Doppione[];
+  /** Quante coppie sono state collegate davvero, quando lo si è chiesto. */
+  collegati: number;
 }
 
 type ProdottoRecord = {
@@ -142,7 +145,17 @@ function unitarioMigliore(p: ProdottoRecord): Decimal | null {
 
 export async function cercaDoppioni(
   organizationId: string,
-  opzioni: { usaModello: boolean; provider?: ProviderAi } = { usaModello: true },
+  opzioni: {
+    usaModello: boolean;
+    /**
+     * Collega subito le coppie di cui il modello è **sicuro**.
+     *
+     * Le incerte non si toccano mai in automatico: «non ne sono sicuro» è una
+     * risposta, e trattarla come un sì la butterebbe via.
+     */
+    collegaSicuri?: boolean;
+    provider?: ProviderAi;
+  } = { usaModello: true },
 ): Promise<EsitoDoppioni> {
   const db = prismaForOrganization(organizationId);
 
@@ -222,6 +235,7 @@ export async function cercaDoppioni(
     chiamate: 0,
     doppioni: [],
     daDecidere: [],
+    collegati: 0,
   };
   if (coppie.length === 0) return esito;
 
@@ -320,5 +334,50 @@ export async function cercaDoppioni(
   esito.doppioni.sort(perRisparmio);
   esito.daDecidere.sort(perRisparmio);
   esito.coppieConfermate = esito.doppioni.length;
+
+  if (opzioni.collegaSicuri && esito.doppioni.length > 0) {
+    esito.collegati = await collegaTutti(organizationId, esito.doppioni);
+  }
+
   return esito;
+}
+
+/**
+ * Collega in fila le coppie sicure.
+ *
+ * Il punto delicato è la **catena**: se A e B si collegano e poi arriva la
+ * coppia B–C, B non esiste più. Si tiene quindi una mappa di chi è finito
+ * dentro chi, e si rilegge l'id prima di ogni collegamento. Senza, la seconda
+ * coppia fallirebbe con «uno dei due prodotti non esiste» e il collegamento
+ * andrebbe perso proprio dove ce n'erano tre uguali.
+ */
+async function collegaTutti(organizationId: string, coppie: readonly Doppione[]): Promise<number> {
+  const finitoDentro = new Map<string, string>();
+  const risolvi = (id: string): string => {
+    let corrente = id;
+    // Le catene sono cortissime, ma un ciclo va comunque impedito.
+    for (let salti = 0; salti < 10; salti++) {
+      const dopo = finitoDentro.get(corrente);
+      if (!dopo) return corrente;
+      corrente = dopo;
+    }
+    return corrente;
+  };
+
+  let collegati = 0;
+  for (const coppia of coppie) {
+    const a = risolvi(coppia.aId);
+    const b = risolvi(coppia.bId);
+    if (a === b) continue;
+    try {
+      const esito = await unisciProdotti(organizationId, a, b);
+      const assorbito = esito.sopravvissutoId === a ? b : a;
+      finitoDentro.set(assorbito, esito.sopravvissutoId);
+      collegati += 1;
+    } catch {
+      // Una coppia che non si collega non ferma le altre: resta da fare a
+      // mano, e la si ritrova al prossimo giro.
+    }
+  }
+  return collegati;
 }

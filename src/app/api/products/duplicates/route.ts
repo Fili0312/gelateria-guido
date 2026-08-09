@@ -10,7 +10,13 @@ import { cercaDoppioni } from '@/server/catalog/duplicates';
 
 export const dynamic = 'force-dynamic';
 
-const corpoSchema = z.object({ usaModello: z.boolean().default(true) }).strict();
+const corpoSchema = z
+  .object({
+    usaModello: z.boolean().default(true),
+    /** Collega subito le coppie sicure, senza passare dalla conferma. */
+    collegaSicuri: z.boolean().default(false),
+  })
+  .strict();
 
 /**
  * Cerca lo stesso articolo venduto da due fornitori.
