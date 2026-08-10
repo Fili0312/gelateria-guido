@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Decimal } from 'decimal.js';
 import ExcelJS from 'exceljs';
+import { businessCalendarDay } from '../src/features/prices/date.js';
 import { systemPrisma } from '../src/server/database/system-client.js';
 import { datiOrdine } from '../src/server/export/dati.js';
 import { TEMPLATE } from '../src/server/export/registro.js';
@@ -212,8 +213,10 @@ async function main() {
   console.log('\n── Criterio 2: i nomi contengono fornitore e data, e si ordinano ─\n');
 
   const nomi = prodotti.map((d) => d.fileName);
-  const oggi = new Date();
-  const dataAttesa = `${oggi.getFullYear()}-${String(oggi.getMonth() + 1).padStart(2, '0')}-${String(oggi.getDate()).padStart(2, '0')}`;
+  // La data del nome è quella **della gelateria**, non quella del server: il
+  // server sta a UTC, e alle 23:15 di qui in Italia è già domani. Misurare
+  // con l'orologio del server faceva fallire il controllo una notte su tre.
+  const dataAttesa = businessCalendarDay(new Date());
   esito(
     nomi.every((n) => n.startsWith(dataAttesa)),
     `tutti cominciano con la data (${dataAttesa})`,
