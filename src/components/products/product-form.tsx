@@ -5,7 +5,7 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { Button, Input, Select, useToast } from '@/components/ui';
 import type { ProductApiBody, ProductDetail } from '@/features/products/dto';
 import { productInputSchema, UNITA_DI_MISURA, type ProductInput } from '@/features/products/schema';
-import { etichettaUnita } from '@/features/products/format';
+import { etichettaUnita, formatoUnitario } from '@/features/products/format';
 import { CategorySelect } from '@/components/taxonomy/category-select';
 import type { DepartmentItem } from '@/features/taxonomy/dto';
 
@@ -25,6 +25,24 @@ function issuesToFields(issues: { path: PropertyKey[]; message: string }[]) {
     (campi[campo] ??= []).push(issue.message);
   }
   return campi;
+}
+
+function Sezione({
+  titolo,
+  nota,
+  children,
+}: {
+  titolo: string;
+  nota: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm shadow-neutral-900/[0.025]">
+      <h2 className="font-black text-neutral-950">{titolo}</h2>
+      <p className="mt-1 mb-4 max-w-2xl text-sm leading-5 text-neutral-500">{nota}</p>
+      <div className="space-y-4">{children}</div>
+    </section>
+  );
 }
 
 export function ProductForm({
@@ -104,53 +122,38 @@ export function ProductForm({
     }
   }
 
+  /** Com'è scritto il formato mentre lo si digita. */
+  const anteprimaFormato =
+    valori.unitSize && Number(valori.unitSize) > 0
+      ? formatoUnitario(valori.unitSize, valori.unitOfMeasure)
+      : null;
+
   return (
-    <form onSubmit={invia} className="space-y-5" noValidate>
-      <Input
-        name="name"
-        label="Nome del prodotto"
-        required
-        value={valori.name}
-        onChange={(e) => cambia('name', e.target.value)}
-        error={campi.name?.[0]}
-        hint="Come lo chiami tu, non come lo scrive il fornitore. Il formato può stare nel nome: viene riconosciuto."
-        maxLength={200}
-      />
-
-      {anteprima && (
-        <p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
-          Verrà cercato anche scrivendolo in modo diverso: accenti, maiuscole e punteggiatura non
-          contano.
-        </p>
-      )}
-
-      <div className="grid gap-4 sm:grid-cols-2">
+    <form onSubmit={invia} className="space-y-4" noValidate>
+      {/* Il modulo era una colonna di dieci campi tutti uguali: si compilava
+          leggendo ogni etichetta, perché niente diceva quali andassero
+          insieme. Ora sono tre gruppi con un titolo, e il titolo risponde
+          alla domanda «cosa sto dicendo adesso». */}
+      <Sezione
+        titolo="Che cos’è"
+        nota="Il nome è quello che userai tu per cercarlo. Le descrizioni dei fornitori restano le loro, e si collegano sotto."
+      >
         <Input
-          name="unitSize"
-          label="Formato del singolo pezzo"
+          name="name"
+          label="Nome del prodotto"
           required
-          inputMode="decimal"
-          value={valori.unitSize}
-          onChange={(e) => cambia('unitSize', e.target.value)}
-          error={campi.unitSize?.[0]}
-          hint="Per una bottiglia da 33 cl scrivi 33 e scegli «cl»."
+          value={valori.name}
+          onChange={(e) => cambia('name', e.target.value)}
+          error={campi.name?.[0]}
+          hint="Il formato può stare nel nome: viene riconosciuto."
+          maxLength={200}
         />
-        <Select
-          name="unitOfMeasure"
-          label="Unità di misura"
-          value={valori.unitOfMeasure}
-          onChange={(e) => cambia('unitOfMeasure', e.target.value as ProductInput['unitOfMeasure'])}
-          error={campi.unitOfMeasure?.[0]}
-        >
-          {UNITA_DI_MISURA.map((unita) => (
-            <option key={unita} value={unita}>
-              {etichettaUnita(unita)}
-            </option>
-          ))}
-        </Select>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
+        {anteprima && (
+          <p className="text-xs leading-5 text-neutral-500">
+            Lo ritroverai anche scrivendolo in modo diverso: accenti, maiuscole e punteggiatura non
+            contano.
+          </p>
+        )}
         <Input
           name="brand"
           label="Marca"
@@ -158,30 +161,84 @@ export function ProductForm({
           onChange={(e) => cambia('brand', e.target.value || null)}
           error={campi.brand?.[0]}
         />
+      </Sezione>
+
+      <Sezione
+        titolo="Quanto ce n’è dentro"
+        nota="È il formato del singolo pezzo, non della cassa: quanti pezzi ci sono in un collo lo dice il listino di ogni fornitore."
+      >
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+          <Input
+            name="unitSize"
+            label="Formato del singolo pezzo"
+            required
+            inputMode="decimal"
+            value={valori.unitSize}
+            onChange={(e) => cambia('unitSize', e.target.value)}
+            error={campi.unitSize?.[0]}
+            hint="Per una bottiglia da 33 cl scrivi 33 e scegli «cl»."
+          />
+          <Select
+            name="unitOfMeasure"
+            label="Unità di misura"
+            value={valori.unitOfMeasure}
+            onChange={(e) =>
+              cambia('unitOfMeasure', e.target.value as ProductInput['unitOfMeasure'])
+            }
+            error={campi.unitOfMeasure?.[0]}
+          >
+            {UNITA_DI_MISURA.map((unita) => (
+              <option key={unita} value={unita}>
+                {etichettaUnita(unita)}
+              </option>
+            ))}
+          </Select>
+          {/* L'anteprima mentre si scrive: «70» e «cl» separati non fanno
+              vedere l'errore, «70 cl» sì — ed è la stringa che finirà su ogni
+              schermata e sui confronti. */}
+          <p className="sm:pb-2">
+            <span className="block text-[11px] tracking-wide text-neutral-400 uppercase">
+              Verrà scritto
+            </span>
+            <span className="text-sm font-bold text-neutral-950">{anteprimaFormato ?? '—'}</span>
+          </p>
+        </div>
+      </Sezione>
+
+      <Sezione
+        titolo="Dove va"
+        nota="La categoria raggruppa l’ordine per reparto. Si può lasciare vuota e assegnarla dopo, anche in blocco con l’IA."
+      >
         <CategorySelect
           reparti={reparti}
           value={valori.categoryId}
           onChange={(id) => cambia('categoryId', id)}
           error={campi.categoryId?.[0]}
-          hint="Serve a raggruppare l'ordine per reparto. Si può lasciare vuota e assegnare dopo."
         />
-      </div>
+        <Input
+          name="gtin"
+          label="Codice a barre"
+          value={valori.gtin ?? ''}
+          onChange={(e) => cambia('gtin', e.target.value || null)}
+          error={campi.gtin?.[0]}
+          hint="Da 8 a 14 cifre. Nei listini della gelateria non ce n’è nessuno: si compila solo se lo si ha davvero."
+          inputMode="numeric"
+        />
+      </Sezione>
 
-      <Input
-        name="gtin"
-        label="Codice a barre"
-        value={valori.gtin ?? ''}
-        onChange={(e) => cambia('gtin', e.target.value || null)}
-        error={campi.gtin?.[0]}
-        hint="Da 8 a 14 cifre. Nei listini della gelateria non ce n’è nessuno: si compila solo se lo si ha davvero."
-        inputMode="numeric"
-      />
-
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Button type="submit" disabled={attesa}>
-          {mode === 'create' ? 'Crea prodotto' : 'Salva modifiche'}
+      {/* I comandi restano a portata anche scorrendo: un modulo che si salva
+          solo tornando in fondo fa perdere le modifiche a chi non ci torna. */}
+      <div className="sticky bottom-3 z-10 flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white/95 p-3 shadow-lg shadow-neutral-900/10 backdrop-blur sm:flex-row sm:items-center">
+        <Button type="submit" disabled={attesa} className="min-h-11">
+          {attesa ? 'Salvo…' : mode === 'create' ? 'Crea prodotto' : 'Salva modifiche'}
         </Button>
-        <Button type="button" variant="ghost" onClick={() => router.back()} disabled={attesa}>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => router.back()}
+          disabled={attesa}
+          className="min-h-11"
+        >
           Annulla
         </Button>
       </div>
