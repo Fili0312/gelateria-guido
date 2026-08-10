@@ -31,7 +31,13 @@ export function SpendChart({ punti }: { punti: PuntoSpesa[] }) {
   return (
     <div>
       <div
-        className="flex items-end gap-1"
+        // `items-stretch` e non `items-end`: le colonne devono essere alte
+        // quanto il contenitore, altrimenti l'altezza in percentuale delle
+        // barre si risolve contro un'altezza automatica e viene **zero**. Il
+        // grafico resta lì, con gli assi e le etichette al posto giusto, e
+        // non disegna niente — sembra «nessun dato» invece di un difetto.
+        // A mettere le barre in basso ci pensa `justify-end` di ogni colonna.
+        className="flex items-stretch gap-1"
         style={{ height: ALTEZZA }}
         role="img"
         aria-label={`Spesa degli ultimi ${punti.length} mesi, totale ${euro(totale)}`}
