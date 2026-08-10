@@ -155,7 +155,7 @@ export function AppShell({
             Ambiente protetto
           </div>
           <p className="mt-2 text-xs leading-5 text-neutral-600">
-            Fase 10 · Import completo: dal PDF al catalogo, con revisione e annullamento.
+            Fase 16 · Da un ordine confermato, un PDF per ogni fornitore e il riepilogo in Excel.
           </p>
         </div>
         <LogoutButton endpoint={logoutEndpoint} loginPath={loginPath} />

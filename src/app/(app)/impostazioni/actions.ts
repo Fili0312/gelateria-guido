@@ -1,9 +1,13 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { z } from 'zod';
 import { getCurrentUser } from '@/server/auth';
-import { SETTINGS_KEYS } from '@/features/settings/schema';
+import {
+  CAMPI_IMPOSTAZIONI,
+  SETTINGS_KEYS,
+  settingsFormSchema,
+  type SettingsValues,
+} from '@/features/settings/schema';
 import { settingsRepository } from '@/server/repositories/settings';
 
 export interface SettingsActionState {
@@ -11,14 +15,6 @@ export interface SettingsActionState {
   message?: string;
   requestId?: number;
 }
-
-const settingsSchema = z.object({
-  defaultVat: z.coerce.number().min(0).max(100),
-  alertPercentage: z.coerce.number().min(0).max(100),
-  alertEuro: z.coerce.number().min(0).max(10_000),
-  staleMonths: z.coerce.number().int().min(1).max(60),
-  priceChangePercentage: z.coerce.number().min(0).max(1_000),
-});
 
 export async function saveSettings(
   _previousState: SettingsActionState,
@@ -33,13 +29,14 @@ export async function saveSettings(
     };
   }
 
-  const parsed = settingsSchema.safeParse({
-    defaultVat: formData.get('defaultVat'),
-    alertPercentage: formData.get('alertPercentage'),
-    alertEuro: formData.get('alertEuro'),
-    staleMonths: formData.get('staleMonths'),
-    priceChangePercentage: formData.get('priceChangePercentage'),
-  });
+  // I campi si ricavano dallo schema invece di elencarli a mano: elencandoli,
+  // aggiungerne uno allo schema e scordarselo qui lo fa **salvare come
+  // predefinito senza un errore**. È già successo con lo sconto del
+  // fornitore: la riga si aggiornava, il campo restava vuoto, e nessuno
+  // segnalava niente.
+  const parsed = settingsFormSchema.safeParse(
+    Object.fromEntries(CAMPI_IMPOSTAZIONI.map((campo) => [campo, formData.get(campo)])),
+  );
 
   if (!parsed.success) {
     return {
@@ -49,7 +46,7 @@ export async function saveSettings(
     };
   }
 
-  const entries = Object.entries(parsed.data) as [keyof typeof SETTINGS_KEYS, number][];
+  const entries = Object.entries(parsed.data) as [keyof SettingsValues, string | number][];
 
   try {
     await settingsRepository(user.organizationId).setMany(

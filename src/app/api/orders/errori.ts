@@ -10,4 +10,11 @@ import type { ErroreMappato } from '@/server/http/api-response';
 export const ERRORI_ORDINE: readonly ErroreMappato[] = [
   { nome: 'OrderNotFoundError', status: 404 },
   { nome: 'OrderValidationError', status: 422 },
+  // Un ordine senza righe, o un formato che non esiste: è una richiesta
+  // sbagliata, non un guasto del server.
+  { nome: 'GenerazioneError', status: 422 },
+  { nome: 'ArchivioError', status: 422 },
+  // La riga c'è e il file no: il server ha perso qualcosa, e va detto.
+  { nome: 'DocumentiError', status: 500 },
+  { nome: 'PdfError', status: 500 },
 ];

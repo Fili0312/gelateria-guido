@@ -975,14 +975,32 @@ deve comunque produrre un PDF, non un caso speciale. I file vanno in
 
 **Completata quando**
 
-- [ ] un ordine con 3 fornitori genera **3 PDF distinti**, ciascuno con i soli
-      prodotti di quel fornitore
-- [ ] i nomi dei file contengono fornitore e data e sono ordinabili
-- [ ] il PDF mostra il **codice articolo del fornitore**, non il nostro
-- [ ] i totali di ogni PDF coincidono al centesimo con quelli dell'app
-- [ ] l'Excel riepilogativo apre senza avvisi
-- [ ] i documenti si riscaricano identici dallo storico
-- [ ] aggiungere un template non richiede modifiche fuori da `server/export/`
+- [x] un ordine con 3 fornitori genera **3 PDF distinti**, ciascuno con i soli
+      prodotti di quel fornitore — e nessuna riga degli altri
+- [x] i nomi dei file contengono fornitore e data e sono ordinabili
+- [x] il PDF mostra il **codice articolo del fornitore**, non il nostro
+- [x] i totali di ogni PDF coincidono al centesimo con quelli dell'app
+- [x] l'Excel riepilogativo apre senza avvisi
+- [x] i documenti si riscaricano identici dallo storico
+- [x] aggiungere un template non richiede modifiche fuori da `server/export/`
+
+**Fatta il 2026-08-10** (`docs/FASE-16.md`). 40 controlli, coi PDF verificati
+leggendone il testo: un PDF con dentro le righe del fornitore sbagliato pesa
+esattamente quanto uno giusto. Rigenerare non sovrascrive — ogni generazione ha
+la sua cartella — perché quando il fornitore contesta una riga si discute sul
+documento che gli è arrivato.
+
+Due guasti visibili solo in produzione: Chromium stava sotto `/root/.cache`,
+irraggiungibile dal servizio (ora in `/opt/ms-playwright`, via `CHROMIUM_PATH`),
+e `HOME=/nonexistent` lo faceva morire all'avvio. E un terzo trovato provando a
+salvare dal form: l'elenco dei campi esportato da un file `'use server'`
+rompeva il salvataggio di **tutte** le impostazioni, compilando e passando il
+build.
+
+Restano fuori: il **CSV**, previsto dal modello ma senza un tracciato da
+seguire finché un fornitore non lo chiede; e l'intestazione dei documenti, che
+ora è vuota — i cinque campi sono in Impostazioni e vanno compilati prima di
+mandare qualcosa a un fornitore.
 
 ---
 

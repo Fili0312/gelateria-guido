@@ -2,10 +2,12 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AppIcon } from '@/components/app-icon';
 import { OrderActions } from '@/components/orders/order-actions';
+import { OrderDocuments } from '@/components/orders/order-documents';
 import { Badge } from '@/components/ui';
 import { euro, formatoConfezione } from '@/features/products/format';
 import { getCurrentUser } from '@/server/auth';
 import { withBasePath } from '@/server/base-path';
+import { orderDocumentsRepository } from '@/server/repositories/order-documents';
 import { ordersRepository } from '@/server/repositories/orders';
 
 export const dynamic = 'force-dynamic';
@@ -29,6 +31,8 @@ export default async function OrdineStoricoPage({
   const { id } = await params;
   const ordine = await ordersRepository(user.organizationId).storico(id);
   if (!ordine) notFound();
+
+  const documenti = await orderDocumentsRepository(user.organizationId).elenco(id);
 
   const annullato = ordine.status === 'CANCELLED';
   const quando = ordine.confirmedAt ?? ordine.createdAt;
@@ -142,6 +146,12 @@ export default async function OrdineStoricoPage({
         </dl>
       </section>
 
+      <OrderDocuments
+        orderId={ordine.id}
+        iniziali={documenti}
+        endpointOrdini={withBasePath('/api/orders')}
+      />
+
       <OrderActions
         orderId={ordine.id}
         annullabile={!annullato}
@@ -149,7 +159,8 @@ export default async function OrdineStoricoPage({
       />
 
       <p className="text-xs text-neutral-400">
-        I documenti per i fornitori e l’invio via email arrivano con le Fasi 16 e 17.
+        L’invio automatico ai fornitori via email arriva con la Fase 17: per ora i documenti si
+        scaricano e si allegano a mano.
       </p>
     </div>
   );

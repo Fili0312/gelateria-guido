@@ -169,6 +169,47 @@ export function SettingsForm({ initialValues }: { initialValues: SettingsValues 
         </div>
       </section>
 
+      <section className="mt-6 rounded-2xl border border-neutral-200 bg-white shadow-sm shadow-neutral-900/[0.025]">
+        <div className="border-b border-neutral-100 px-5 py-5 sm:px-6">
+          <h2 className="text-lg font-black tracking-tight text-neutral-950">
+            Intestazione dei documenti
+          </h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            Finisce in cima a ogni PDF d’ordine: è come il fornitore capisce chi sta ordinando e
+            dove consegnare.
+          </p>
+        </div>
+        <div className="px-5 sm:px-6">
+          {(
+            [
+              ['intestazioneNome', 'Ragione sociale', 'Gelateria Guido di …', 120],
+              ['intestazioneIndirizzo', 'Indirizzo', 'Via … , CAP Città (PR)', 200],
+              ['intestazionePiva', 'Partita IVA', 'IT01234567890', 40],
+              ['intestazioneTelefono', 'Telefono', '0733 …', 40],
+              ['intestazioneEmail', 'Email', 'ordini@…', 120],
+            ] as const
+          ).map(([campo, etichetta, esempio, max]) => (
+            <label
+              key={campo}
+              className="grid gap-2 border-b border-neutral-100 py-4 last:border-0 sm:grid-cols-[13rem_minmax(0,1fr)] sm:items-center sm:gap-4"
+            >
+              <span className="text-sm font-bold text-neutral-900">{etichetta}</span>
+              <input
+                name={campo}
+                value={values[campo]}
+                maxLength={max}
+                placeholder={esempio}
+                disabled={pending}
+                onChange={(e) =>
+                  setValues((current) => ({ ...current, [campo]: e.target.value }))
+                }
+                className="focus:border-brand-500 focus:ring-brand-500/30 min-h-11 w-full rounded-lg border border-neutral-300 px-3 text-sm outline-none focus:ring-4 disabled:opacity-60"
+              />
+            </label>
+          ))}
+        </div>
+      </section>
+
       <div className="sticky bottom-3 z-10 mt-6 flex items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-white/95 p-3 shadow-lg shadow-neutral-900/10 backdrop-blur sm:static sm:justify-end sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
         <p className="hidden items-center gap-2 text-xs text-neutral-500 sm:flex">
           <AppIcon name="check" className="text-brand-600 h-4 w-4" />I valori sono salvati per
