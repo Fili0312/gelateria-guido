@@ -100,6 +100,14 @@ export const productListQuerySchema = z
     /** Solo i prodotti che questo fornitore vende. */
     supplierId: z.string().trim().max(64).default(''),
     sort: productSortSchema.default('name-asc'),
+    /**
+     * La paginazione. Prima non c'era e il catalogo si fermava ai primi 200
+     * **senza dirlo**: con 313 prodotti ne restavano fuori 113, e uno cercato
+     * per nome oltre la lettera P semplicemente non esisteva. Un limite che
+     * non si vede è peggio di un limite.
+     */
+    pagina: z.coerce.number().int().min(1).default(1),
+    perPagina: z.coerce.number().int().min(10).max(200).default(50),
   })
   .strict();
 

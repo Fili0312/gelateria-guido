@@ -225,16 +225,37 @@ export function productsRepository(organizationId: string) {
           : {}),
       };
 
+      // L'ordinamento per numero di offerte si fa **in SQL**. Prima si
+      // ordinava in memoria sulla pagina già caricata: senza paginazione era
+      // una scorciatoia innocua, con la paginazione diventa una bugia — ogni
+      // pagina ordinata al suo interno e l'insieme in disordine, col prodotto
+      // che ha più offerte magari a pagina quattro.
       const ordine =
         query.sort === 'name-desc'
           ? [{ name: 'desc' as const }]
           : query.sort === 'updated-desc'
             ? [{ updatedAt: 'desc' as const }]
-            : [{ name: 'asc' as const }];
+            : query.sort === 'offers-desc'
+              ? [
+                  { supplierProducts: { _count: 'desc' as const } },
+                  // A parità di offerte l'ordine deve restare stabile fra una
+                  // pagina e l'altra, o un prodotto può comparire due volte.
+                  { name: 'asc' as const },
+                ]
+              : [{ name: 'asc' as const }];
 
-      const [records, total, linked, nonClassificati] = await Promise.all([
-        db.product.findMany({ where, select: LIST_SELECT, orderBy: ordine, take: 200 }),
+      const salto = (query.pagina - 1) * query.perPagina;
+
+      const [records, total, filtrati, linked, nonClassificati] = await Promise.all([
+        db.product.findMany({
+          where,
+          select: LIST_SELECT,
+          orderBy: ordine,
+          skip: salto,
+          take: query.perPagina,
+        }),
         db.product.count({}),
+        db.product.count({ where }),
         db.product.count({ where: { supplierProducts: { some: {} } } }),
         db.product.count({ where: { categoryId: null } }),
       ]);
@@ -244,15 +265,12 @@ export function productsRepository(organizationId: string) {
         mapList(r, offerte.get(r.id) ?? []),
       );
 
-      // L'ordinamento per numero di offerte non è esprimibile in SQL senza
-      // una vista: si applica qui, sulla pagina già caricata.
-      if (query.sort === 'offers-desc') {
-        items.sort((a, b) => b.offersCount - a.offersCount || a.name.localeCompare(b.name, 'it'));
-      }
-
       return {
         items,
         total,
+        filtrati,
+        pagina: query.pagina,
+        perPagina: query.perPagina,
         linked,
         orphan: total - linked,
         unclassified: nonClassificati,

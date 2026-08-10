@@ -6,6 +6,7 @@ import { estraiTesto, PdfIllegibileError, PdfSenzaTestoError } from './pdf/extra
 import { segmenta, type RigaGrezza } from './pdf/segment';
 import { percorsoAssoluto } from './storage';
 import { strutturaListino, type EsitoStrutturazione } from './structure';
+import { statoIniziale } from './riga-articolo';
 import { proponiAbbinamenti } from './matching/proposte';
 import type { RigaValidata } from './validate';
 import type { ProfiloColonne } from './profile/mapping';
@@ -88,8 +89,11 @@ function righeDaScrivere(
       validationErrors: campi?.segnalazioni.length
         ? (campi.segnalazioni as unknown as OrganizationJsonInput)
         : undefined,
-      matchStatus: 'PENDING' as const,
-      proposedAction: 'AMBIGUOUS' as const,
+      // Intestazioni, indirizzi, condizioni di pagamento e totali nascono già
+      // chiusi: non sono articoli, e in coda agli abbinamenti chiederebbero
+      // una decisione che non si può prendere. Restano nel database, fuori
+      // dai conteggi.
+      ...statoIniziale({ tipo: riga.tipo, campi: campi ?? null }),
     };
   });
 }

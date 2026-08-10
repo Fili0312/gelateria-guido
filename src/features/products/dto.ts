@@ -132,7 +132,16 @@ export interface ProductDetail extends ProductListItem {
 
 export interface ProductListResult {
   items: ProductListItem[];
+  /** Tutti i prodotti a catalogo, filtri esclusi: è il denominatore dei conteggi. */
   total: number;
+  /**
+   * Quanti ne soddisfano i filtri correnti — il numero che conta per la
+   * paginazione. Separato da `total` perché servono a due cose diverse:
+   * questo dice quante pagine ci sono, quello dice quant'è grande il catalogo.
+   */
+  filtrati: number;
+  pagina: number;
+  perPagina: number;
   linked: number;
   orphan: number;
   /** Prodotti senza categoria nell'intero catalogo: la coda «da classificare». */

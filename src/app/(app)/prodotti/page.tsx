@@ -12,6 +12,9 @@ import { taxonomyRepository } from '@/server/repositories/taxonomy';
 
 export const dynamic = 'force-dynamic';
 
+/** I valori che non vale la pena scrivere nell'URL. */
+const PREDEFINITI = productListQuerySchema.parse({});
+
 function primo(valore: string | string[] | undefined): string | undefined {
   return Array.isArray(valore) ? valore[0] : valore;
 }
@@ -33,6 +36,8 @@ export default async function ProductsPage({
     status: primo(query.status),
     supplierId: primo(query.supplierId),
     sort: primo(query.sort),
+    pagina: primo(query.pagina),
+    perPagina: primo(query.perPagina),
   });
   const filtri = analizzato.success ? analizzato.data : productListQuerySchema.parse({});
   const [risultato, tassonomia, fornitoriElenco] = await Promise.all([
@@ -41,6 +46,31 @@ export default async function ProductsPage({
     suppliersRepository(user.organizationId).list({ q: '', status: 'active', sort: 'name-asc' }),
   ]);
   const fornitori = fornitoriElenco.items;
+
+  const pagine = Math.max(1, Math.ceil(risultato.filtrati / risultato.perPagina));
+  const mostrati = {
+    da: risultato.filtrati === 0 ? 0 : (risultato.pagina - 1) * risultato.perPagina + 1,
+    a: (risultato.pagina - 1) * risultato.perPagina + risultato.items.length,
+  };
+  /**
+   * Il link a un'altra pagina si porta dietro **tutti** i filtri attivi.
+   * Perderli cambierebbe l'elenco sotto i piedi: si preme «Successivi» e ci
+   * si ritrova nel catalogo intero, convinti di stare ancora nel filtro.
+   */
+  const aPagina = (numero: number) => {
+    const parametri = new URLSearchParams();
+    // Si confronta coi valori predefiniti invece di elencare a mano le
+    // eccezioni: aggiungendo un filtro domani, l'URL resta pulito da solo.
+    for (const [chiave, valore] of Object.entries(filtri)) {
+      if (chiave === 'pagina') continue;
+      if (valore === PREDEFINITI[chiave as keyof typeof PREDEFINITI]) continue;
+      const testo = String(valore);
+      if (testo) parametri.set(chiave, testo);
+    }
+    if (numero > 1) parametri.set('pagina', String(numero));
+    const coda = parametri.toString();
+    return coda ? `/prodotti?${coda}` : '/prodotti';
+  };
   const fornitoreScelto = filtri.supplierId
     ? (fornitori.find((f) => f.id === filtri.supplierId) ?? null)
     : null;
@@ -91,7 +121,14 @@ export default async function ProductsPage({
           inerti. Quello che resta è la sola riga che fa fare qualcosa. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-neutral-600">
-          <strong className="text-neutral-950">{risultato.total}</strong> prodotti ·{' '}
+          {/* Quanti se ne stanno vedendo, non solo quanti ce ne sono: prima
+              diceva «313 prodotti» mostrandone 200, e i 113 mancanti non li
+              segnalava nessuno. */}
+          <strong className="text-neutral-950">
+            {mostrati.da}–{mostrati.a}
+          </strong>{' '}
+          di {risultato.filtrati}
+          {risultato.filtrati !== risultato.total && <> filtrati su {risultato.total}</>} prodotti ·{' '}
           {risultato.orphan > 0 && <>{risultato.orphan} senza offerte · </>}
           {risultato.unclassified > 0 ? (
             <span className="text-amber-700">{risultato.unclassified} senza categoria</span>
@@ -207,6 +244,34 @@ export default async function ProductsPage({
         endpoint={withBasePath('/api/products')}
         endpointOfferte={withBasePath('/api/supplier-products')}
       />
+
+      {pagine > 1 && (
+        <nav className="flex items-center justify-between gap-3" aria-label="Pagine">
+          {filtri.pagina > 1 ? (
+            <Link
+              href={aPagina(filtri.pagina - 1)}
+              className="min-h-11 cursor-pointer rounded-lg border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-800 hover:border-neutral-400"
+            >
+              ← Precedenti
+            </Link>
+          ) : (
+            <span />
+          )}
+          <span className="text-sm text-neutral-500">
+            pagina {filtri.pagina} di {pagine}
+          </span>
+          {filtri.pagina < pagine ? (
+            <Link
+              href={aPagina(filtri.pagina + 1)}
+              className="min-h-11 cursor-pointer rounded-lg border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-800 hover:border-neutral-400"
+            >
+              Successivi →
+            </Link>
+          ) : (
+            <span />
+          )}
+        </nav>
+      )}
     </div>
   );
 }
