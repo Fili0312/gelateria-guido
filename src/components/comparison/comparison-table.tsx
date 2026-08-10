@@ -8,9 +8,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui';
-import { CategoryBadge } from '@/components/taxonomy/category-badge';
 import type { ComparedOffer, ComparisonRow } from '@/features/reports/dto';
-import { etichettaBasis, euro, formatoConfezione, numero } from '@/features/products/format';
+import { etichettaBasis, euro, numero } from '@/features/products/format';
+import { ColloBadge } from '@/components/products/collo-badge';
 
 /**
  * La tabella che risponde a «dove conviene comprarlo».
@@ -21,11 +21,22 @@ import { etichettaBasis, euro, formatoConfezione, numero } from '@/features/prod
  */
 
 function Offerta({ offerta, tono }: { offerta: ComparedOffer; tono: 'buono' | 'neutro' }) {
-  const colore = tono === 'buono' ? 'text-green-800' : 'text-neutral-700';
+  const buono = tono === 'buono';
   return (
-    <div className="min-w-44">
+    <div
+      className={`min-w-52 rounded-lg border px-3 py-2 ${
+        buono ? 'border-emerald-200 bg-emerald-50/60' : 'border-neutral-200 bg-neutral-50/60'
+      }`}
+    >
       <div className="flex flex-wrap items-baseline gap-x-2">
-        <span className={`font-semibold ${colore}`}>{offerta.supplierName}</span>
+        <span className={`text-sm font-bold ${buono ? 'text-emerald-900' : 'text-neutral-700'}`}>
+          {offerta.supplierName}
+        </span>
+        {offerta.supplierCode && (
+          <span className="tabellare text-[11px] text-neutral-400">
+            cod. {offerta.supplierCode}
+          </span>
+        )}
         {offerta.stale && (
           <Badge
             variant="warning"
@@ -35,22 +46,37 @@ function Offerta({ offerta, tono }: { offerta: ComparedOffer; tono: 'buono' | 'n
           </Badge>
         )}
       </div>
-      <div className="tabellare mt-0.5 text-sm text-neutral-900">
-        {euro(offerta.priceNet)}
+
+      {/* Come lo chiama **questo** fornitore. È la riga che permette di
+          accorgersi che l'abbinamento è sbagliato: due descrizioni affiancate
+          si controllano a colpo d'occhio, e un confronto fra due articoli
+          diversi è peggio di nessun confronto — fa cambiare fornitore per
+          risparmiare su una cosa che non si sta comprando. */}
+      <p className="mt-1 text-xs leading-4 text-neutral-600" title={offerta.rawName}>
+        {offerta.rawName}
+      </p>
+
+      <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2">
+        <span className="tabellare text-sm font-bold text-neutral-950">
+          {euro(offerta.priceNet)}
+        </span>
         {/* Con lo sconto extra il numero che conta è il secondo: il primo è
             quello che si paga, il secondo quanto costa davvero. Mostrarne uno
             solo farebbe scegliere sul dato sbagliato in un verso o nell'altro. */}
         {Number(offerta.extraDiscountPct) > 0 && (
-          <span className="ml-1.5 rounded bg-violet-100 px-1.5 py-0.5 text-[11px] font-semibold text-violet-800">
+          <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[11px] font-semibold text-violet-800">
             {euro(offerta.priceEffective)} con −{numero(offerta.extraDiscountPct, 2)}%
           </span>
         )}
-        <span className="ml-2 text-xs text-neutral-500">
+      </div>
+
+      <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
+        <ColloBadge confezione={offerta} />
+        {/* Il prezzo per litro resta **qui**: è il numero su cui il confronto
+            si regge, ed è l'unico posto in cui serve davvero. */}
+        <span className="tabellare text-[11px] text-neutral-500">
           {`${euro(offerta.unitPrice, 4)}${etichettaBasis(offerta.unitPriceBasis).slice(1)}`}
         </span>
-      </div>
-      <div className="mt-0.5 text-xs text-neutral-500">
-        {formatoConfezione(offerta.unitSize, offerta.unitOfMeasure, offerta.packQuantity)}
       </div>
     </div>
   );
@@ -91,7 +117,7 @@ export function ComparisonTable({
       <TableHeader>
         <TableRow>
           <TableHead>Prodotto</TableHead>
-          <TableHead>Conviene da</TableHead>
+          <TableHead>Conviene da — controlla che sia lo stesso articolo</TableHead>
           <TableHead>Invece che da</TableHead>
           <TableHead className="text-right">Differenza</TableHead>
           <TableHead className="text-right">Risparmio</TableHead>
@@ -107,11 +133,8 @@ export function ComparisonTable({
               >
                 {riga.productName}
               </Link>
-              <div className="mt-1 flex flex-wrap items-center gap-2">
-                <CategoryBadge categoria={riga.category} />
-                <span className="text-xs text-neutral-500">
-                  {riga.offersCompared} offerte a confronto
-                </span>
+              <div className="mt-1 text-xs text-neutral-500">
+                {riga.offersCompared} offerte a confronto
               </div>
               {riga.excluded.length > 0 && (
                 <div className="mt-1 text-xs text-neutral-400">
