@@ -15,7 +15,11 @@ import type { DatiDocumento, DocumentTemplate } from '../template';
  *     per il proprio codice articolo; il nostro id non lo sa nessuno e non
  *     serve a niente su carta. Dove il codice manca c'è la descrizione, e si
  *     vede che manca invece di stampare una casella vuota.
- *  2. **Le quantità sono in confezioni, coi pezzi accanto.** Chi prepara il
+ *  2. **Si dice cosa arriva comprandone una.** Sotto la descrizione c'è
+ *     «Collo da 12 · 70 cl l'uno» oppure «1 bottiglia · 70 cl»: le
+ *     intestazioni restano «Q.tà» e «Prezzo cad.» perché valgono in
+ *     entrambi i casi, mentre «Q.tà colli» stona su una bottiglia singola.
+ *     Chi prepara il
  *     bancale conta casse, quindi la colonna principale sono le confezioni —
  *     ma il conteggio in pezzi c'è **sempre**, anche quando la confezione è
  *     da uno. Lasciandolo vuoto in quel caso resta un «2» solitario che si
@@ -152,9 +156,9 @@ function html(dati: DatiDocumento): string {
       <tr>
         <th style="width:12%">Cod. art.</th>
         <th>Descrizione</th>
-        <th class="num" style="width:9%">Q.tà colli</th>
+        <th class="num" style="width:8%">Q.tà</th>
         <th class="num" style="width:10%">Pezzi tot.</th>
-        <th class="num" style="width:13%">Prezzo/collo</th>
+        <th class="num" style="width:14%">Prezzo cad.</th>
         <th class="num" style="width:14%">Totale</th>
       </tr>
     </thead>
