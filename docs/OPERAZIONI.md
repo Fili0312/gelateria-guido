@@ -101,15 +101,16 @@ rotazione invalida immediatamente tutte le sessioni esistenti.
 ### Deploy: garanzie e limite attuale
 
 `scripts/deploy.sh` impedisce due esecuzioni contemporanee con un lock, poi
-esegue dipendenze, generazione Prisma e build **prima**
-delle migrazioni. Un errore in queste tre fasi non cambia il database e non
-riavvia il servizio. La build modifica comunque `.next` in-place: finche' non
-ci saranno directory di release separate non e' una pubblicazione atomica. Le
-migrazioni non hanno rollback automatico: devono essere additive o comunque
-compatibili con la versione gia' in esecuzione.
+esegue dipendenze, generazione Prisma e build **prima** delle migrazioni. Un
+errore in queste tre fasi non cambia il database e non riavvia il servizio. La
+nuova build viene creata in `.next-release`, mentre il processo attivo continua
+a leggere la vecchia `.next`; soltanto dopo il backup e le migrazioni il
+servizio viene fermato per il breve scambio fra le due directory. La build
+precedente resta in `.next-previous` fino al deploy seguente.
 
-Il deploy non usa ancora directory di release con switch atomico. Se fallisce
-dopo la migrazione o dopo il riavvio:
+Le migrazioni non hanno rollback automatico: devono essere additive o comunque
+compatibili con la versione gia' in esecuzione. Se il deploy fallisce dopo la
+migrazione o dopo l'avvio:
 
 1. non rilanciare il deploy alla cieca;
 2. leggere `journalctl -u gelateria -n 100 --no-pager`;

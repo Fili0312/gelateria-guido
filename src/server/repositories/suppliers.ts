@@ -193,7 +193,6 @@ function detailAsInput(supplier: SupplierDetail): SupplierInput {
   };
 }
 
-
 function listOrderBy(sort: SupplierListQuery['sort']) {
   if (sort === 'name-desc') return [{ name: 'desc' as const }];
   if (sort === 'updated-desc') return [{ updatedAt: 'desc' as const }];
@@ -280,6 +279,20 @@ export function suppliersRepository(organizationId: string) {
       const complete = supplierInputSchema.safeParse({ ...detailAsInput(current), ...patch });
       if (!complete.success) {
         throw new SupplierValidationError(fieldErrors(complete.error.issues));
+      }
+
+      if (complete.data.pricesIncludeVat !== current.pricesIncludeVat) {
+        const prezzoEsistente = await db.supplierProduct.findFirst({
+          where: { supplierId: id, prices: { some: {} } },
+          select: { id: true },
+        });
+        if (prezzoEsistente) {
+          throw new SupplierValidationError({
+            pricesIncludeVat: [
+              'Il fornitore ha già prezzi: cambiare il regime IVA richiede una correzione e reimportazione controllata dello storico.',
+            ],
+          });
+        }
       }
 
       await assertNameAvailable(complete.data.name, id);

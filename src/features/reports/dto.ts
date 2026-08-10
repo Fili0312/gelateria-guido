@@ -4,10 +4,7 @@ import type { ProductCategoryRef } from '@/features/taxonomy/dto';
 
 /** Lo stato del confronto, come lo decide il dominio. */
 export type ComparisonState =
-  | 'CONFRONTATO'
-  | 'OFFERTA_UNICA'
-  | 'NON_CONFRONTABILE'
-  | 'SENZA_PREZZO';
+  'CONFRONTATO' | 'OFFERTA_UNICA' | 'NON_CONFRONTABILE' | 'SENZA_PREZZO';
 
 export interface ComparedOffer {
   supplierProductId: string;

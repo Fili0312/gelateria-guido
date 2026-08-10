@@ -59,7 +59,10 @@ test('un file «use server» esporta solo funzioni asincrone', () => {
     const testo = readFileSync(percorso, 'utf8');
     return /^\s*['"]use server['"]/.test(testo);
   });
-  assert.ok(file.length > 0, 'nessun file «use server» trovato: il controllo non sta provando niente');
+  assert.ok(
+    file.length > 0,
+    'nessun file «use server» trovato: il controllo non sta provando niente',
+  );
 
   for (const percorso of file) {
     const testo = readFileSync(percorso, 'utf8');

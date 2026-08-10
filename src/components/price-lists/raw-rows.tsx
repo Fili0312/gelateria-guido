@@ -1,7 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui';
+import {
+  Badge,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui';
 import type { CampiRiga, RigheListino } from '@/features/price-lists/dto';
 
 /**
@@ -26,12 +34,16 @@ export function RawRows({ righe }: { righe: RigheListino }) {
   const mostrate = righe.items.filter((r) => r.tipo === vista);
   const interpretate = righe.items.some((r) => r.campi);
 
-  const schede: { chiave: Vista; etichetta: string; valore: number; tono: 'brand' | 'neutral' | 'warning' }[] =
-    [
-      { chiave: 'prodotto', etichetta: 'Righe prodotto', valore: righe.prodotti, tono: 'brand' },
-      { chiave: 'sezione', etichetta: 'Righe di sezione', valore: righe.sezioni, tono: 'neutral' },
-      { chiave: 'ignota', etichetta: 'Non capite', valore: righe.ignote, tono: 'warning' },
-    ];
+  const schede: {
+    chiave: Vista;
+    etichetta: string;
+    valore: number;
+    tono: 'brand' | 'neutral' | 'warning';
+  }[] = [
+    { chiave: 'prodotto', etichetta: 'Righe prodotto', valore: righe.prodotti, tono: 'brand' },
+    { chiave: 'sezione', etichetta: 'Righe di sezione', valore: righe.sezioni, tono: 'neutral' },
+    { chiave: 'ignota', etichetta: 'Non capite', valore: righe.ignote, tono: 'warning' },
+  ];
 
   return (
     <section className="space-y-4">
@@ -131,36 +143,36 @@ export function RawRows({ righe }: { righe: RigheListino }) {
                 {interpretate && vista === 'prodotto' && !grezzo
                   ? mostrate.map((riga) => <RigaInterpretata key={riga.id} campi={riga.campi} />)
                   : mostrate.map((riga) => (
-                  <TableRow key={riga.id}>
-                    <TableCell className="tabellare text-xs text-neutral-500">
-                      p{riga.pagina} · {riga.numero}
-                    </TableCell>
-                    <TableCell>
-                      <span className="flex flex-wrap gap-1.5">
-                        {riga.celle.length === 0 ? (
-                          <span className="text-sm text-neutral-500">{riga.testo}</span>
-                        ) : (
-                          riga.celle.map((cella, indice) => (
-                            <span
-                              key={`${riga.id}-${indice}`}
-                              className="rounded-md border border-neutral-200 bg-neutral-50 px-1.5 py-0.5 text-xs text-neutral-800"
-                              title={`colonna ${cella.colonna >= 0 ? cella.colonna : 'non riconosciuta'} · x ${cella.x}`}
-                            >
-                              {cella.testo}
-                            </span>
-                          ))
-                        )}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {riga.continuazioni.length > 0 ? (
-                        <Badge variant="neutral">{riga.continuazioni.length}</Badge>
-                      ) : (
-                        <span className="text-neutral-300">—</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      <TableRow key={riga.id}>
+                        <TableCell className="tabellare text-xs text-neutral-500">
+                          p{riga.pagina} · {riga.numero}
+                        </TableCell>
+                        <TableCell>
+                          <span className="flex flex-wrap gap-1.5">
+                            {riga.celle.length === 0 ? (
+                              <span className="text-sm text-neutral-500">{riga.testo}</span>
+                            ) : (
+                              riga.celle.map((cella, indice) => (
+                                <span
+                                  key={`${riga.id}-${indice}`}
+                                  className="rounded-md border border-neutral-200 bg-neutral-50 px-1.5 py-0.5 text-xs text-neutral-800"
+                                  title={`colonna ${cella.colonna >= 0 ? cella.colonna : 'non riconosciuta'} · x ${cella.x}`}
+                                >
+                                  {cella.testo}
+                                </span>
+                              ))
+                            )}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {riga.continuazioni.length > 0 ? (
+                            <Badge variant="neutral">{riga.continuazioni.length}</Badge>
+                          ) : (
+                            <span className="text-neutral-300">—</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
               </TableBody>
             </Table>
           </div>

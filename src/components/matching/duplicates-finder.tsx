@@ -269,7 +269,8 @@ export function DuplicatesFinder({
             deve già coincidere — 33 cl con 33 cl — e lo verifica la regola, non il modello: al
             modello si chiede solo se «HAVANA CLUB 3 A. RHUM» e «HAVANA CLUB 3Y RON» sono la stessa
             bottiglia. I pezzi per confezione <strong>non</strong> devono coincidere: un collo da 24
-            e uno da 12 sono lo stesso prodotto, e a dire quale conviene ci pensa il prezzo al litro.
+            e uno da 12 sono lo stesso prodotto, e a dire quale conviene ci pensa il prezzo al
+            litro.
           </p>
         </div>
         <button

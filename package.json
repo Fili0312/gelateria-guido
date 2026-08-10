@@ -12,6 +12,7 @@
     "format": "git ls-files -z | xargs -0 prettier --write --ignore-unknown",
     "format:check": "git ls-files -z | xargs -0 prettier --check --ignore-unknown",
     "test": "tsx --conditions=react-server --test \"src/**/*.test.ts\"",
+    "test:real-pdf": "REQUIRE_REAL_PDF_FIXTURES=1 tsx --conditions=react-server --test src/server/import/pdf/segment.test.ts src/server/import/profile/infer.test.ts",
     "db:generate": "prisma generate",
     "db:migrate": "./scripts/nuova-migrazione.sh",
     "db:deploy": "./scripts/con-variabili.sh pnpm exec prisma migrate deploy",

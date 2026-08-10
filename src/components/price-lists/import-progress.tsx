@@ -3,7 +3,11 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Badge, Button, useToast } from '@/components/ui';
-import type { PriceListApiBody, PriceListDetail, StatoLavorazione } from '@/features/price-lists/dto';
+import type {
+  PriceListApiBody,
+  PriceListDetail,
+  StatoLavorazione,
+} from '@/features/price-lists/dto';
 
 /**
  * L'avanzamento della lavorazione.

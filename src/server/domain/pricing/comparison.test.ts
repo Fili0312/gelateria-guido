@@ -149,10 +149,7 @@ describe('quello che si rifiuta di confrontare', () => {
 describe('i prezzi fermi si dichiarano, non si nascondono', () => {
   it('più vecchio della soglia: fermo', () => {
     // Escluderlo farebbe sparire un fornitore senza dirlo. Chi guarda decide.
-    const c = confrontaProdotto(
-      [offerta({ valeDa: new Date('2024-01-01T00:00:00Z') })],
-      OPZIONI,
-    );
+    const c = confrontaProdotto([offerta({ valeDa: new Date('2024-01-01T00:00:00Z') })], OPZIONI);
     assert.equal(c.migliore?.fermo, true);
     assert.equal(c.qualcunoFermo, true);
   });

@@ -1,6 +1,16 @@
 import Link from 'next/link';
 import { UploadDialog } from '@/components/price-lists/upload-dialog';
-import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui';
+import {
+  Badge,
+  Input,
+  Select,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui';
 import { priceListListQuerySchema } from '@/features/price-lists/schema';
 import { getCurrentUser } from '@/server/auth';
 import { withBasePath } from '@/server/base-path';
@@ -17,13 +27,28 @@ const DATA = new Intl.DateTimeFormat('it-IT', {
   minute: '2-digit',
 });
 
-const STATO: Record<string, { etichetta: string; tono: 'brand' | 'success' | 'danger' | 'neutral' }> = {
+const STATO: Record<
+  string,
+  { etichetta: string; tono: 'brand' | 'success' | 'danger' | 'neutral' }
+> = {
   QUEUED: { etichetta: 'in coda', tono: 'brand' },
   EXTRACTING: { etichetta: 'lettura', tono: 'brand' },
   SEGMENTING: { etichetta: 'righe', tono: 'brand' },
   DONE: { etichetta: 'pronto', tono: 'success' },
   FAILED: { etichetta: 'errore', tono: 'danger' },
   CANCELLED: { etichetta: 'annullato', tono: 'neutral' },
+};
+
+const STATO_LISTINO: Record<
+  string,
+  { etichetta: string; tono: 'brand' | 'success' | 'danger' | 'neutral' }
+> = {
+  REVIEW: { etichetta: 'da rivedere', tono: 'brand' },
+  APPLYING: { etichetta: 'applicazione', tono: 'brand' },
+  APPLIED: { etichetta: 'applicato', tono: 'success' },
+  FAILED: { etichetta: 'errore', tono: 'danger' },
+  DISCARDED: { etichetta: 'scartato', tono: 'neutral' },
+  REVERTED: { etichetta: 'annullato', tono: 'neutral' },
 };
 
 export default async function PriceListsPage({
@@ -47,6 +72,7 @@ export default async function PriceListsPage({
     priceListsRepository(user.organizationId).list(filtri),
     suppliersRepository(user.organizationId).list({ q: '', status: 'active', sort: 'name-asc' }),
   ]);
+  const conFiltri = filtri.q !== '' || filtri.supplierId !== '' || filtri.status !== 'all';
 
   return (
     <div className="space-y-7">
@@ -59,9 +85,9 @@ export default async function PriceListsPage({
             Listini
           </h1>
           <p className="mt-2 max-w-2xl leading-6 text-neutral-500">
-            Ogni listino appartiene a un fornitore e ha un <strong>nome</strong> che dice cosa copre.
-            È il nome che permette di confrontare il listino nuovo con il precedente della stessa
-            copertura, invece che con tutto il catalogo del fornitore.
+            Ogni listino appartiene a un fornitore e ha un <strong>nome</strong> che dice cosa
+            copre. È il nome che permette di confrontare il listino nuovo con il precedente della
+            stessa copertura, invece che con tutto il catalogo del fornitore.
           </p>
         </div>
         <UploadDialog
@@ -71,16 +97,64 @@ export default async function PriceListsPage({
         />
       </header>
 
+      <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" role="search">
+        <Input
+          name="q"
+          label="Cerca listino"
+          defaultValue={filtri.q}
+          placeholder="Copertura o nome del file"
+        />
+        <Select name="supplierId" label="Fornitore" defaultValue={filtri.supplierId}>
+          <option value="">Tutti</option>
+          {fornitori.items.map((fornitore) => (
+            <option key={fornitore.id} value={fornitore.id}>
+              {fornitore.name}
+            </option>
+          ))}
+        </Select>
+        <Select name="status" label="Stato" defaultValue={filtri.status}>
+          <option value="all">Tutti</option>
+          <option value="in-corso">In lavorazione</option>
+          <option value="pronti">Pronti</option>
+          <option value="falliti">Con errore</option>
+        </Select>
+        <div className="flex items-end gap-3">
+          <button
+            type="submit"
+            className="focus-visible:ring-brand-600 min-h-11 rounded-lg border border-neutral-300 bg-white px-4 text-sm font-semibold text-neutral-800 hover:border-neutral-400 focus-visible:ring-2 focus-visible:outline-none"
+          >
+            Filtra
+          </button>
+          {conFiltri && (
+            <Link href="/listini" className="text-sm text-neutral-500 hover:underline">
+              Azzera
+            </Link>
+          )}
+        </div>
+      </form>
+
+      <p className="text-sm text-neutral-600">
+        <strong className="text-neutral-950">{risultato.totale}</strong>{' '}
+        {risultato.totale === 1 ? 'listino' : 'listini'}
+      </p>
+
       {risultato.items.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-neutral-300 bg-white px-5 py-12 text-center">
-          <h2 className="text-lg font-black text-neutral-950">Nessun listino caricato</h2>
+          <h2 className="text-lg font-black text-neutral-950">
+            {conFiltri ? 'Nessun listino corrisponde ai filtri' : 'Nessun listino caricato'}
+          </h2>
           <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-neutral-500">
-            {fornitori.items.length === 0
-              ? 'Prima serve almeno un fornitore in anagrafica: è lui a determinare dove finiranno i prodotti importati.'
-              : 'Carica il PDF di un fornitore per vedere le righe che l’app riesce a estrarne. Nessun prezzo viene toccato: in questa fase si legge soltanto.'}
+            {conFiltri
+              ? 'Prova a cambiare o azzerare i filtri.'
+              : fornitori.items.length === 0
+                ? 'Prima serve almeno un fornitore in anagrafica: è lui a determinare dove finiranno i prodotti importati.'
+                : 'Carica il PDF di un fornitore per vedere le righe che l’app riesce a estrarne. Nessun prezzo viene toccato: in questa fase si legge soltanto.'}
           </p>
           {fornitori.items.length === 0 && (
-            <Link href="/fornitori/nuovo" className="text-brand-700 mt-3 inline-block text-sm underline">
+            <Link
+              href="/fornitori/nuovo"
+              className="text-brand-700 mt-3 inline-block text-sm underline"
+            >
               Aggiungi un fornitore
             </Link>
           )}
@@ -103,7 +177,8 @@ export default async function PriceListsPage({
             <TableBody>
               {risultato.items.map((listino) => {
                 const fase = listino.lavorazione?.fase ?? 'QUEUED';
-                const stato = STATO[fase] ?? { etichetta: fase.toLowerCase(), tono: 'neutral' as const };
+                const stato = STATO_LISTINO[listino.status] ??
+                  STATO[fase] ?? { etichetta: fase.toLowerCase(), tono: 'neutral' as const };
                 return (
                   <TableRow key={listino.id} className="hover:bg-neutral-50">
                     <TableCell>

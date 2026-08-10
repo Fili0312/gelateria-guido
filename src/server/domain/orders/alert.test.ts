@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { calcolaCambio, confrontaPerAvviso, type OffertaPerAvviso } from './alert';
+import {
+  calcolaCambio,
+  confrontaPerAvviso,
+  contenutoConfezioneFotografato,
+  type OffertaPerAvviso,
+} from './alert';
 
 /**
  * L'avviso «lo trovi a meno da un altro».
@@ -55,7 +60,11 @@ describe('quando NON si deve avvisare', () => {
     // Il 30% su una bottiglia da mezzo euro è quindici centesimi: riempire
     // l'elenco di queste lo rende inutile proprio quando servirebbe.
     const scelta = offerta({ prezzoConfezione: '0.50', contenutoPerConfezione: '1' });
-    const b = offerta({ supplierProductId: 'b', prezzoConfezione: '0.35', contenutoPerConfezione: '1' });
+    const b = offerta({
+      supplierProductId: 'b',
+      prezzoConfezione: '0.35',
+      contenutoPerConfezione: '1',
+    });
     const a = confrontaPerAvviso(scelta, [b], 1, { percentuale: 3, euro: 0.3 });
     assert.equal(a?.risparmioPct.gte(30), true);
     assert.equal(a?.meritaAvviso, false);
@@ -63,7 +72,11 @@ describe('quando NON si deve avvisare', () => {
 
   it('sotto la soglia percentuale, anche se gli euro ci sono', () => {
     const scelta = offerta({ prezzoConfezione: '100', contenutoPerConfezione: '1' });
-    const b = offerta({ supplierProductId: 'b', prezzoConfezione: '99', contenutoPerConfezione: '1' });
+    const b = offerta({
+      supplierProductId: 'b',
+      prezzoConfezione: '99',
+      contenutoPerConfezione: '1',
+    });
     const a = confrontaPerAvviso(scelta, [b], 1, { percentuale: 3, euro: 0.3 });
     assert.equal(a?.risparmioPerConfezione.toString(), '1');
     assert.equal(a?.meritaAvviso, false);
@@ -91,7 +104,11 @@ describe('il cambio fornitore fra confezioni diverse', () => {
    * Il criterio della roadmap: «lo swap fra 12 e 24 pezzi mantiene i pezzi
    * totali e lo dichiara». Quattro colli da 12 sono due colli da 24.
    */
-  const da12 = offerta({ pezziPerConfezione: 12, contenutoPerConfezione: '6', prezzoConfezione: '10.50' });
+  const da12 = offerta({
+    pezziPerConfezione: 12,
+    contenutoPerConfezione: '6',
+    prezzoConfezione: '10.50',
+  });
   const da24 = offerta({
     supplierProductId: 'b',
     supplierName: 'Fornitore B',
@@ -124,12 +141,42 @@ describe('il cambio fornitore fra confezioni diverse', () => {
   });
 });
 
+describe('la vecchia confezione usata nel cambio è quella fotografata', () => {
+  it('non cambia quantità se l’anagrafica viva della vecchia offerta è stata modificata', () => {
+    // La riga fotografava 12 bottiglie da 33 cl (= 3,96 L). Dopo l'aggiunta
+    // il listino vivo potrebbe essere stato corretto a 24 bottiglie: usare
+    // quel nuovo valore trasformerebbe erroneamente quattro colli in quattro.
+    const contenutoSnapshot = contenutoConfezioneFotografato('33', 'CL', 12);
+    const cambio = calcolaCambio(
+      offerta({
+        pezziPerConfezione: 12,
+        contenutoPerConfezione: contenutoSnapshot,
+      }),
+      offerta({
+        supplierProductId: 'b',
+        pezziPerConfezione: 24,
+        contenutoPerConfezione: '7.92',
+      }),
+      4,
+    );
+
+    assert.equal(contenutoSnapshot.toString(), '3.96');
+    assert.equal(cambio.confezioni, 2);
+    assert.equal(cambio.pezziPrima, 48);
+    assert.equal(cambio.pezziDopo, 48);
+  });
+});
+
 describe('quando il cambio NON torna esatto', () => {
   it('lo dice invece di arrotondare di nascosto', () => {
     // Tre colli da 12 fanno 36 pezzi: con colli da 24 sarebbero una e mezza.
     // Si arrotonda a due, e si dichiara che la quantità non è la stessa.
     const da12 = offerta({ pezziPerConfezione: 12, contenutoPerConfezione: '6' });
-    const da24 = offerta({ supplierProductId: 'b', pezziPerConfezione: 24, contenutoPerConfezione: '12' });
+    const da24 = offerta({
+      supplierProductId: 'b',
+      pezziPerConfezione: 24,
+      contenutoPerConfezione: '12',
+    });
     const cambio = calcolaCambio(da12, da24, 3);
 
     assert.equal(cambio.confezioni, 2);
@@ -143,7 +190,11 @@ describe('quando il cambio NON torna esatto', () => {
     // Meglio una in più che zero: un ordine di zero confezioni è una riga che
     // il fornitore non sa come evadere.
     const piccola = offerta({ contenutoPerConfezione: '1', pezziPerConfezione: 1 });
-    const grande = offerta({ supplierProductId: 'b', contenutoPerConfezione: '24', pezziPerConfezione: 24 });
+    const grande = offerta({
+      supplierProductId: 'b',
+      contenutoPerConfezione: '24',
+      pezziPerConfezione: 24,
+    });
     assert.equal(calcolaCambio(piccola, grande, 1).confezioni, 1);
   });
 });

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { Decimal } from 'decimal.js';
 import { describe, it } from 'node:test';
+import { normalizzaPrezzoIva } from '@/server/domain/pricing/vat';
 import { riconcilia, riepiloga, type OffertaACatalogo, type RigaDelFile } from './reconcile';
 
 /**
@@ -79,7 +80,10 @@ describe('stesso codice ma confezione diversa: NON si decide da soli', () => {
   });
 
   it('e quando cambia l’unità di vendita', () => {
-    const [c] = riconcilia([aCatalogo({ unitaDiVendita: 'CO' })], [nelFile({ unitaDiVendita: 'BT' })]);
+    const [c] = riconcilia(
+      [aCatalogo({ unitaDiVendita: 'CO' })],
+      [nelFile({ unitaDiVendita: 'BT' })],
+    );
     assert.equal(c?.esito, 'CONFEZIONE_CAMBIATA');
     assert.match(c!.differenze[0]!, /unità di vendita/);
   });
@@ -120,8 +124,7 @@ describe('prodotto sparito dal listino', () => {
     // «non l'ho importata» non è «non c'è più nel listino»: confonderle
     // disattiverebbe prodotti che il fornitore vende ancora.
     const confronti = riconcilia([aCatalogo()], [nelFile({ inclusa: false })]);
-    assert.equal(confronti.length, 1);
-    assert.equal(confronti[0]?.esito, 'SPARITO');
+    assert.deepEqual(confronti, []);
   });
 });
 
@@ -143,6 +146,58 @@ describe('importare due volte lo stesso listino', () => {
     const confronti = riconcilia(catalogo, [nelFile()]);
     assert.equal(confronti.length, 1);
     assert.equal(confronti[0]?.esito, 'INVARIATO');
+  });
+
+  it('un listino lordo identico resta INVARIATO dopo lo scorporo a scrittura', () => {
+    // Il primo import ha memorizzato l'imponibile canonico 10. Il secondo PDF
+    // riporta ancora 12,20 IVA inclusa: confrontare il raw darebbe un falso
+    // +22%, mentre la stessa normalizzazione della scrittura deve dare 10.
+    const imponibile = normalizzaPrezzoIva({
+      prezzoQuotato: '12.20',
+      originePrezzo: 'PRICE_LIST',
+      pricesIncludeVat: true,
+      aliquotaOrganizzazione: 22,
+    }).prezzoNetto;
+    const [confronto] = riconcilia(
+      [aCatalogo({ prezzoNetto: new Decimal('10') })],
+      [nelFile({ prezzoNetto: imponibile })],
+    );
+    assert.equal(confronto?.esito, 'INVARIATO');
+  });
+
+  it('riconosce al secondo import una riga Barzelli senza codice tramite impronta', () => {
+    const fingerprint = 'barzelli-caffe-moka-1l';
+    const confronti = riconcilia(
+      [
+        aCatalogo({
+          supplierCode: null,
+          fingerprint,
+          prezzoNetto: new Decimal('12.50'),
+        }),
+      ],
+      [
+        nelFile({
+          supplierCode: null,
+          fingerprint,
+          prezzoNetto: new Decimal('12.50'),
+        }),
+      ],
+    );
+    assert.equal(confronti.length, 1);
+    assert.equal(confronti[0]?.esito, 'INVARIATO');
+    assert.equal(confronti[0]?.supplierProductId, 'sp-1');
+  });
+
+  it('una variazione prezzo senza codice aggiorna la stessa offerta', () => {
+    const fingerprint = 'barzelli-caffe-moka-1l';
+    const confronti = riconcilia(
+      [aCatalogo({ supplierCode: null, fingerprint })],
+      [nelFile({ supplierCode: null, fingerprint })],
+    );
+    assert.deepEqual(
+      confronti.map((confronto) => confronto.esito),
+      ['PREZZO_AGGIORNATO'],
+    );
   });
 });
 
@@ -212,5 +267,20 @@ describe('lo stesso codice due volte nello stesso file', () => {
     const r = riepiloga(confronti);
     assert.equal(r.nuovi, 1);
     assert.equal(r.duplicati, 1);
+  });
+});
+
+describe('la stessa riga senza codice due volte nello stesso file', () => {
+  it('usa l’impronta anche per impedire duplicati', () => {
+    const confronti = riconcilia(
+      [],
+      [
+        nelFile({ chiave: 'a', supplierCode: null, fingerprint: 'senza-codice' }),
+        nelFile({ chiave: 'b', supplierCode: null, fingerprint: 'senza-codice' }),
+      ],
+    );
+    assert.equal(confronti[0]?.esito, 'NUOVO');
+    assert.equal(confronti[1]?.esito, 'DUPLICATO');
+    assert.match(confronti[1]!.differenze[0]!, /senza codice/);
   });
 });

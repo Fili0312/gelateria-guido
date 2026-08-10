@@ -37,7 +37,11 @@ describe('formatiCompatibili — il cancello', () => {
     // Servirebbe una densità che non abbiamo: il risultato sarebbe
     // plausibile e falso.
     const litri = { unitSize: new Decimal(1), unitOfMeasure: 'L' as const, baseUnit: 'L' as const };
-    const chili = { unitSize: new Decimal(1), unitOfMeasure: 'KG' as const, baseUnit: 'KG' as const };
+    const chili = {
+      unitSize: new Decimal(1),
+      unitOfMeasure: 'KG' as const,
+      baseUnit: 'KG' as const,
+    };
     const esito = formatiCompatibili(litri, chili);
     assert.equal(esito.compatibile, false);
     assert.match(esito.motivo!, /unità diverse/);
@@ -52,21 +56,45 @@ describe('formatiCompatibili — il cancello', () => {
   });
 
   it('tollera l’arrotondamento fra 0,33 e 0,330', () => {
-    const a = { unitSize: new Decimal('0.33'), unitOfMeasure: 'L' as const, baseUnit: 'L' as const };
-    const b = { unitSize: new Decimal('0.330'), unitOfMeasure: 'L' as const, baseUnit: 'L' as const };
+    const a = {
+      unitSize: new Decimal('0.33'),
+      unitOfMeasure: 'L' as const,
+      baseUnit: 'L' as const,
+    };
+    const b = {
+      unitSize: new Decimal('0.330'),
+      unitOfMeasure: 'L' as const,
+      baseUnit: 'L' as const,
+    };
     assert.equal(formatiCompatibili(a, b).compatibile, true);
   });
 
   it('ma non tollera il 5%', () => {
     // 0,33 e 0,35 sono due bottiglie diverse, non un arrotondamento.
-    const a = { unitSize: new Decimal('0.33'), unitOfMeasure: 'L' as const, baseUnit: 'L' as const };
-    const b = { unitSize: new Decimal('0.35'), unitOfMeasure: 'L' as const, baseUnit: 'L' as const };
+    const a = {
+      unitSize: new Decimal('0.33'),
+      unitOfMeasure: 'L' as const,
+      baseUnit: 'L' as const,
+    };
+    const b = {
+      unitSize: new Decimal('0.35'),
+      unitOfMeasure: 'L' as const,
+      baseUnit: 'L' as const,
+    };
     assert.equal(formatiCompatibili(a, b).compatibile, false);
   });
 
   it('un formato ignoto non si abbina a nulla', () => {
-    const noto = { unitSize: new Decimal('0.33'), unitOfMeasure: 'L' as const, baseUnit: 'L' as const };
-    const ignoto = { unitSize: new Decimal(0), unitOfMeasure: 'L' as const, baseUnit: 'L' as const };
+    const noto = {
+      unitSize: new Decimal('0.33'),
+      unitOfMeasure: 'L' as const,
+      baseUnit: 'L' as const,
+    };
+    const ignoto = {
+      unitSize: new Decimal(0),
+      unitOfMeasure: 'L' as const,
+      baseUnit: 'L' as const,
+    };
     assert.equal(formatiCompatibili(noto, ignoto).compatibile, false);
   });
 });
@@ -201,6 +229,9 @@ describe('decidiDaArbitrato — l’IA non decide mai da sola', () => {
 
   it('la soglia si può alzare senza toccare il codice', () => {
     const severe = { ...SOGLIE_PREDEFINITE, confidenzaIa: 0.99 };
-    assert.equal(decidiDaArbitrato({ stesso: true, confidenza: 0.9 }, 0.8, severe).esito, 'PENDING');
+    assert.equal(
+      decidiDaArbitrato({ stesso: true, confidenza: 0.9 }, 0.8, severe).esito,
+      'PENDING',
+    );
   });
 });

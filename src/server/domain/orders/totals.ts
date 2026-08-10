@@ -57,9 +57,10 @@ export function totaliRiga(riga: RigaDaSommare): TotaliRiga {
   // Senza aliquota dichiarata non si inventa il 22%: l'IVA resta zero e il
   // lordo coincide col netto. Un'aliquota supposta produrrebbe un totale
   // credibile e sbagliato, che è il tipo di errore che nessuno ricontrolla.
-  const iva = riga.aliquotaIva === null
-    ? new Decimal(0)
-    : arrotondaImporto(netto.mul(riga.aliquotaIva).div(100));
+  const iva =
+    riga.aliquotaIva === null
+      ? new Decimal(0)
+      : arrotondaImporto(netto.mul(riga.aliquotaIva).div(100));
   return { netto, iva, lordo: netto.plus(iva) };
 }
 
@@ -101,8 +102,6 @@ export const CONFEZIONI_MASSIME = 9_999;
 
 export function confezioniValide(quantita: number): boolean {
   return (
-    Number.isInteger(quantita) &&
-    quantita >= CONFEZIONI_MINIME &&
-    quantita <= CONFEZIONI_MASSIME
+    Number.isInteger(quantita) && quantita >= CONFEZIONI_MINIME && quantita <= CONFEZIONI_MASSIME
   );
 }

@@ -1,3 +1,5 @@
+import { businessCalendarDay } from '@/features/prices/date';
+
 /**
  * I nomi dei file scaricati.
  *
@@ -28,10 +30,9 @@ export function pezzoDiNome(testo: string): string {
   return ripulito.slice(0, 40) || 'senza-nome';
 }
 
-/** La data in `AAAA-MM-GG`, ora locale: è il giorno che si è ordinato. */
+/** La data in `AAAA-MM-GG`, nel fuso fisso della gelateria. */
 export function giorno(data: Date): string {
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${data.getFullYear()}-${p(data.getMonth() + 1)}-${p(data.getDate())}`;
+  return businessCalendarDay(data);
 }
 
 export function nomeFile(parti: {

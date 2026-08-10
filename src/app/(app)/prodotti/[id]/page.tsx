@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { ProductPriceHistory } from '@/components/prices/product-price-history';
 import { ProductAliases } from '@/components/products/product-aliases';
 import { ProductOffers } from '@/components/products/product-offers';
+import { ProductStats } from '@/components/products/product-stats';
 import { Badge } from '@/components/ui';
 import { CategoryBadge } from '@/components/taxonomy/category-badge';
 import { formatoUnitario } from '@/features/products/format';
@@ -10,6 +11,7 @@ import { getCurrentUser } from '@/server/auth';
 import { withBasePath } from '@/server/base-path';
 import { pricesRepository } from '@/server/repositories/prices';
 import { comparisonRepository } from '@/server/repositories/comparison';
+import { productStatsRepository } from '@/server/repositories/product-stats';
 import { productsRepository } from '@/server/repositories/products';
 
 export const dynamic = 'force-dynamic';
@@ -19,12 +21,19 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   if (!user) return null;
 
   const { id } = await params;
+  // Verifica prima l'entita' padre: i repository secondari assumono che il
+  // prodotto esista e, se lanciati in parallelo, trasformerebbero un normale
+  // 404 in un errore 500.
   const prodotto = await productsRepository(user.organizationId).get(id);
   if (!prodotto) notFound();
-  const storiciPrezzo = await pricesRepository(user.organizationId).forProduct(id);
+  const [storiciPrezzo, confronto, statistiche] = await Promise.all([
+    pricesRepository(user.organizationId).forProduct(id),
+    comparisonRepository(user.organizationId).perProdotto(id),
+    productStatsRepository(user.organizationId).get(id, 365),
+  ]);
   // Il confronto arriva dal dominio, come per l'elenco «Convenienti»: due
   // calcoli separati potrebbero indicare due «più conveniente» diversi.
-  const confronto = (await comparisonRepository(user.organizationId).perProdotto(id))!;
+  if (!confronto || !statistiche) notFound();
 
   return (
     <div className="space-y-7">
@@ -66,6 +75,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         endpointOfferte={withBasePath('/api/supplier-products')}
       />
 
+      <ProductStats
+        initialStats={statistiche}
+        endpoint={withBasePath(`/api/products/${prodotto.id}/stats`)}
+      />
+
       <section id="storico-prezzi" className="scroll-mt-6 space-y-3">
         <h2 className="text-lg font-black text-neutral-950">Storico prezzi</h2>
         <ProductPriceHistory
@@ -89,11 +103,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           </span>
         </summary>
         <div className="border-t border-neutral-100 p-4">
-        <ProductAliases
-          productId={prodotto.id}
-          aliases={prodotto.aliases}
-          endpoint={withBasePath('/api/products')}
-        />
+          <ProductAliases
+            productId={prodotto.id}
+            aliases={prodotto.aliases}
+            endpoint={withBasePath('/api/products')}
+          />
         </div>
       </details>
     </div>

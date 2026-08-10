@@ -50,7 +50,11 @@ export function OrderActions({
       });
       const corpo = (await risposta.json()) as OrderApiBody<EsitoRiordino>;
       if (!corpo.ok) {
-        toast({ title: 'Non è stato possibile riordinare', description: corpo.error, tone: 'error' });
+        toast({
+          title: 'Non è stato possibile riordinare',
+          description: corpo.error,
+          tone: 'error',
+        });
         return;
       }
       setEsito(corpo.data);
@@ -85,7 +89,11 @@ export function OrderActions({
       });
       const corpo = (await risposta.json()) as OrderApiBody<unknown>;
       if (!corpo.ok) {
-        toast({ title: 'Non è stato possibile annullare', description: corpo.error, tone: 'error' });
+        toast({
+          title: 'Non è stato possibile annullare',
+          description: corpo.error,
+          tone: 'error',
+        });
         return;
       }
       toast({ title: 'Ordine annullato', tone: 'success' });
@@ -120,7 +128,10 @@ export function OrderActions({
           <p className="text-sm font-semibold text-neutral-950">
             {esito.copiate} righe rimesse nell’ordine in corso
             {esito.bozzaSvuotata && (
-              <span className="font-normal text-neutral-500"> · la bozza precedente è stata svuotata</span>
+              <span className="font-normal text-neutral-500">
+                {' '}
+                · la bozza precedente è stata svuotata
+              </span>
             )}
           </p>
 

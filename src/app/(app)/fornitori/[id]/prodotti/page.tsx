@@ -32,7 +32,7 @@ export default async function SupplierProductsPage({
           <strong className="text-neutral-800">{supplier.counts.supplierProducts}</strong> offerte.
         </p>
         <Link
-          href="/prodotti"
+          href={`/prodotti?supplierId=${encodeURIComponent(supplier.id)}`}
           className="bg-brand-600 hover:bg-brand-700 focus-visible:ring-brand-600 mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg px-4 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         >
           Apri il catalogo

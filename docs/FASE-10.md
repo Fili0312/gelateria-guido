@@ -36,7 +36,8 @@ quello che è un dimezzamento di confezione.
 |---|---|
 | tutto coincide, prezzo diverso | si aggiorna solo il prezzo |
 | tutto coincide, prezzo uguale | **non si scrive niente** |
-| stesso codice, confezione o formato diversi | ⚠ **non si decide da soli**: blocca l'applicazione |
+| stesso codice, confezione diversa | ⚠ richiede una decisione esplicita prima dell'applicazione |
+| stesso codice, formato unitario diverso | ⚠ non si decide da soli: blocca l'applicazione |
 | codice mai visto | si crea |
 | a catalogo ma non nel file | si disattiva, mai si cancella |
 | stesso codice due volte nel file | si salta la seconda |
@@ -108,11 +109,16 @@ non ha un prezzo al litro, ha un'ipotesi.
 | Metodo | Endpoint | Esito |
 |---|---|---|
 | `GET` | `/api/price-lists/[id]/summary` | cosa succederebbe, senza applicare |
+| `PATCH` | `/api/price-lists/[id]/rows/[rowId]` | decide una confezione cambiata |
 | `POST` | `/api/price-lists/[id]/apply` | applica, in una transazione |
 | `POST` | `/api/price-lists/[id]/revert` | annulla un import applicato |
 
-L'applicazione risponde `409` quando restano righe con la confezione cambiata,
-e il messaggio dice quante sono e perché non si decide da soli.
+Per una confezione cambiata la revisione offre due decisioni: mantenere quella
+precedente oppure accettare la nuova. La seconda conferma i pezzi, ricalcola i
+contenuti derivati e aggiorna insieme confezione, impronta e prezzo corrente;
+lo snapshot dell'applicazione conserva gli stessi campi per poterli
+ripristinare esattamente con `revert`. L'applicazione risponde `409` finché
+restano righe non decise.
 
 ## Verifica
 
@@ -155,17 +161,14 @@ tutti e quattro i casi.
 prezzi. Sopra ci sta un solo prodotto canonico, ed è quello che rende possibile
 la domanda «dove conviene comprarlo» — che è la Fase 11.
 
-## Cosa non c'è, e va detto
+## Il confine esplicito: prodotto diverso
 
-La schermata di revisione mostra i conteggi e i due pulsanti, ma **non**
-permette ancora di modificare un campo riga per riga né di decidere le
-confezioni cambiate dall'interfaccia. Oggi una confezione cambiata blocca
-l'applicazione con un messaggio chiaro, ma per sbloccarla serve correggere la
-riga altrove.
-
-È il pezzo che manca alla fase, ed è onesto dirlo: sui listini della gelateria
-non si è ancora presentato — zero confezioni cambiate su 331 righe — ma si
-presenterà.
+La decisione **Accetta nuova** copre il cambio del numero di pezzi della
+confezione quando il formato unitario resta lo stesso. Se cambia anche il
+formato (per esempio da 50 cl a 75 cl), la UI disabilita la decisione e il
+server la rifiuta: trattare quella riga come un prodotto diverso richiede una
+nuova policy sul riuso del codice fornitore e sulla storicizzazione dell'offerta.
+Fino a quella policy non viene fatta alcuna scelta ambigua in automatico.
 
 ## Passo successivo
 

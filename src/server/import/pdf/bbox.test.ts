@@ -30,7 +30,10 @@ describe('leggiBbox', () => {
 
   it('separa le pagine e le numera da 1', () => {
     assert.equal(documento.pagine.length, 2);
-    assert.deepEqual(documento.pagine.map((p) => p.numero), [1, 2]);
+    assert.deepEqual(
+      documento.pagine.map((p) => p.numero),
+      [1, 2],
+    );
     assert.equal(documento.pagine[0]!.larghezza, 595.5);
   });
 

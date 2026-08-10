@@ -1,4 +1,8 @@
-import { abbinaTutte, riepiloga, type RigaDaAbbinare } from '../src/server/import/matching/cascata.js';
+import {
+  abbinaTutte,
+  riepiloga,
+  type RigaDaAbbinare,
+} from '../src/server/import/matching/cascata.js';
 import { systemPrisma } from '../src/server/database/system-client.js';
 
 /**
@@ -29,8 +33,13 @@ interface CampiRiga {
 
 async function main() {
   const listini = await systemPrisma.priceList.findMany({
-    select: { id: true, scopeLabel: true, supplierId: true, organizationId: true,
-      supplier: { select: { name: true } } },
+    select: {
+      id: true,
+      scopeLabel: true,
+      supplierId: true,
+      organizationId: true,
+      supplier: { select: { name: true } },
+    },
     orderBy: { uploadedAt: 'asc' },
   });
 
@@ -61,8 +70,12 @@ async function main() {
     const r = riepiloga(esiti);
     const secondi = ((Date.now() - inizio) / 1000).toFixed(1);
 
-    console.log(`\n═══ ${listino.supplier.name} / ${listino.scopeLabel} — ${daAbbinare.length} righe in ${secondi}s`);
-    console.log(`  gia noti ${r.giaNoti} · automatici ${r.automatici} · da rivedere ${r.daRivedere} · nuovi ${r.nuovi}`);
+    console.log(
+      `\n═══ ${listino.supplier.name} / ${listino.scopeLabel} — ${daAbbinare.length} righe in ${secondi}s`,
+    );
+    console.log(
+      `  gia noti ${r.giaNoti} · automatici ${r.automatici} · da rivedere ${r.daRivedere} · nuovi ${r.nuovi}`,
+    );
 
     const conCandidati = esiti.filter((e) => e.candidati.length > 0);
     if (conCandidati.length > 0) {

@@ -38,7 +38,10 @@ describe('«esclusi alcuni»', () => {
   it('l’esclusione vince anche su una percentuale sua', () => {
     // «Escluso» è una risposta netta: se poi una percentuale ci fosse
     // comunque, l'esclusione non vorrebbe dire niente.
-    assert.equal(percentualeApplicata(sconto({ esclusa: true, percentualeSua: '20' })).toString(), '0');
+    assert.equal(
+      percentualeApplicata(sconto({ esclusa: true, percentualeSua: '20' })).toString(),
+      '0',
+    );
   });
 });
 
@@ -62,11 +65,17 @@ describe('arrotondamento', () => {
   it('due decimali all’even, come i netti di listino', () => {
     // Un prezzo effettivo arrotondato diversamente dai netti creerebbe
     // differenze da un centesimo che sembrano differenze vere.
-    assert.equal(nettoEffettivo('0.125', sconto({ percentualeFornitore: '0' })).toString(), '0.125');
+    assert.equal(
+      nettoEffettivo('0.125', sconto({ percentualeFornitore: '0' })).toString(),
+      '0.125',
+    );
     assert.equal(nettoEffettivo('1.25', sconto({ percentualeFornitore: '10' })).toString(), '1.12');
   });
 
   it('uno sconto a zero non tocca il prezzo nemmeno nell’arrotondamento', () => {
-    assert.equal(nettoEffettivo('1.234', sconto({ percentualeFornitore: '0' })).toString(), '1.234');
+    assert.equal(
+      nettoEffettivo('1.234', sconto({ percentualeFornitore: '0' })).toString(),
+      '1.234',
+    );
   });
 });

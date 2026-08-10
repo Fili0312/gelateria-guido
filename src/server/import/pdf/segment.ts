@@ -119,7 +119,10 @@ function dueNumeriAttaccati(cella: string, parola: string): boolean {
 }
 
 /** Raggruppa le parole di una pagina in righe, per coordinata verticale. */
-export function righeDiPagina(pagina: PaginaParole, opzioni: OpzioniSegmentazione = {}): RigaVisiva[] {
+export function righeDiPagina(
+  pagina: PaginaParole,
+  opzioni: OpzioniSegmentazione = {},
+): RigaVisiva[] {
   const tolleranza = opzioni.tolleranzaRiga ?? PREDEFINITI.tolleranzaRiga;
   const distanza = opzioni.distanzaCella ?? PREDEFINITI.distanzaCella;
 
@@ -139,7 +142,10 @@ export function righeDiPagina(pagina: PaginaParole, opzioni: OpzioniSegmentazion
   }
 
   const centri = gruppi.map((gruppo) => gruppo[0]!.y);
-  const salti = centri.slice(1).map((y, i) => y - centri[i]!).filter((d) => d > 0);
+  const salti = centri
+    .slice(1)
+    .map((y, i) => y - centri[i]!)
+    .filter((d) => d > 0);
   const ordinati = [...salti].sort((a, b) => a - b);
   const interlinea = ordinati.length ? ordinati[Math.floor(ordinati.length / 2)]! : 12;
 
@@ -429,7 +435,8 @@ function eSezione(riga: RigaVisiva): boolean {
  * salto di pagina, mentre un pezzo di descrizione no — «VAP» in cima a una
  * pagina non dice a chi appartiene, `EAN: 40201` si'.
  */
-const RE_CODICE_ANNOTATO = /^(ean|gtin|cod|codice|art|articolo)\s*[:.]?\s*([A-Za-z0-9._/-]{3,20})$/i;
+const RE_CODICE_ANNOTATO =
+  /^(ean|gtin|cod|codice|art|articolo)\s*[:.]?\s*([A-Za-z0-9._/-]{3,20})$/i;
 
 export function codiceAnnotato(testo: string): string | null {
   const m = RE_CODICE_ANNOTATO.exec(testo.trim());

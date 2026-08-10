@@ -92,7 +92,14 @@ export async function unisciProdotti(
     for (const listino of listini) {
       await tx.priceList.update({
         where: { id: listino.id },
-        data: { rows: { updateMany: { where: { productId: assorbito.id }, data: { productId: sopravvissuto.id } } } },
+        data: {
+          rows: {
+            updateMany: {
+              where: { productId: assorbito.id },
+              data: { productId: sopravvissuto.id },
+            },
+          },
+        },
       });
       esito.righeSpostate += listino._count.rows;
     }
@@ -106,7 +113,11 @@ export async function unisciProdotti(
           where: { id: sopravvissuto.id },
           data: {
             aliases: {
-              create: { text: assorbito.name.slice(0, 200), normalizedText: nucleo, source: 'USER' },
+              create: {
+                text: assorbito.name.slice(0, 200),
+                normalizedText: nucleo,
+                source: 'USER',
+              },
             },
           },
         })

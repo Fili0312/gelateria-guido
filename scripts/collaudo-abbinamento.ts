@@ -47,7 +47,10 @@ async function creaProdotto(organizationId: string, nome: string) {
 
 async function main() {
   const org = await systemPrisma.organization.findFirstOrThrow({ select: { id: true } });
-  const fornitori = await systemPrisma.supplier.findMany({ select: { id: true, name: true }, take: 2 });
+  const fornitori = await systemPrisma.supplier.findMany({
+    select: { id: true, name: true },
+    take: 2,
+  });
   if (fornitori.length < 2) throw new Error('Servono due fornitori.');
   const [uno, due] = fornitori as [(typeof fornitori)[0], (typeof fornitori)[0]];
 
@@ -77,16 +80,29 @@ async function main() {
     { chiave: 'x', codiceFornitore: null, descrizione: 'Birra XYZ 66cl', unitaDiVendita: 'BT' },
     { organizationId: org.id, supplierId: uno.id },
   );
-  esito(sessantasei.productId === null, `66 cl → ${sessantasei.decisione.esito} (${sessantasei.decisione.motivo})`);
+  esito(
+    sessantasei.productId === null,
+    `66 cl → ${sessantasei.decisione.esito} (${sessantasei.decisione.motivo})`,
+  );
 
   console.log('\n═══ il caso vero: la stessa acqua da due fornitori ═══');
   const acqua = await creaProdotto(org.id, 'COLLAUDO ALISEA NATURALE CL.50 PET');
   const daUno = await abbinaRiga(
-    { chiave: 'a1', codiceFornitore: '20561', descrizione: 'ALISEA NATURALE CL.50 PET', unitaDiVendita: 'CO' },
+    {
+      chiave: 'a1',
+      codiceFornitore: '20561',
+      descrizione: 'ALISEA NATURALE CL.50 PET',
+      unitaDiVendita: 'CO',
+    },
     { organizationId: org.id, supplierId: uno.id },
   );
   const daDue = await abbinaRiga(
-    { chiave: 'a2', codiceFornitore: 'AC900', descrizione: 'ALISEA ACQUA NATURALE 0,50 PET', unitaDiVendita: 'CO' },
+    {
+      chiave: 'a2',
+      codiceFornitore: 'AC900',
+      descrizione: 'ALISEA ACQUA NATURALE 0,50 PET',
+      unitaDiVendita: 'CO',
+    },
     { organizationId: org.id, supplierId: due.id },
   );
   esito(daUno.productId === acqua.id, `${uno.name} → ${daUno.decisione.esito}`);
@@ -122,7 +138,10 @@ async function main() {
     { chiave: 's2', codiceFornitore: null, descrizione: diverso, unitaDiVendita: 'CO' },
     { organizationId: org.id, supplierId: due.id },
   );
-  esito(dopo.productId === acqua.id, `dopo la conferma: ${dopo.decisione.esito} via ${dopo.decisione.metodo}`);
+  esito(
+    dopo.productId === acqua.id,
+    `dopo la conferma: ${dopo.decisione.esito} via ${dopo.decisione.metodo}`,
+  );
   esito(dopo.decisione.metodo === 'ALIAS', 'e ci arriva per sinonimo, senza punteggi ne modelli');
 
   console.log('\n═══ criterio 4: un abbinamento rifiutato non viene riproposto ═══');
@@ -131,7 +150,9 @@ async function main() {
     { chiave: 'r1', codiceFornitore: null, descrizione: daRifiutare, unitaDiVendita: 'CT' },
     { organizationId: org.id, supplierId: uno.id },
   );
-  console.log(`     proposto: ${propostoPrima.productId === birra.id ? 'la birra' : 'niente'} (${propostoPrima.decisione.esito})`);
+  console.log(
+    `     proposto: ${propostoPrima.productId === birra.id ? 'la birra' : 'niente'} (${propostoPrima.decisione.esito})`,
+  );
 
   await systemPrisma.productAlias.create({
     data: {
@@ -154,7 +175,9 @@ async function main() {
 
   await systemPrisma.product.deleteMany({ where: { name: { startsWith: 'COLLAUDO' } } });
   await systemPrisma.$disconnect();
-  console.log(process.exitCode ? '\n✗ Almeno un criterio non passa.' : '\n✓ Tutti e quattro passano.');
+  console.log(
+    process.exitCode ? '\n✗ Almeno un criterio non passa.' : '\n✓ Tutti e quattro passano.',
+  );
 }
 
 main().catch(async (e: unknown) => {

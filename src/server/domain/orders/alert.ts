@@ -1,4 +1,5 @@
 import { Decimal } from 'decimal.js';
+import { inUnitaBase, type UnitOfMeasure } from '../packaging/units';
 import { confezioniEquivalenti } from '../pricing/unit-price';
 import { arrotondaImporto } from './totals';
 
@@ -97,8 +98,7 @@ export function confrontaPerAvviso(
     risparmioTotale: arrotondaImporto(risparmioPerConfezione.mul(confezioniScelte)),
     migliore,
     // Entrambe le soglie, non una: vedi il commento in testa al modulo.
-    meritaAvviso:
-      risparmioPct.gte(soglie.percentuale) && risparmioPerConfezione.gte(soglie.euro),
+    meritaAvviso: risparmioPct.gte(soglie.percentuale) && risparmioPerConfezione.gte(soglie.euro),
   };
 }
 
@@ -118,6 +118,19 @@ export interface CambioFornitore {
   spesaPrima: Decimal;
   spesaDopo: Decimal;
   risparmio: Decimal;
+}
+
+/**
+ * Ricostruisce il contenuto fisico della confezione fotografata nella riga.
+ * Il cambio fornitore non deve dipendere dalla vecchia offerta viva: formato
+ * e pezzi potrebbero essere cambiati dopo che l'utente ha scelto la quantità.
+ */
+export function contenutoConfezioneFotografato(
+  unitSize: Decimal.Value,
+  unitOfMeasure: UnitOfMeasure,
+  packQuantity: number,
+): Decimal {
+  return inUnitaBase(unitSize, unitOfMeasure).mul(packQuantity);
 }
 
 /**
@@ -146,7 +159,9 @@ export function calcolaCambio(
   const esatto = quantitaDopo.minus(quantitaPrima).abs().lte('0.0001');
 
   const spesaPrima = arrotondaImporto(new Decimal(scelta.prezzoConfezione).mul(confezioniScelte));
-  const spesaDopo = arrotondaImporto(new Decimal(nuova.prezzoConfezione).mul(equivalenti.confezioni));
+  const spesaDopo = arrotondaImporto(
+    new Decimal(nuova.prezzoConfezione).mul(equivalenti.confezioni),
+  );
 
   const conto = `${confezioniScelte} × ${scelta.pezziPerConfezione} = ${pezziPrima} pz → ${equivalenti.confezioni} × ${nuova.pezziPerConfezione} = ${pezziDopo} pz`;
 

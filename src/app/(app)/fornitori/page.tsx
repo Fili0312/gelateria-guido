@@ -57,7 +57,11 @@ export default async function SuppliersPage({
         <strong className="text-neutral-950">{result.total}</strong>{' '}
         {result.total === 1 ? 'fornitore' : 'fornitori'}
         {result.inactive > 0 && (
-          <> · {result.active} attivi · <span className="text-neutral-500">{result.inactive} non più usati</span></>
+          <>
+            {' '}
+            · {result.active} attivi ·{' '}
+            <span className="text-neutral-500">{result.inactive} non più usati</span>
+          </>
         )}
       </p>
 

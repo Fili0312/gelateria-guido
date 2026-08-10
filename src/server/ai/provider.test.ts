@@ -69,9 +69,7 @@ describe('lo schema del profilo', () => {
 
 describe('lo schema delle righe', () => {
   it('rifiuta uno sconto impossibile', () => {
-    assert.throws(() =>
-      rispostaRigheSchema.parse({ righe: [{ indice: 0, sconti: [150] }] }),
-    );
+    assert.throws(() => rispostaRigheSchema.parse({ righe: [{ indice: 0, sconti: [150] }] }));
   });
 
   it('limita quante righe può restituire in un colpo', () => {
@@ -82,8 +80,18 @@ describe('lo schema delle righe', () => {
 
 describe('il prompt del profilo', () => {
   const righe = [
-    { celle: [{ testo: '20561', colonna: 0 }, { testo: 'ALISEA CL.50', colonna: 1 }] },
-    { celle: [{ testo: '7A0757', colonna: 0 }, { testo: 'VODKA LT.1', colonna: 1 }] },
+    {
+      celle: [
+        { testo: '20561', colonna: 0 },
+        { testo: 'ALISEA CL.50', colonna: 1 },
+      ],
+    },
+    {
+      celle: [
+        { testo: '7A0757', colonna: 0 },
+        { testo: 'VODKA LT.1', colonna: 1 },
+      ],
+    },
   ];
 
   it('mostra le celle con il loro indice di colonna', () => {
@@ -109,14 +117,12 @@ describe('il provider finto', () => {
     // Se in modalità finta i contatori restassero a zero, il codice del
     // budget non verrebbe mai esercitato dai test.
     const mock = creaMock(() => '{"codice":0}');
-    return mock
-      .chiedi({ sistema: 'S', utente: 'U'.repeat(40), versionePrompt: 'v1' })
-      .then((r) => {
-        assert.equal(r.testo, '{"codice":0}');
-        assert.ok(r.tokenIngresso > 0);
-        assert.ok(r.tokenUscita > 0);
-        assert.equal(r.costoUsd, 0);
-      });
+    return mock.chiedi({ sistema: 'S', utente: 'U'.repeat(40), versionePrompt: 'v1' }).then((r) => {
+      assert.equal(r.testo, '{"codice":0}');
+      assert.ok(r.tokenIngresso > 0);
+      assert.ok(r.tokenUscita > 0);
+      assert.equal(r.costoUsd, 0);
+    });
   });
 
   it('è deterministico: due chiamate uguali danno la stessa risposta', () => {

@@ -22,7 +22,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
 
     const { id } = await context.params;
-    return jsonSuccess(await ordersRepository(user.organizationId).annulla(id));
+    return jsonSuccess(await ordersRepository(user.organizationId).annulla(user.id, id));
   } catch (error) {
     return mappedErrorResponse(error, 'Non è stato possibile annullare l’ordine.', ERRORI_ORDINE);
   }

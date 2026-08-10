@@ -81,6 +81,11 @@ export default [
       // per ogni riga importata. Il filtro per organizzazione e' garantito dai
       // test di candidati-abbinamento.test.ts.
       'src/server/database/candidati-abbinamento.ts',
+      // `price_list_row` eredita l'organizzazione dal listino e non puo'
+      // essere paginata globalmente dal client scoped. La query bounded fa
+      // quindi il join esplicito con `price_list`; scope, LIMIT e OFFSET sono
+      // parametrici e verificati da coda-abbinamento.test.ts.
+      'src/server/database/coda-abbinamento.ts',
       'src/server/health.ts',
       'src/app/api/auth/login/route.ts',
       // La ripresa dei job all'avvio non ha una sessione da cui ricavare

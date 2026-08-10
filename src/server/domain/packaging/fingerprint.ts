@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { Decimal } from 'decimal.js';
 import { analizzaDescrizione, type OpzioniAnalisi } from './parse';
 import { ordinaParole } from './normalize';
 import { inUnitaBase, type UnitOfMeasure } from './units';
@@ -40,5 +41,54 @@ export function improntaDaDescrizione(testo: string, opzioni: OpzioniAnalisi = {
     unitSize: formato.unitSize,
     unitOfMeasure: formato.unitOfMeasure,
     packQuantity: formato.packQuantity,
+  });
+}
+
+/**
+ * Impronta della riga strutturata. I campi validati vincono sull'analisi del
+ * testo: alcuni listini mettono formato e pezzi in colonne separate, quindi
+ * la sola descrizione non contiene tutta l'identità commerciale.
+ */
+export function improntaDaCampi(dati: {
+  descrizione: string;
+  unitaDiVendita?: string | null;
+  unitSize?: string | null;
+  unitOfMeasure?: string | null;
+  packQuantity?: number;
+}): string {
+  const analisi = analizzaDescrizione(dati.descrizione, {
+    unitaDiVendita: dati.unitaDiVendita,
+  });
+  const unitaValide: ReadonlySet<string> = new Set([
+    'PIECE',
+    'MG',
+    'G',
+    'HG',
+    'KG',
+    'ML',
+    'CL',
+    'DL',
+    'L',
+  ]);
+  const unitOfMeasure = unitaValide.has(dati.unitOfMeasure ?? '')
+    ? (dati.unitOfMeasure as UnitOfMeasure)
+    : analisi.formato.unitOfMeasure;
+  let unitSize = analisi.formato.unitSize;
+  try {
+    const candidata = new Decimal(dati.unitSize ?? '');
+    if (candidata.isFinite() && candidata.gt(0)) unitSize = candidata;
+  } catch {
+    // Il guard di validazione segnalerà il campo; qui resta il fallback letto
+    // dalla descrizione per mantenere l'anteprima calcolabile.
+  }
+  const packQuantity =
+    Number.isInteger(dati.packQuantity) && dati.packQuantity! > 0
+      ? dati.packQuantity!
+      : analisi.formato.packQuantity;
+  return impronta({
+    nucleo: analisi.nucleo,
+    unitSize,
+    unitOfMeasure,
+    packQuantity,
   });
 }

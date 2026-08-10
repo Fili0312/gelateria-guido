@@ -31,6 +31,20 @@ export const dynamic = 'force-dynamic';
 
 const ORDINI: ComparisonSort[] = ['saving-desc', 'saving-pct-desc', 'name-asc'];
 
+function hrefPagina(
+  parametri: Record<string, string | string[] | undefined>,
+  pagina: number,
+): string {
+  const query = new URLSearchParams();
+  for (const [chiave, valore] of Object.entries(parametri)) {
+    if (valore === undefined || chiave === 'pagina') continue;
+    for (const elemento of Array.isArray(valore) ? valore : [valore])
+      query.append(chiave, elemento);
+  }
+  query.set('pagina', String(pagina));
+  return `?${query.toString()}`;
+}
+
 export default async function ConfrontiPage({
   searchParams,
 }: {
@@ -55,6 +69,8 @@ export default async function ConfrontiPage({
   const codaQuery = codaQuerySchema.safeParse({
     priceListId: primo(grezzi.priceListId),
     stato: primo(grezzi.stato),
+    limite: primo(grezzi.limite),
+    pagina: primo(grezzi.pagina),
   });
 
   const [report, tassonomia, coda] = await Promise.all([
@@ -121,7 +137,7 @@ export default async function ConfrontiPage({
       />
 
       {/* 2. Decidi: le righe di listino su cui l'app non se l'è sentita. */}
-      {coda.items.length > 0 && (
+      {coda.totale > 0 && (
         <section className="space-y-3">
           <div>
             <h2 className="text-lg font-black text-neutral-950">
@@ -136,7 +152,12 @@ export default async function ConfrontiPage({
               non applichi l’import.
             </p>
           </div>
-          <MatchingQueue iniziale={coda} endpoint={withBasePath('/api/matching')} />
+          <MatchingQueue
+            iniziale={coda}
+            endpoint={withBasePath('/api/matching')}
+            hrefPrecedente={coda.haPrecedente ? hrefPagina(grezzi, coda.paginaCorrente - 1) : null}
+            hrefSuccessiva={coda.haSuccessiva ? hrefPagina(grezzi, coda.paginaCorrente + 1) : null}
+          />
         </section>
       )}
 
@@ -219,6 +240,38 @@ export default async function ConfrontiPage({
         </div>
         <ComparisonTable righe={report.comparisons} confrontiTotali={t.compared} />
       </section>
+
+      {report.withoutComparison.length > 0 && (
+        <details className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+          <summary className="cursor-pointer px-5 py-4 font-bold text-neutral-900 hover:bg-neutral-50">
+            {report.withoutComparison.length} prodotti senza confronto
+          </summary>
+          <p className="border-t border-neutral-100 px-5 py-3 text-sm leading-6 text-neutral-500">
+            Restano separati dai confronti veri: hanno un solo fornitore, un prezzo mancante oppure
+            confezioni che non permettono un confronto affidabile.
+          </p>
+          <ul className="divide-y divide-neutral-100 border-t border-neutral-100">
+            {report.withoutComparison.map((riga) => (
+              <li key={riga.productId} className="flex flex-wrap items-center gap-3 px-5 py-3">
+                <Link
+                  href={`/prodotti/${riga.productId}`}
+                  className="focus-visible:ring-brand-600 min-w-0 flex-1 font-semibold text-neutral-950 hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                >
+                  {riga.productName}
+                </Link>
+                <Badge variant="neutral">
+                  {riga.state === 'OFFERTA_UNICA'
+                    ? 'un solo fornitore'
+                    : riga.state === 'SENZA_PREZZO'
+                      ? 'senza prezzo'
+                      : 'confezione non confrontabile'}
+                </Badge>
+                <span className="text-sm text-neutral-500">{riga.reason ?? 'Da verificare'}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       <Link href="/prodotti" className="inline-block text-sm text-neutral-500 hover:underline">
         ← Catalogo

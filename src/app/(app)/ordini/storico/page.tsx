@@ -124,7 +124,10 @@ export default async function StoricoPage({
       ) : (
         <ul className="divide-y divide-neutral-100 overflow-hidden rounded-2xl border border-neutral-200 bg-white">
           {elenco.items.map((o) => {
-            const etichetta = ETICHETTE[o.status] ?? { testo: o.status, variante: 'neutral' as const };
+            const etichetta = ETICHETTE[o.status] ?? {
+              testo: o.status,
+              variante: 'neutral' as const,
+            };
             const quando = o.confirmedAt ?? o.createdAt;
             return (
               <li key={o.id}>

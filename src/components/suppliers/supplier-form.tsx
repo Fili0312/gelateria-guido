@@ -325,13 +325,13 @@ export function SupplierForm({
       <section className="rounded-2xl border border-neutral-200 bg-white shadow-sm">
         <SectionHeader
           title="Invio ordini"
-          description="Prepariamo ora i recapiti che verranno usati dall’invio automatico nella Fase 17."
+          description="Recapiti dell’ufficio ordini, già riportati nei documenti da inviare manualmente."
         />
         <div className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
           <Checkbox
             name="sendOrdersByEmail"
             label="Abilita l’invio degli ordini via email"
-            description="Quando l’invio sarà attivo, il PDF partirà all’indirizzo dell’ufficio ordini."
+            description="Opzione predisposta per una futura automazione; al momento nessuna email parte dall’app."
             checked={values.sendOrdersByEmail}
             onChange={(event) =>
               setValues((current) => ({ ...current, sendOrdersByEmail: event.target.checked }))

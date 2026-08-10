@@ -144,7 +144,13 @@ function mapList(record: ProductRecord, offers: SupplierOffer[]): ProductListIte
     // c'è niente da dire, e un comando che non serve è un comando che si
     // impara a saltare con l'occhio — anche quando invece serve.
     scontabili: offers
-      .filter((o) => o.active && (Number(o.extraDiscountPct ?? 0) > 0 || o.scontoExtraApplicato !== '0' || o.extraDiscountExcluded))
+      .filter(
+        (o) =>
+          o.active &&
+          (Number(o.extraDiscountPct ?? 0) > 0 ||
+            o.scontoExtraApplicato !== '0' ||
+            o.extraDiscountExcluded),
+      )
       .map((o) => ({
         supplierProductId: o.id,
         supplierName: o.supplierName,

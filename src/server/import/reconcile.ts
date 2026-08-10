@@ -15,10 +15,10 @@ import { Decimal } from 'decimal.js';
  * il modo peggiore di sbagliare, perché sembra un aggiornamento riuscito.
  *
  * ── L'identità di un prodotto ───────────────────────────────────────────
- * Codice fornitore **e** confezione **e** pezzi **e** formato. Non il solo
- * codice: un fornitore che passa dal collo da 24 a quello da 12 riusa lo
- * stesso codice, e aggiornare solo il prezzo farebbe sembrare un
- * dimezzamento di prezzo quello che è un dimezzamento di confezione.
+ * Codice fornitore **e** confezione **e** pezzi **e** formato. Quando il
+ * fornitore non assegna codici (Barzelli), l'impronta deterministica della
+ * riga prende il posto del codice. Senza quel ripiego ogni reimport sarebbe
+ * insieme «nuovo» e «sparito» e urterebbe l'unicità dell'offerta.
  */
 
 export type EsitoRiconciliazione =
@@ -38,6 +38,8 @@ export type EsitoRiconciliazione =
 /** L'identità completa di un'offerta, come la definisce la regola. */
 export interface Identita {
   supplierCode: string | null;
+  /** Identità deterministica di ripiego, usata soltanto in assenza di codice. */
+  fingerprint?: string | null;
   unitaDiVendita: string | null;
   packQuantity: number;
   unitSize: Decimal;
@@ -69,14 +71,15 @@ export interface Confronto {
   prezzoDopo: Decimal | null;
   /** Variazione percentuale, quando entrambi i prezzi ci sono. */
   variazionePct: Decimal | null;
+  /** Decisione umana già registrata nello staging per il cambio confezione. */
+  confezioneRisolta?: boolean;
+  /** False quando cambia il formato unitario: lì servirebbe un prodotto diverso. */
+  nuovaConfezioneApplicabile?: boolean;
 }
 
 /** Due formati sono lo stesso formato se coincidono a meno di un millesimo. */
 function stessoFormato(a: Identita, b: Identita): boolean {
-  return (
-    a.unitOfMeasure === b.unitOfMeasure &&
-    a.unitSize.minus(b.unitSize).abs().lte('0.001')
-  );
+  return a.unitOfMeasure === b.unitOfMeasure && a.unitSize.minus(b.unitSize).abs().lte('0.001');
 }
 
 function stessaConfezione(a: Identita, b: Identita): boolean {
@@ -111,6 +114,19 @@ function chiaveCodice(codice: string | null): string | null {
   return pulito ? pulito : null;
 }
 
+interface ChiaveIdentita {
+  valore: string;
+  tipo: 'codice' | 'impronta';
+}
+
+/** Il codice vince sempre; l'impronta non deve mai scavalcare un codice reale. */
+function chiaveIdentita(identita: Identita): ChiaveIdentita | null {
+  const codice = chiaveCodice(identita.supplierCode);
+  if (codice) return { valore: `CODICE:${codice}`, tipo: 'codice' };
+  const fingerprint = identita.fingerprint?.trim();
+  return fingerprint ? { valore: `IMPRONTA:${fingerprint}`, tipo: 'impronta' } : null;
+}
+
 /**
  * Confronta il file con ciò che è già a catalogo.
  *
@@ -122,19 +138,27 @@ export function riconcilia(
   aCatalogo: readonly OffertaACatalogo[],
   nelFile: readonly RigaDelFile[],
 ): Confronto[] {
-  const perCodice = new Map<string, OffertaACatalogo>();
+  const perIdentita = new Map<string, OffertaACatalogo>();
   for (const offerta of aCatalogo) {
-    const chiave = chiaveCodice(offerta.supplierCode);
-    if (chiave) perCodice.set(chiave, offerta);
+    const chiave = chiaveIdentita(offerta);
+    if (chiave) perIdentita.set(chiave.valore, offerta);
   }
 
   const confronti: Confronto[] = [];
   const visti = new Set<string>();
-  const codiciDelFile = new Set<string>();
+  const identitaDelFile = new Set<string>();
 
   for (const riga of nelFile) {
-    if (!riga.inclusa) continue;
-    const chiave = chiaveCodice(riga.supplierCode);
+    const chiave = chiaveIdentita(riga);
+    const esistente = chiave ? perIdentita.get(chiave.valore) : undefined;
+
+    // Escludere significa «non applicare questa riga», non «il fornitore non
+    // vende più questo articolo». La sua presenza nel documento deve quindi
+    // impedire SPARITO anche se nessun prezzo o metadato verrà aggiornato.
+    if (!riga.inclusa) {
+      if (esistente) visti.add(esistente.supplierProductId);
+      continue;
+    }
 
     // Lo stesso codice due volte nello stesso file.
     //
@@ -143,21 +167,23 @@ export function riconcilia(
     // identiche dello stesso fornitore — che poi si confronterebbero fra loro
     // come se fossero di fornitori diversi, e una delle due risulterebbe
     // «più conveniente» dell'altra. Si salta la seconda e la si dichiara.
-    if (chiave && codiciDelFile.has(chiave)) {
+    if (chiave && identitaDelFile.has(chiave.valore)) {
       confronti.push({
         esito: 'DUPLICATO',
         chiaveRiga: riga.chiave,
         supplierProductId: null,
-        differenze: [`il codice ${riga.supplierCode} compare più volte in questo listino`],
+        differenze: [
+          chiave.tipo === 'codice'
+            ? `il codice ${riga.supplierCode} compare più volte in questo listino`
+            : 'la stessa riga senza codice compare più volte in questo listino',
+        ],
         prezzoPrima: null,
         prezzoDopo: riga.prezzoNetto,
         variazionePct: null,
       });
       continue;
     }
-    if (chiave) codiciDelFile.add(chiave);
-
-    const esistente = chiave ? perCodice.get(chiave) : undefined;
+    if (chiave) identitaDelFile.add(chiave.valore);
 
     if (!esistente) {
       confronti.push({
@@ -189,6 +215,7 @@ export function riconcilia(
         prezzoPrima: esistente.prezzoNetto,
         prezzoDopo: riga.prezzoNetto,
         variazionePct: variazione(esistente.prezzoNetto, riga.prezzoNetto),
+        nuovaConfezioneApplicabile: stessoFormato(esistente, riga),
       });
       continue;
     }
@@ -254,13 +281,18 @@ export function riepiloga(
   sogliaAnomala: number = VARIAZIONE_ANOMALA_PCT,
 ): RiepilogoImport {
   const conta = (esito: EsitoRiconciliazione) => confronti.filter((c) => c.esito === esito).length;
-  const variazioni = confronti.filter((c) => c.variazionePct !== null && c.esito === 'PREZZO_AGGIORNATO');
+  const confezioniRisolte = confronti.filter(
+    (c) => c.esito === 'CONFEZIONE_CAMBIATA' && c.confezioneRisolta,
+  ).length;
+  const variazioni = confronti.filter(
+    (c) => c.variazionePct !== null && c.esito === 'PREZZO_AGGIORNATO',
+  );
 
   return {
     nuovi: conta('NUOVO'),
-    aggiornati: conta('PREZZO_AGGIORNATO'),
+    aggiornati: conta('PREZZO_AGGIORNATO') + confezioniRisolte,
     invariati: conta('INVARIATO'),
-    confezioneCambiata: conta('CONFEZIONE_CAMBIATA'),
+    confezioneCambiata: conta('CONFEZIONE_CAMBIATA') - confezioniRisolte,
     spariti: conta('SPARITO'),
     duplicati: conta('DUPLICATO'),
     aumentati: variazioni.filter((c) => c.variazionePct!.gt(0)).length,

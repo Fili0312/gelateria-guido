@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { leggiBbox } from '../pdf/bbox';
@@ -17,20 +18,34 @@ import { applicaProfilo, type RigaCelle } from './mapping';
  */
 
 const LISTINI = join(import.meta.dirname, '..', '..', '..', '..', 'tests', 'fixtures', 'listini');
-
-function prodottiDi(file: string): RigaCelle[] {
-  const xml = execFileSync('pdftotext', ['-bbox-layout', '-enc', 'UTF-8', join(LISTINI, file), '-'], {
-    encoding: 'utf8',
-    maxBuffer: 64 * 1024 * 1024,
-  });
-  return segmenta(leggiBbox(xml).pagine).righe.filter((r) => r.tipo === 'prodotto');
-}
-
 const BARZELLI = '29.04.26 listino BARZELLI.pdf';
 const CECCONI = 'Cecconi Listino prezzi al 28.02.25 (escluso Vino_spumante).pdf';
 const VINI = 'Cecconi Listino Vini e Spumanti al 26.03.25.pdf';
+const LISTINI_REALI_DISPONIBILI = [BARZELLI, CECCONI, VINI].every((file) =>
+  existsSync(join(LISTINI, file)),
+);
 
-describe('il profilo si deduce dall’aritmetica, senza IA', () => {
+if (process.env.REQUIRE_REAL_PDF_FIXTURES === '1' && !LISTINI_REALI_DISPONIBILI) {
+  throw new Error(
+    'Fixture PDF riservate assenti. Copiale in tests/fixtures/listini prima di eseguire test:real-pdf.',
+  );
+}
+
+const describeConListiniReali = LISTINI_REALI_DISPONIBILI ? describe : describe.skip;
+
+function prodottiDi(file: string): RigaCelle[] {
+  const xml = execFileSync(
+    'pdftotext',
+    ['-bbox-layout', '-enc', 'UTF-8', join(LISTINI, file), '-'],
+    {
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+    },
+  );
+  return segmenta(leggiBbox(xml).pagine).righe.filter((r) => r.tipo === 'prodotto');
+}
+
+describeConListiniReali('il profilo si deduce dall’aritmetica, senza IA', () => {
   for (const file of [BARZELLI, CECCONI, VINI]) {
     it(`${file}: profilo provato dal conto che torna`, () => {
       const esito = deduciProfilo(prodottiDi(file));
@@ -48,7 +63,7 @@ describe('il profilo si deduce dall’aritmetica, senza IA', () => {
   }
 });
 
-describe('i campi che ne escono sono quelli giusti', () => {
+describeConListiniReali('i campi che ne escono sono quelli giusti', () => {
   it('Cecconi: codice, descrizione, unità di vendita, prezzo, sconti, netto, IVA', () => {
     const righe = prodottiDi(CECCONI);
     const { profilo } = deduciProfilo(righe);
@@ -90,7 +105,7 @@ describe('i campi che ne escono sono quelli giusti', () => {
   });
 });
 
-describe('gli indizi per colonna', () => {
+describeConListiniReali('gli indizi per colonna', () => {
   it('riconosce la colonna dell’IVA dalle aliquote che contiene', () => {
     const indizi = indiziPerColonna(prodottiDi(CECCONI));
     const { profilo } = deduciProfilo(prodottiDi(CECCONI));
@@ -108,7 +123,7 @@ describe('gli indizi per colonna', () => {
   });
 });
 
-describe('quando il conto non torna', () => {
+describeConListiniReali('quando il conto non torna', () => {
   it('Barzelli ha una riga che il fornitore ha arrotondato a modo suo', () => {
     // HENDRICK'S GIN: 27,48 con −6% e −7% fa 24,0243, ma il documento dichiara
     // 24,00. Non è un errore di lettura, è il fornitore che ha arrotondato

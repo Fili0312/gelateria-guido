@@ -48,10 +48,7 @@ export type StatoConfronto =
   | 'SENZA_PREZZO';
 
 export type MotivoEsclusione =
-  | 'non attiva'
-  | 'senza prezzo'
-  | 'confezione non dichiarata'
-  | 'unità non confrontabile';
+  'non attiva' | 'senza prezzo' | 'confezione non dichiarata' | 'unità non confrontabile';
 
 export interface OffertaDaConfrontare {
   id: string;

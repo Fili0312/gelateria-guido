@@ -10,11 +10,7 @@ import type {
   StatoLavorazione,
   StatoListino,
 } from '@/features/price-lists/dto';
-import type {
-  PriceListListQuery,
-  PriceListUpload,
-  RowsQuery,
-} from '@/features/price-lists/schema';
+import type { PriceListListQuery, PriceListUpload, RowsQuery } from '@/features/price-lists/schema';
 import { prismaForOrganization, transactionForOrganization } from '@/server/db';
 
 export class PriceListNotFoundError extends Error {
@@ -208,7 +204,7 @@ export function priceListsRepository(organizationId: string) {
           orderBy: { uploadedAt: 'desc' },
           take: 100,
         }),
-        db.priceList.count({}),
+        db.priceList.count({ where }),
       ]);
       return { items: (records as unknown as ListRecord[]).map(mapList), totale };
     },
@@ -360,14 +356,16 @@ export function priceListsRepository(organizationId: string) {
             orderBy: [{ pageNumber: 'asc' }, { lineNumber: 'asc' }],
           },
         },
-      })) as unknown as { rows: {
-        id: string;
-        pageNumber: number;
-        lineNumber: number;
-        rawText: string;
-        rawCells: unknown;
-        extracted: unknown;
-      }[] } | null;
+      })) as unknown as {
+        rows: {
+          id: string;
+          pageNumber: number;
+          lineNumber: number;
+          rawText: string;
+          rawCells: unknown;
+          extracted: unknown;
+        }[];
+      } | null;
       const tutte = conRighe?.rows ?? [];
 
       const mappate: RigaListino[] = tutte.map((riga) => {
@@ -391,7 +389,8 @@ export function priceListsRepository(organizationId: string) {
         };
       });
 
-      const filtrate = query.tipo === 'prodotto' ? mappate.filter((r) => r.tipo === 'prodotto') : mappate;
+      const filtrate =
+        query.tipo === 'prodotto' ? mappate.filter((r) => r.tipo === 'prodotto') : mappate;
 
       return {
         items: filtrate.slice(query.salta, query.salta + query.limite),
@@ -416,7 +415,9 @@ export function priceListsRepository(organizationId: string) {
       });
       if (!listino) throw new PriceListNotFoundError('Listino non trovato.');
       if (listino.job && faseTerminale(listino.job.phase as FaseImport)) {
-        throw new PriceListConflictError('La lavorazione è già finita: non c’è nulla da annullare.');
+        throw new PriceListConflictError(
+          'La lavorazione è già finita: non c’è nulla da annullare.',
+        );
       }
       await transactionForOrganization(organizationId, async (tx) => {
         await tx.priceList.update({

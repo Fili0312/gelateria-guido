@@ -22,6 +22,7 @@ export const codaQuerySchema = z
     priceListId: z.string().trim().max(64).default(''),
     stato: z.enum(['tutti', 'PENDING', 'AUTO', 'NEW']).default('PENDING'),
     limite: z.coerce.number().int().min(1).max(200).default(100),
+    pagina: z.coerce.number().int().min(1).max(100_000).default(1),
   })
   .strict();
 

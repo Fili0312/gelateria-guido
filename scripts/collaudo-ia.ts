@@ -56,7 +56,10 @@ async function main() {
     { organizationId: org.id, scopo: 'INFER_PROFILE' },
     provider,
   );
-  esito(dopo.daCache === false && ripetuta.daCache === true, 'la seconda identica arriva dalla cache');
+  esito(
+    dopo.daCache === false && ripetuta.daCache === true,
+    'la seconda identica arriva dalla cache',
+  );
   const conCosto = await systemPrisma.aiCall.aggregate({
     where: { organizationId: org.id, cacheHit: true },
     _sum: { costUsd: true },
@@ -114,7 +117,9 @@ async function main() {
 
   await systemPrisma.aiCall.deleteMany({ where: { organizationId: org.id } });
   await systemPrisma.$disconnect();
-  console.log(process.exitCode ? '\n✗ Almeno un criterio non è soddisfatto.' : '\n✓ Tutti passano.');
+  console.log(
+    process.exitCode ? '\n✗ Almeno un criterio non è soddisfatto.' : '\n✓ Tutti passano.',
+  );
 }
 
 main().catch(async (errore: unknown) => {

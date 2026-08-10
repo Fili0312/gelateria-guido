@@ -151,6 +151,9 @@ export function decidiDaArbitrato(
 }
 
 /** L'abbinamento certo per codice o alias: nessuna soglia da superare. */
-export function decisioneCerta(metodo: 'CODE' | 'ALIAS' | 'GTIN', motivo: string): DecisioneAbbinamento {
+export function decisioneCerta(
+  metodo: 'CODE' | 'ALIAS' | 'GTIN',
+  motivo: string,
+): DecisioneAbbinamento {
   return { esito: 'AUTO', metodo, punteggio: 1, motivo };
 }

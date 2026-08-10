@@ -69,10 +69,13 @@ export function UploadDialog({
     const controller = new AbortController();
     void (async () => {
       try {
-        const risposta = await fetch(`${endpointCoperture}?supplierId=${encodeURIComponent(supplierId)}`, {
-          headers: { Accept: 'application/json' },
-          signal: controller.signal,
-        });
+        const risposta = await fetch(
+          `${endpointCoperture}?supplierId=${encodeURIComponent(supplierId)}`,
+          {
+            headers: { Accept: 'application/json' },
+            signal: controller.signal,
+          },
+        );
         const corpo = (await risposta.json()) as PriceListApiBody<{ items: CoperturaEsistente[] }>;
         if (corpo.ok) setCaricate({ supplierId, items: corpo.data.items });
       } catch {
@@ -113,13 +116,16 @@ export function UploadDialog({
       modulo.set('file', file);
 
       const risposta = await fetch(endpoint, { method: 'POST', body: modulo });
-      const corpo = (await risposta.json().catch(() => null)) as PriceListApiBody<{ id: string }> | null;
+      const corpo = (await risposta.json().catch(() => null)) as PriceListApiBody<{
+        id: string;
+      }> | null;
 
       if (!risposta.ok || !corpo?.ok) {
         if (corpo && !corpo.ok && corpo.fields) setCampi(corpo.fields);
         toast({
           title: 'Caricamento non riuscito',
-          description: corpo && !corpo.ok ? corpo.error : 'Il server non ha risposto correttamente.',
+          description:
+            corpo && !corpo.ok ? corpo.error : 'Il server non ha risposto correttamente.',
           tone: 'error',
         });
         return;
@@ -210,9 +216,8 @@ export function UploadDialog({
                 <strong className="font-semibold">
                   {fornitore?.name} / {sostituisce.scopeLabel}
                 </strong>{' '}
-                — ultimo caricamento{' '}
-                {DATA_ITALIANA.format(new Date(sostituisce.ultimoCaricamento))} (
-                {quandoFermo(sostituisce.giorniFermo)})
+                — ultimo caricamento {DATA_ITALIANA.format(new Date(sostituisce.ultimoCaricamento))}{' '}
+                ({quandoFermo(sostituisce.giorniFermo)})
                 {sostituisce.prodotti > 0 ? `, ${sostituisce.prodotti} righe prodotto` : ''}.
                 <br />
                 Questo caricamento lo sostituirà.

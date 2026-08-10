@@ -48,13 +48,7 @@ import {
  * le eccezioni. Un clic esclude, un altro rimette — e siccome l'esclusione
  * cambia chi vince il confronto, si vede subito nella riga sopra.
  */
-function ExtraDiscountToggle({
-  offerta,
-  endpoint,
-}: {
-  offerta: SupplierOffer;
-  endpoint: string;
-}) {
+function ExtraDiscountToggle({ offerta, endpoint }: { offerta: SupplierOffer; endpoint: string }) {
   const router = useRouter();
   const { toast } = useToast();
   const [attesa, setAttesa] = useState(false);
@@ -68,7 +62,10 @@ function ExtraDiscountToggle({
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ extraDiscountExcluded: escludi }),
       });
-      const corpo = (await risposta.json().catch(() => null)) as { ok: boolean; error?: string } | null;
+      const corpo = (await risposta.json().catch(() => null)) as {
+        ok: boolean;
+        error?: string;
+      } | null;
       if (!risposta.ok || !corpo?.ok) {
         toast({ title: 'Non è stato possibile salvare', description: corpo?.error, tone: 'error' });
         return;
@@ -173,7 +170,10 @@ export function ProductOffers({
     );
   }
 
-  const ordinate = ordina(offers, confronto.ranked.map((o) => o.supplierProductId));
+  const ordinate = ordina(
+    offers,
+    confronto.ranked.map((o) => o.supplierProductId),
+  );
   const idMigliore = confronto.best?.supplierProductId;
   const confrontabili = confronto.offersCompared;
 
@@ -256,10 +256,7 @@ export function ProductOffers({
                     parte e si può togliere per questa singola offerta — è il
                     «tutti tranne alcuni» dell'accordo col fornitore. */}
                 <TableCell>
-                  <ExtraDiscountToggle
-                    offerta={offerta}
-                    endpoint={endpointOfferte}
-                  />
+                  <ExtraDiscountToggle offerta={offerta} endpoint={endpointOfferte} />
                 </TableCell>
                 <TableCell className="tabellare">{prezzoUnitario(offerta)}</TableCell>
               </TableRow>

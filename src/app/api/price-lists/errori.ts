@@ -11,5 +11,7 @@ export const ERRORI_LISTINI: readonly ErroreMappato[] = [
   },
   { nome: 'StorageError', status: 400 },
   { nome: 'ApplicazioneBloccataError', status: 409 },
+  { nome: 'PackagingDecisionNotFoundError', status: 404 },
+  { nome: 'PackagingDecisionError', status: 409 },
   { nome: 'OrganizationScopeError', status: 400 },
 ];

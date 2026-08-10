@@ -41,6 +41,24 @@ export const cambioFornitoreSchema = z
   .object({ supplierProductId: z.string().min(1, 'Indicare il fornitore a cui passare.') })
   .strict();
 
+/**
+ * La conferma nomina esattamente la bozza vista nel riepilogo.
+ *
+ * `orderId` rende sicuro anche il retry arrivato dopo la prima risposta: senza,
+ * `/current` troverebbe una nuova bozza vuota. `updatedAt` è la versione
+ * ottimistica delle righe; `priceVersion` fotografa gli id append-only dei
+ * prezzi correnti. Se cambia una delle due, il server rifiuta di confermare
+ * numeri diversi da quelli appena controllati.
+ */
+export const confermaOrdineSchema = z
+  .object({
+    orderId: z.string().trim().min(1, 'Indicare la bozza da confermare.').max(64),
+    updatedAt: z.string().datetime({ offset: true }),
+    priceVersion: z.string().regex(/^[a-f0-9]{64}$/, 'Versione dei prezzi non valida.'),
+    note: z.string().trim().max(2_000).nullish(),
+  })
+  .strict();
+
 export const ricercaOrdinabileSchema = z
   .object({
     /**
@@ -81,6 +99,7 @@ export const elencoOrdiniSchema = z
   .strict();
 
 export type ElencoOrdiniQuery = z.infer<typeof elencoOrdiniSchema>;
+export type ConfermaOrdineInput = z.infer<typeof confermaOrdineSchema>;
 export type RigaOrdineInput = z.infer<typeof rigaOrdineInputSchema>;
 export type RigaOrdinePatch = z.infer<typeof rigaOrdinePatchSchema>;
 export type RicercaOrdinabile = z.infer<typeof ricercaOrdinabileSchema>;

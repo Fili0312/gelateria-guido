@@ -28,7 +28,9 @@ export async function POST(request: Request) {
       return jsonError('Origine della richiesta non consentita.', 403);
     }
 
-    const input = rigaOrdineInputSchema.parse(await readJsonRequest(request, DEFAULT_MAX_JSON_BODY_BYTES));
+    const input = rigaOrdineInputSchema.parse(
+      await readJsonRequest(request, DEFAULT_MAX_JSON_BODY_BYTES),
+    );
     return jsonSuccess(await ordersRepository(user.organizationId).aggiungiRiga(user.id, input));
   } catch (error) {
     return mappedErrorResponse(error, 'Non è stato possibile aggiungere la riga.', ERRORI_ORDINE);

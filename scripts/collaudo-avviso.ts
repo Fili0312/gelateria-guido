@@ -109,8 +109,7 @@ async function main() {
   esito(rigaAlta.avviso !== null, 'il confronto si calcola comunque');
   esito(rigaAlta.avviso?.meritaAvviso === false, 'ma non merita un avviso: sotto soglia');
   esito(
-    conSoglieAlte.totali.righeConAvviso === 0 &&
-      conSoglieAlte.totali.risparmioPotenziale === '0',
+    conSoglieAlte.totali.righeConAvviso === 0 && conSoglieAlte.totali.risparmioPotenziale === '0',
     'e il riepilogo non promette risparmi che non segnala',
   );
 
@@ -126,10 +125,7 @@ async function main() {
   console.log(`  ${avviso.cambio.descrizione}`);
   console.log(`  spesa ${avviso.cambio.spesaPrima} € → ${avviso.cambio.spesaDopo} €\n`);
 
-  esito(
-    avviso.cambio.descrizione.includes('pz'),
-    'il conto dei pezzi è scritto prima di premere',
-  );
+  esito(avviso.cambio.descrizione.includes('pz'), 'il conto dei pezzi è scritto prima di premere');
   esito(
     avviso.cambio.esatto
       ? avviso.cambio.pezziPrima === avviso.cambio.pezziDopo
@@ -139,7 +135,11 @@ async function main() {
       : 'quando non coincidono lo dichiara invece di arrotondare in silenzio',
   );
 
-  const dopo = await ordini.cambiaFornitore(utente.id, rigaPrima.id, avviso.migliore.supplierProductId);
+  const dopo = await ordini.cambiaFornitore(
+    utente.id,
+    rigaPrima.id,
+    avviso.migliore.supplierProductId,
+  );
   const rigaDopo = dopo.righe[0]!;
   esito(
     rigaDopo.supplierProductId === avviso.migliore.supplierProductId,

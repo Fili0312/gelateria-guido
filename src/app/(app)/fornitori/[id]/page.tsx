@@ -102,7 +102,7 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
 
         <DetailCard
           title="Invio degli ordini"
-          description="Impostazioni già pronte per l’automazione della Fase 17."
+          description="Recapiti usati nei documenti; l’invio dall’app è attualmente in pausa."
         >
           <DetailItem term="Invio via email">
             <Badge variant={supplier.sendOrdersByEmail ? 'success' : 'neutral'} dot>

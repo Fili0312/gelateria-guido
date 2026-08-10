@@ -4,7 +4,7 @@ import { leggiDocumento, rimuoviGenerazione, zipDi } from '@/server/export/archi
 import { generaDocumenti, GenerazioneError } from '@/server/export/genera';
 import { templateInElenco } from '@/server/export/registro';
 import { nomeFile } from '@/server/export/nome-file';
-import { prismaForOrganization } from '@/server/db';
+import { prismaForOrganization, transactionForOrganization } from '@/server/db';
 
 /**
  * I documenti di un ordine: generarli, elencarli, riscaricarli.
@@ -31,6 +31,10 @@ export interface DocumentoInElenco {
 
 export class DocumentiError extends Error {
   override readonly name = 'DocumentiError';
+}
+
+export class DocumentiConflictError extends Error {
+  override readonly name = 'DocumentiConflictError';
 }
 
 export function orderDocumentsRepository(organizationId: string) {
@@ -95,25 +99,60 @@ export function orderDocumentsRepository(organizationId: string) {
       orderId: string,
       chiavi?: readonly string[],
     ): Promise<DocumentoInElenco[]> {
+      const ordine = await db.order.findFirst({
+        where: { id: orderId },
+        select: { status: true },
+      });
+      if (ordine?.status === 'CANCELLED') {
+        throw new DocumentiConflictError(
+          'L’ordine è annullato: i documenti esistenti restano scaricabili, ma non si possono rigenerare.',
+        );
+      }
       const esito = await generaDocumenti(organizationId, orderId, chiavi);
       try {
-        await db.order.update({
-          where: { id: orderId },
-          data: {
-            documents: {
-              create: esito.documenti.map((d) => ({
-                supplierId: d.supplierId,
-                format: d.format,
-                templateKey: d.templateKey,
-                filePath: d.filePath,
-                fileName: d.fileName,
-                sizeBytes: d.sizeBytes,
-                createdById: userId,
-              })),
-            },
+        await transactionForOrganization(
+          organizationId,
+          async (tx) => {
+            // Il lock chiude la corsa con «Annulla»: se l'annullamento ha
+            // vinto, i file vengono rimossi; se questa registrazione ha vinto,
+            // l'annullamento aspetta il commit e avviene dopo i documenti.
+            const valida = await tx.order.updateMany({
+              where: { id: orderId, status: { in: ['CONFIRMED', 'SENT', 'RECEIVED'] } },
+              data: { updatedAt: new Date() },
+            });
+            if (valida.count !== 1) {
+              const corrente = await tx.order.findFirst({
+                where: { id: orderId },
+                select: { status: true },
+              });
+              if (corrente?.status === 'CANCELLED') {
+                throw new DocumentiConflictError(
+                  'L’ordine è stato annullato durante la generazione: nessun nuovo documento è stato salvato.',
+                );
+              }
+              throw new GenerazioneError('L’ordine non esiste, o non è confermato.');
+            }
+
+            await tx.order.update({
+              where: { id: orderId },
+              data: {
+                documents: {
+                  create: esito.documenti.map((d) => ({
+                    supplierId: d.supplierId,
+                    format: d.format,
+                    templateKey: d.templateKey,
+                    filePath: d.filePath,
+                    fileName: d.fileName,
+                    sizeBytes: d.sizeBytes,
+                    createdById: userId,
+                  })),
+                },
+              },
+              select: { id: true },
+            });
           },
-          select: { id: true },
-        });
+          { isolamento: 'riga-bloccata' },
+        );
       } catch (errore) {
         await rimuoviGenerazione(orderId, esito.generazione);
         throw errore;
@@ -186,9 +225,7 @@ export function orderDocumentsRepository(organizationId: string) {
           qualifica: 'documenti',
           estensione: 'zip',
         }),
-        contenuto: await zipDi(
-          ultimi.map((d) => ({ nome: d.fileName, percorso: d.filePath })),
-        ),
+        contenuto: await zipDi(ultimi.map((d) => ({ nome: d.fileName, percorso: d.filePath }))),
       };
     },
   };

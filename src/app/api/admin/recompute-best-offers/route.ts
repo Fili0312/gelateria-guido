@@ -1,5 +1,6 @@
 import { getCurrentUser } from '@/server/auth';
 import { jsonError, jsonSuccess, mappedErrorResponse } from '@/server/http/api-response';
+import { hasTrustedMutationOrigin } from '@/server/http/json-request';
 import { ricalcolaMiglioriOfferte } from '@/server/import/best-offer';
 
 export const dynamic = 'force-dynamic';
@@ -14,10 +15,13 @@ export const dynamic = 'force-dynamic';
  *
  * È un `POST` benché non prenda parametri: scrive.
  */
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const user = await getCurrentUser();
     if (!user) return jsonError('Autenticazione richiesta.', 401);
+    if (!hasTrustedMutationOrigin(request)) {
+      return jsonError('Origine della richiesta non consentita.', 403);
+    }
 
     return jsonSuccess(await ricalcolaMiglioriOfferte(user.organizationId));
   } catch (error) {

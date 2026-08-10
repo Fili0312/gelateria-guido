@@ -30,18 +30,28 @@ const atteso: Atteso = JSON.parse(
 const SOGLIA = 0.9;
 let peggiore = 1;
 
-for (const file of readdirSync(CARTELLA).filter((f) => f.endsWith('.pdf')).sort()) {
-  const xml = execFileSync('pdftotext', ['-bbox-layout', '-enc', 'UTF-8', join(CARTELLA, file), '-'], {
-    encoding: 'utf8',
-    maxBuffer: 64 * 1024 * 1024,
-  });
+for (const file of readdirSync(CARTELLA)
+  .filter((f) => f.endsWith('.pdf'))
+  .sort()) {
+  const xml = execFileSync(
+    'pdftotext',
+    ['-bbox-layout', '-enc', 'UTF-8', join(CARTELLA, file), '-'],
+    {
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+    },
+  );
   const documento = leggiBbox(xml);
   const esito = segmenta(documento.pagine);
   const riferimento = atteso[file];
 
   console.log(`\n═══ ${file}`);
-  console.log(`  pagine ${documento.pagine.length} · parole ${documento.pagine.reduce((s, p) => s + p.parole.length, 0)}`);
-  console.log(`  colonne riconosciute: ${esito.colonne.map((c) => `${Math.round(c.centro)}${c.bordo === 'destro' ? '→' : ''}`).join(', ')}`);
+  console.log(
+    `  pagine ${documento.pagine.length} · parole ${documento.pagine.reduce((s, p) => s + p.parole.length, 0)}`,
+  );
+  console.log(
+    `  colonne riconosciute: ${esito.colonne.map((c) => `${Math.round(c.centro)}${c.bordo === 'destro' ? '→' : ''}`).join(', ')}`,
+  );
   console.log(
     `  righe visive ${esito.diagnostica.righeVisive} · intestazioni scartate ${esito.intestazioni.length} · ` +
       `continuazioni unite ${esito.diagnostica.continuazioniUnite} · sezioni ${esito.diagnostica.sezioni}`,
@@ -61,12 +71,15 @@ for (const file of readdirSync(CARTELLA).filter((f) => f.endsWith('.pdf')).sort(
 
   if (mostraRighe) {
     for (const riga of esito.righe.filter((r) => r.tipo === 'prodotto').slice(0, 5)) {
-      console.log(`    p${riga.pagina} · ${riga.celle.map((c) => `[${c.colonna}]${c.testo}`).join(' | ')}`);
+      console.log(
+        `    p${riga.pagina} · ${riga.celle.map((c) => `[${c.colonna}]${c.testo}`).join(' | ')}`,
+      );
     }
     const ignote = esito.righe.filter((r) => r.tipo === 'ignota');
     if (ignote.length) {
       console.log(`    -- ${ignote.length} righe ignote, prime 5:`);
-      for (const riga of ignote.slice(0, 5)) console.log(`       p${riga.pagina} · ${riga.testo.slice(0, 110)}`);
+      for (const riga of ignote.slice(0, 5))
+        console.log(`       p${riga.pagina} · ${riga.testo.slice(0, 110)}`);
     }
   }
 }

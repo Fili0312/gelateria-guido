@@ -4,7 +4,6 @@ import { Decimal } from 'decimal.js';
 import { SETTINGS_ALL_KEYS, valoriDaRighe } from '@/features/settings/schema';
 import type { UnitOfMeasureValue } from '@/features/products/schema';
 import { prismaForOrganization } from '@/server/db';
-import { systemPrisma } from '@/server/database/system-client';
 import type { DatiDocumento, GruppoFornitore } from './template';
 
 /**
@@ -25,7 +24,13 @@ import type { DatiDocumento, GruppoFornitore } from './template';
 export type { DatiDocumento };
 
 function intestazioneDefault(nomeOrganizzazione: string) {
-  return { nome: nomeOrganizzazione, indirizzo: null, partitaIva: null, telefono: null, email: null };
+  return {
+    nome: nomeOrganizzazione,
+    indirizzo: null,
+    partitaIva: null,
+    telefono: null,
+    email: null,
+  };
 }
 
 /** `''` è «non compilato», e nel documento vale come assente, non come vuoto. */
@@ -85,6 +90,7 @@ export async function datiOrdine(
       note: true,
       createdAt: true,
       confirmedAt: true,
+      organization: { select: { name: true } },
       lines: {
         select: {
           supplierId: true,
@@ -106,14 +112,10 @@ export async function datiOrdine(
   });
   if (!ordine) return null;
 
-  const [righeImpostazioni, organizzazione, fornitori] = await Promise.all([
+  const [righeImpostazioni, fornitori] = await Promise.all([
     db.setting.findMany({
       where: { key: { in: SETTINGS_ALL_KEYS } },
       select: { key: true, value: true },
-    }),
-    systemPrisma.organization.findUniqueOrThrow({
-      where: { id: organizationId },
-      select: { name: true },
     }),
     db.supplier.findMany({
       where: { id: { in: [...new Set(ordine.lines.map((l) => l.supplierId))] } },
@@ -122,7 +124,7 @@ export async function datiOrdine(
   ]);
 
   const impostazioni = valoriDaRighe(righeImpostazioni);
-  const base = intestazioneDefault(organizzazione.name);
+  const base = intestazioneDefault(ordine.organization.name);
   const recapiti = new Map(fornitori.map((f) => [f.id, f]));
 
   const gruppi = new Map<string, GruppoFornitore>();

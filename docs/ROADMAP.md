@@ -21,13 +21,16 @@ Le fasi seguono tre criteri, in ordine di priorità:
    (Fasi 7–10) sono le parti che possono sorprendere: arrivano appena le
    fondamenta reggono, non alla fine.
 
-**Confine MVP:** fine Fase 17. Le Fasi 18–20 sono miglioramenti da fare a
+**Confine MVP originario:** fine Fase 17. Le Fasi 18–20 sono miglioramenti da fare a
 sistema già in uso, con dati veri e feedback reale.
 
 Il confine si ferma lì perché è il punto in cui il giro si chiude davvero:
-arriva il listino → si importa → si ordina → **parte l'email al fornitore con
-il suo PDF**. Fermarsi prima lascerebbe l'ultimo passo a mano, che è
-esattamente quello che si vuole togliere.
+arriva il listino → si importa → si ordina → si generano i documenti → resta lo
+storico → si vede dove si spende e dove si può risparmiare.
+
+L'invio automatico previsto dalla Fase 17 è stato messo esplicitamente in pausa
+il 10 agosto 2026: finché non verrà riattivato, PDF ed Excel si scaricano e si
+inviano manualmente.
 
 **Fasi parallelizzabili:** 4 e 5 (fornitori e catalogo) sono indipendenti;
 16 (documenti) può procedere in parallelo a 15; 18 dipende solo dai dati di 15.
@@ -1010,6 +1013,9 @@ mandare qualcosa a un fornitore.
 proprio PDF, all'indirizzo che sta nella sua anagrafica. È l'ultimo passo per
 cui oggi si perde tempo a mano.
 
+**Stato (10 agosto 2026): IN PAUSA su richiesta.** I documenti della Fase 16
+sono operativi; nessuna email parte dall'app e l'invio resta manuale.
+
 > ⚠️ **Questa è l'unica fase in cui l'app parla col mondo esterno.** Un errore
 > qui non è un numero sbagliato su una schermata: è un ordine vero mandato a
 > un fornitore vero. Per questo il progetto è deliberatamente prudente, e la
@@ -1077,15 +1083,18 @@ serve un indirizzo di risposta vero, perché i fornitori risponderanno.
 - [ ] passando a `MAIL_MODE=smtp` con un indirizzo di prova, l'email arriva
       davvero, con il PDF leggibile
 
-> **✅ Fine MVP.** L'app copre i punti 1–12 della specifica più i documenti per
-> fornitore e l'invio: dall'arrivo del listino all'ordine spedito, senza
-> passaggi manuali. Da qui in avanti si lavora con dati veri e feedback reale.
+> **Stato operativo.** L'app copre i punti 1–12 della specifica e genera i
+> documenti per fornitore. L'ultimo passaggio resta manuale finché la Fase 17 è
+> in pausa.
 
 ---
 
 # FASE 18 — Statistiche prodotto
 
 **Obiettivo.** Il punto 13 della specifica.
+
+**Stato (10 agosto 2026): FATTA**, con dettaglio delle scelte e delle verifiche
+in [FASE-18.md](FASE-18.md).
 
 **Cosa sviluppare**
 
@@ -1109,15 +1118,18 @@ risalendo da `supplier_product` a `product`.
 
 **Completata quando**
 
-- [ ] l'esempio della specifica è riproducibile (48 conf., €450, media €9,37,
-      attuale €10,20, +8,8%)
-- [ ] i periodi funzionano e le somme tornano con lo storico ordini
+- [x] l'esempio della specifica è riproducibile (48 conf., €450, media esatta
+      €9,375 — €9,38 mostrati — attuale €10,20, +8,8%)
+- [x] i periodi funzionano e le somme tornano con lo storico ordini
 
 ---
 
 # FASE 19 — Dashboard
 
 **Obiettivo.** Il punto 14: la fotografia d'insieme.
+
+**Stato (10 agosto 2026): FATTA**, con dettaglio delle scelte e delle verifiche
+in [FASE-19.md](FASE-19.md).
 
 **Cosa sviluppare**
 
@@ -1137,8 +1149,8 @@ essere cliccabile e portare al dettaglio, altrimenti è decorazione.
 
 **Completata quando**
 
-- [ ] ogni riquadro mostra dati veri e porta alla schermata di dettaglio
-- [ ] la pagina si carica sotto il secondo
+- [x] ogni riquadro mostra dati veri e porta alla schermata di dettaglio
+- [x] la pagina si carica sotto il secondo (115 ms a freddo sui dati reali)
 
 ---
 
@@ -1162,9 +1174,9 @@ attività.
 
 **Completata quando**
 
-- [ ] un ripristino da backup su database vuoto è stato provato davvero
+- [x] un ripristino da backup su database vuoto è stato provato davvero
 - [ ] un utente OPERATOR non può fare ciò che non deve
-- [ ] esiste un manuale d'uso di una pagina
+- [x] esiste un manuale d'uso di una pagina ([MANUALE-USO.md](MANUALE-USO.md))
 
 ---
 
@@ -1223,7 +1235,7 @@ diverso, non un'opzione dello stesso.
 | 14   | Riepilogo e conferma                 | 12         | ✅  |
 | 15   | Storico ordini                       | 14         | ✅  |
 | 16   | Documenti d'ordine (PDF per fornitore + Excel) | 14 | ✅  |
-| 17   | Invio automatico ai fornitori        | 16, 4      | ✅  |
-| 18   | Statistiche prodotto                 | 15         | —   |
-| 19   | Dashboard                            | 15, 18     | —   |
+| 17   | Invio automatico ai fornitori        | 16, 4      | ⏸️  |
+| 18   | Statistiche prodotto                 | 15         | ✅  |
+| 19   | Dashboard                            | 15, 18     | ✅  |
 | 20   | Consolidamento                       | tutte      | —   |

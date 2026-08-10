@@ -88,9 +88,28 @@ export function formatiCompatibili(
  * — e si tolgono solo qui, dove darebbero fastidio.
  */
 const PAROLE_DI_CONFEZIONE = new Set([
-  'confezione', 'conf', 'bottiglia', 'bottiglie', 'cartone', 'cartoni', 'collo',
-  'colli', 'scatola', 'scatole', 'sacchetto', 'sacco', 'secchiello', 'lattina',
-  'lattine', 'pezzo', 'pezzi', 'busta', 'buste', 'barattolo', 'vaschetta', 'box',
+  'confezione',
+  'conf',
+  'bottiglia',
+  'bottiglie',
+  'cartone',
+  'cartoni',
+  'collo',
+  'colli',
+  'scatola',
+  'scatole',
+  'sacchetto',
+  'sacco',
+  'secchiello',
+  'lattina',
+  'lattine',
+  'pezzo',
+  'pezzi',
+  'busta',
+  'buste',
+  'barattolo',
+  'vaschetta',
+  'box',
 ]);
 
 /**
@@ -118,7 +137,8 @@ export function nucleoPerAbbinamento(nucleo: string): string {
 }
 
 export function sovrapposizioneParole(a: string, b: string): number {
-  const utili = (testo: string) => new Set(nucleoPerAbbinamento(testo).split(/\s+/).filter(Boolean));
+  const utili = (testo: string) =>
+    new Set(nucleoPerAbbinamento(testo).split(/\s+/).filter(Boolean));
   const paroleA = utili(a);
   const paroleB = utili(b);
   if (paroleA.size === 0 || paroleB.size === 0) return 0;

@@ -50,7 +50,13 @@ function Avviso({
         Disponibile a <strong>{euro(a.migliore.priceNet)}</strong> da{' '}
         <strong>{a.migliore.supplierName}</strong>. Risparmieresti{' '}
         <strong>{euro(a.risparmioPerConfezione)}</strong> a confezione
-        {riga.quantityPacks > 1 && <> ({euro(a.risparmioTotale)} su {riga.quantityPacks})</>}.
+        {riga.quantityPacks > 1 && (
+          <>
+            {' '}
+            ({euro(a.risparmioTotale)} su {riga.quantityPacks})
+          </>
+        )}
+        .
       </p>
       {!a.cambio.esatto && (
         <p className="mt-1 text-xs leading-5 text-amber-800">
@@ -68,8 +74,8 @@ function Avviso({
           {inCorso ? 'Cambio…' : 'Usa il più conveniente'}
         </button>
         <span className="tabellare text-xs text-amber-800">
-          {a.cambio.confezioni} × {a.migliore.packQuantity} pz ·{' '}
-          {euro(a.cambio.spesaPrima)} → {euro(a.cambio.spesaDopo)}
+          {a.cambio.confezioni} × {a.migliore.packQuantity} pz · {euro(a.cambio.spesaPrima)} →{' '}
+          {euro(a.cambio.spesaDopo)}
         </span>
         <button
           type="button"
@@ -100,61 +106,63 @@ function Riga({
 }) {
   return (
     <>
-    <li className="group flex items-center gap-2 py-1.5 pr-1 pl-3">
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm text-neutral-900">{riga.name}</p>
-        <p className="tabellare text-xs text-neutral-500">
-          {riga.quantityPacks} × {euro(riga.priceNet)}
-          {riga.packQuantity > 1 && ` · collo da ${riga.packQuantity}`}
-          {Number(riga.scontoExtraPct) > 0 && (
-            <span className="ml-1 text-violet-700">
-              · −{riga.scontoExtraPct}%, ti tornano {euro(riga.ritornoAtteso)}
+      <li className="group flex items-center gap-2 py-1.5 pr-1 pl-3">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm text-neutral-900">{riga.name}</p>
+          <p className="tabellare text-xs text-neutral-500">
+            {riga.quantityPacks} × {euro(riga.priceNet)}
+            {riga.packQuantity > 1 && ` · collo da ${riga.packQuantity}`}
+            {Number(riga.scontoExtraPct) > 0 && (
+              <span className="ml-1 text-violet-700">
+                · −{riga.scontoExtraPct}%, ti tornano {euro(riga.ritornoAtteso)}
+              </span>
+            )}
+          </p>
+        </div>
+
+        <span className="flex items-center rounded-lg border border-neutral-200">
+          <button
+            type="button"
+            onClick={() =>
+              riga.quantityPacks <= CONFEZIONI_MIN
+                ? onRimuovi(riga.id)
+                : onCambiaQuantita(riga.id, riga.quantityPacks - 1)
+            }
+            aria-label={
+              riga.quantityPacks <= CONFEZIONI_MIN
+                ? `Togli ${riga.name} dall’ordine`
+                : `Una confezione in meno di ${riga.name}`
+            }
+            className="grid h-9 w-8 cursor-pointer place-items-center rounded-l-lg text-neutral-600 transition-colors hover:bg-neutral-100"
+          >
+            <span aria-hidden className="leading-none font-bold">
+              {riga.quantityPacks <= CONFEZIONI_MIN ? '×' : '−'}
             </span>
-          )}
-        </p>
-      </div>
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              onCambiaQuantita(riga.id, Math.min(riga.quantityPacks + 1, CONFEZIONI_MAX))
+            }
+            aria-label={`Una confezione in più di ${riga.name}`}
+            className="grid h-9 w-8 cursor-pointer place-items-center rounded-r-lg text-neutral-600 transition-colors hover:bg-neutral-100"
+          >
+            <span aria-hidden className="leading-none font-bold">
+              +
+            </span>
+          </button>
+        </span>
 
-      <span className="flex items-center rounded-lg border border-neutral-200">
-        <button
-          type="button"
-          onClick={() =>
-            riga.quantityPacks <= CONFEZIONI_MIN
-              ? onRimuovi(riga.id)
-              : onCambiaQuantita(riga.id, riga.quantityPacks - 1)
-          }
-          aria-label={
-            riga.quantityPacks <= CONFEZIONI_MIN
-              ? `Togli ${riga.name} dall’ordine`
-              : `Una confezione in meno di ${riga.name}`
-          }
-          className="grid h-9 w-8 cursor-pointer place-items-center rounded-l-lg text-neutral-600 transition-colors hover:bg-neutral-100"
-        >
-          <span aria-hidden className="leading-none font-bold">
-            {riga.quantityPacks <= CONFEZIONI_MIN ? '×' : '−'}
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => onCambiaQuantita(riga.id, Math.min(riga.quantityPacks + 1, CONFEZIONI_MAX))}
-          aria-label={`Una confezione in più di ${riga.name}`}
-          className="grid h-9 w-8 cursor-pointer place-items-center rounded-r-lg text-neutral-600 transition-colors hover:bg-neutral-100"
-        >
-          <span aria-hidden className="leading-none font-bold">
-            +
-          </span>
-        </button>
-      </span>
-
-      <span className="tabellare w-16 shrink-0 text-right text-sm font-bold text-neutral-950">
-        {euro(riga.lineTotalNet)}
-      </span>
-    </li>
-    <Avviso
-      riga={riga}
-      onCambia={onCambiaFornitore}
-      onIgnora={onIgnoraAvviso}
-      inCorso={inCorso}
-    />
+        <span className="tabellare w-16 shrink-0 text-right text-sm font-bold text-neutral-950">
+          {euro(riga.lineTotalNet)}
+        </span>
+      </li>
+      <Avviso
+        riga={riga}
+        onCambia={onCambiaFornitore}
+        onIgnora={onIgnoraAvviso}
+        inCorso={inCorso}
+      />
     </>
   );
 }

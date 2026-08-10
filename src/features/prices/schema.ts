@@ -59,8 +59,9 @@ export const manualPriceSchema = z
 /**
  * Contratto interno per importazioni, ordini e correzioni server-side.
  *
- * Diversamente dal form manuale accetta il netto dichiarato dal documento:
- * quando presente e autorevole e non va ricalcolato dagli sconti letti.
+ * Diversamente dal form manuale accetta l'importo post-sconti dichiarato dal
+ * documento: è autorevole rispetto agli sconti letti, ma il confine di
+ * scrittura può ancora scorporarne l'IVA secondo il regime del fornitore.
  */
 export const setPriceSchema = z
   .object({

@@ -200,9 +200,7 @@ export function SettingsForm({ initialValues }: { initialValues: SettingsValues 
                 maxLength={max}
                 placeholder={esempio}
                 disabled={pending}
-                onChange={(e) =>
-                  setValues((current) => ({ ...current, [campo]: e.target.value }))
-                }
+                onChange={(e) => setValues((current) => ({ ...current, [campo]: e.target.value }))}
                 className="focus:border-brand-500 focus:ring-brand-500/30 min-h-11 w-full rounded-lg border border-neutral-300 px-3 text-sm outline-none focus:ring-4 disabled:opacity-60"
               />
             </label>

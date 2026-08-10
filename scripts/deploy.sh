@@ -24,6 +24,20 @@ FILE_VARIABILI="${GELATERIA_ENV_FILE:-/etc/gelateria/gelateria.env}"
 SERVIZIO="gelateria"
 HEALTH="http://127.0.0.1:3030/gelateria/api/health"
 TENTATIVI=20
+BUILD_RELEASE="$PROGETTO/.next-release"
+BUILD_PRECEDENTE="$PROGETTO/.next-previous"
+servizio_fermato=0
+
+riavvia_servizio_su_uscita() {
+  local stato=$?
+  trap - EXIT
+  if ((servizio_fermato)); then
+    echo "→ Uscita imprevista durante lo scambio: provo a riavviare il servizio" >&2
+    systemctl start "$SERVIZIO" || true
+  fi
+  exit "$stato"
+}
+trap riavvia_servizio_su_uscita EXIT
 
 # In produzione i segreti vivono fuori dalla directory servita da Next. Oltre
 # a ridurre l'esposizione del repository, questo evita che `next start` provi
@@ -48,6 +62,12 @@ fi
 
 cd "$PROGETTO"
 
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "Il worktree non e' pulito: prima crea un commit, cosi' il deploy resta reversibile." >&2
+  exit 65
+fi
+echo "→ Revisione $(git rev-parse --short=12 HEAD)"
+
 echo "→ Dipendenze"
 # Anche con NODE_ENV=production servono Prisma, TypeScript e il toolchain CSS
 # per costruire la release; `--prod=false` impedisce a pnpm di potarli.
@@ -56,26 +76,65 @@ pnpm install --frozen-lockfile --prod=false
 echo "→ Client Prisma"
 pnpm exec prisma generate
 
-echo "→ Build"
-pnpm build
+echo "→ Test"
+pnpm test
 
-# Il template systemd rende scrivibile soltanto la cache runtime. Dopo una
-# build eseguita da root ne riallineiamo i permessi, ma solo se l'utente di
-# servizio e' gia' stato installato. Lo storage viene preparato una volta sola
-# seguendo docs/OPERAZIONI.md e non viene ricorsivamente toccato a ogni deploy.
+echo "→ Controllo tipi"
+pnpm typecheck
+
+echo "→ Lint"
+pnpm lint
+
+echo "→ Formattazione"
+pnpm format:check
+
+echo "→ Build"
+if [[ -e "$BUILD_RELEASE" ]]; then
+  rm -rf -- "$BUILD_RELEASE"
+fi
+NEXT_DIST_DIR=".next-release" pnpm build
+
+# Git permette di tornare indietro col codice, non con i dati. Il dump viene
+# creato dopo tutti i gate e prima della prima operazione che può modificare
+# PostgreSQL, così ogni release ha un punto di ripristino verificato.
+echo "→ Backup prima del deploy"
+./scripts/backup-db.sh
+
+# Fino a qui il database non e' stato modificato e il servizio continua a
+# leggere la vecchia `.next`: la build nuova vive in una directory separata.
+echo "→ Migrazioni del database"
+pnpm exec prisma migrate deploy
+
+echo "→ Pubblicazione della build"
+systemctl stop "$SERVIZIO"
+servizio_fermato=1
+if [[ -e "$BUILD_PRECEDENTE" ]]; then
+  rm -rf -- "$BUILD_PRECEDENTE"
+fi
+if [[ -d "$PROGETTO/.next" ]]; then
+  mv -- "$PROGETTO/.next" "$BUILD_PRECEDENTE"
+fi
+if ! mv -- "$BUILD_RELEASE" "$PROGETTO/.next"; then
+  echo "✗ Non riesco a pubblicare la nuova build; ripristino quella precedente." >&2
+  if [[ -d "$BUILD_PRECEDENTE" && ! -e "$PROGETTO/.next" ]]; then
+    mv -- "$BUILD_PRECEDENTE" "$PROGETTO/.next"
+  fi
+  systemctl start "$SERVIZIO"
+  exit 1
+fi
+
+# Il template systemd rende scrivibile soltanto la cache runtime. Dopo lo
+# scambio riallineiamo esclusivamente quella directory; lo storage viene
+# preparato una volta sola seguendo docs/OPERAZIONI.md.
 if id -u "$UTENTE_SERVIZIO" >/dev/null 2>&1; then
   echo "→ Permessi della cache runtime"
   install -d -o "$UTENTE_SERVIZIO" -g "$GRUPPO_SERVIZIO" -m 0700 "$PROGETTO/.next/cache"
   chown -R -- "$UTENTE_SERVIZIO:$GRUPPO_SERVIZIO" "$PROGETTO/.next/cache"
 fi
 
-# Fino a qui il database non e' stato modificato e il servizio non e' stato
-# riavviato. La build resta in-place: il limite e' documentato nel runbook.
-echo "→ Migrazioni del database"
-pnpm exec prisma migrate deploy
-
-echo "→ Riavvio del servizio"
-systemctl restart "$SERVIZIO"
+echo "→ Avvio del servizio"
+systemctl start "$SERVIZIO"
+servizio_fermato=0
 
 echo -n "→ Attendo che risponda"
 for ((i = 1; i <= TENTATIVI; i++)); do

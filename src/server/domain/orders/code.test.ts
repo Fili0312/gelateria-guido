@@ -36,10 +36,17 @@ describe('il prossimo codice', () => {
   });
 
   it('riparte da uno in un anno nuovo', () => {
-    assert.equal(
-      prossimoCodiceOrdine(['2025-0042', '2025-0043'], NEL_2026),
-      '2026-0001',
-    );
+    assert.equal(prossimoCodiceOrdine(['2025-0042', '2025-0043'], NEL_2026), '2026-0001');
+  });
+
+  it('il Capodanno segue Europe/Rome anche se il server è in UTC', () => {
+    const mezzanotteItaliana = new Date('2025-12-31T23:30:00.000Z');
+    assert.equal(prossimoCodiceOrdine(['2025-0042'], mezzanotteItaliana), '2026-0001');
+  });
+
+  it('prima della mezzanotte italiana resta nell’anno precedente', () => {
+    const primaDiMezzanotte = new Date('2026-12-31T22:30:00.000Z');
+    assert.equal(prossimoCodiceOrdine(['2026-0042'], primaDiMezzanotte), '2026-0043');
   });
 
   it('ignora i codici di altri anni anche se più alti', () => {

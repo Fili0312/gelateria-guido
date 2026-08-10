@@ -57,7 +57,13 @@ function Quantita({
   );
 }
 
-function Offerta({ offerta, compatta = false }: { offerta: OffertaOrdinabile; compatta?: boolean }) {
+function Offerta({
+  offerta,
+  compatta = false,
+}: {
+  offerta: OffertaOrdinabile;
+  compatta?: boolean;
+}) {
   return (
     <>
       <span className="tabellare font-semibold text-neutral-950">{euro(offerta.priceNet)}</span>
@@ -98,6 +104,7 @@ function Riga({
   onSeleziona,
   onAggiungi,
   onCambiaQuantita,
+  onRimuovi,
 }: {
   risultato: RisultatoOrdinabile;
   attiva: boolean;
@@ -105,6 +112,7 @@ function Riga({
   onSeleziona: () => void;
   onAggiungi: (supplierProductId: string) => void;
   onCambiaQuantita: (rigaId: string, quantita: number) => void;
+  onRimuovi: (rigaId: string) => void;
 }) {
   const prima0 = risultato.offerte[0];
   const altre0 = risultato.offerte.slice(1);
@@ -179,7 +187,7 @@ function Riga({
             <Quantita
               quantita={gia.quantita}
               onCambia={(q) => onCambiaQuantita(gia.rigaId, q)}
-              onTogli={() => onCambiaQuantita(gia.rigaId, CONFEZIONI_MIN)}
+              onTogli={() => onRimuovi(gia.rigaId)}
             />
           ) : (
             <button
@@ -206,39 +214,43 @@ function Riga({
               rispetto all’altro fornitore.
             </p>
           )}
-        <ul className="space-y-1 border-t border-neutral-100 bg-neutral-50/70 py-1.5 pr-2 pl-6">
-          {altre.map((offerta) => {
-            const suo = perOfferta.get(offerta.supplierProductId);
-            return (
-              <li key={offerta.supplierProductId} className="flex items-center gap-3">
-                <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 text-xs">
-                  <Offerta offerta={offerta} compatta />
-                  <span className="text-neutral-400">
-                    {formatoConfezione(offerta.unitSize, offerta.unitOfMeasure, offerta.packQuantity)}
-                  </span>
-                </span>
-                {suo ? (
-                  <Quantita
-                    quantita={suo.quantita}
-                    onCambia={(q) => onCambiaQuantita(suo.rigaId, q)}
-                    onTogli={() => onCambiaQuantita(suo.rigaId, CONFEZIONI_MIN)}
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => onAggiungi(offerta.supplierProductId)}
-                    aria-label={`Aggiungi ${risultato.name} da ${offerta.supplierName}`}
-                    className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-lg border border-neutral-300 bg-white text-neutral-700 transition-colors hover:border-neutral-400"
-                  >
-                    <span aria-hidden className="text-lg leading-none font-bold">
-                      +
+          <ul className="space-y-1 border-t border-neutral-100 bg-neutral-50/70 py-1.5 pr-2 pl-6">
+            {altre.map((offerta) => {
+              const suo = perOfferta.get(offerta.supplierProductId);
+              return (
+                <li key={offerta.supplierProductId} className="flex items-center gap-3">
+                  <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 text-xs">
+                    <Offerta offerta={offerta} compatta />
+                    <span className="text-neutral-400">
+                      {formatoConfezione(
+                        offerta.unitSize,
+                        offerta.unitOfMeasure,
+                        offerta.packQuantity,
+                      )}
                     </span>
-                  </button>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+                  </span>
+                  {suo ? (
+                    <Quantita
+                      quantita={suo.quantita}
+                      onCambia={(q) => onCambiaQuantita(suo.rigaId, q)}
+                      onTogli={() => onRimuovi(suo.rigaId)}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onAggiungi(offerta.supplierProductId)}
+                      aria-label={`Aggiungi ${risultato.name} da ${offerta.supplierName}`}
+                      className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-lg border border-neutral-300 bg-white text-neutral-700 transition-colors hover:border-neutral-400"
+                    >
+                      <span aria-hidden className="text-lg leading-none font-bold">
+                        +
+                      </span>
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         </>
       )}
     </li>
@@ -264,6 +276,7 @@ export function ProductRail({
   onSeleziona,
   onAggiungi,
   onCambiaQuantita,
+  onRimuovi,
 }: {
   risultati: RisultatoOrdinabile[];
   raggruppa?: boolean;
@@ -272,6 +285,7 @@ export function ProductRail({
   onSeleziona: (indice: number) => void;
   onAggiungi: (supplierProductId: string) => void;
   onCambiaQuantita: (rigaId: string, quantita: number) => void;
+  onRimuovi: (rigaId: string) => void;
 }) {
   if (risultati.length === 0) {
     return (
@@ -290,6 +304,7 @@ export function ProductRail({
       onSeleziona={() => onSeleziona(indice)}
       onAggiungi={onAggiungi}
       onCambiaQuantita={onCambiaQuantita}
+      onRimuovi={onRimuovi}
     />
   );
 

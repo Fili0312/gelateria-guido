@@ -60,7 +60,8 @@ export function raggruppa(risultati: readonly RisultatoOrdinabile[]): {
     categorie.set(idReparto, dentro);
   }
 
-  const ordina = (g: Gruppo[]) => g.sort((a, b) => b.quanti - a.quanti || a.nome.localeCompare(b.nome, 'it'));
+  const ordina = (g: Gruppo[]) =>
+    g.sort((a, b) => b.quanti - a.quanti || a.nome.localeCompare(b.nome, 'it'));
 
   return {
     reparti: ordina([...reparti.values()]),

@@ -30,8 +30,12 @@ export function SpendChart({ punti }: { punti: PuntoSpesa[] }) {
 
   return (
     <div>
-      <div className="flex items-end gap-1" style={{ height: ALTEZZA }} role="img"
-        aria-label={`Spesa degli ultimi ${punti.length} mesi, totale ${euro(totale)}`}>
+      <div
+        className="flex items-end gap-1"
+        style={{ height: ALTEZZA }}
+        role="img"
+        aria-label={`Spesa degli ultimi ${punti.length} mesi, totale ${euro(totale)}`}
+      >
         {punti.map((p) => {
           const quota = Number(p.netto) / massimo;
           return (
@@ -73,7 +77,13 @@ export function DepartmentSplit({
   reparti,
   daBozza,
 }: {
-  reparti: { departmentId: string | null; nome: string; colore: string | null; netto: string; quota: number }[];
+  reparti: {
+    departmentId: string | null;
+    nome: string;
+    colore: string | null;
+    netto: string;
+    quota: number;
+  }[];
   daBozza: boolean;
 }) {
   if (reparti.length === 0) {
@@ -97,7 +107,10 @@ export function DepartmentSplit({
         {reparti.map((r, i) => (
           <div
             key={r.departmentId ?? 'senza'}
-            style={{ width: `${r.quota}%`, backgroundColor: r.colore ?? PREDEFINITI[i % PREDEFINITI.length] }}
+            style={{
+              width: `${r.quota}%`,
+              backgroundColor: r.colore ?? PREDEFINITI[i % PREDEFINITI.length],
+            }}
             title={`${r.nome}: ${euro(r.netto)}`}
           />
         ))}

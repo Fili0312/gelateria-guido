@@ -1,12 +1,7 @@
 import assert from 'node:assert/strict';
 import { Decimal } from 'decimal.js';
 import { describe, it } from 'node:test';
-import {
-  confezioniValide,
-  totaliOrdine,
-  totaliRiga,
-  type RigaDaSommare,
-} from './totals';
+import { confezioniValide, totaliOrdine, totaliRiga, type RigaDaSommare } from './totals';
 
 function riga(dati: Partial<RigaDaSommare> = {}): RigaDaSommare {
   return { prezzoConfezione: '4.72', confezioni: 3, aliquotaIva: '22', ...dati };
@@ -35,8 +30,14 @@ describe('il totale di una riga', () => {
 
   it('arrotonda all’even, come i netti di listino', () => {
     // 0,125 × 1 = 0,125 → 0,12 (non 0,13): la stessa regola dei listini.
-    assert.equal(totaliRiga(riga({ prezzoConfezione: '0.125', confezioni: 1 })).netto.toString(), '0.12');
-    assert.equal(totaliRiga(riga({ prezzoConfezione: '0.135', confezioni: 1 })).netto.toString(), '0.14');
+    assert.equal(
+      totaliRiga(riga({ prezzoConfezione: '0.125', confezioni: 1 })).netto.toString(),
+      '0.12',
+    );
+    assert.equal(
+      totaliRiga(riga({ prezzoConfezione: '0.135', confezioni: 1 })).netto.toString(),
+      '0.14',
+    );
   });
 
   it('il prezzo al litro non entra nel conto', () => {

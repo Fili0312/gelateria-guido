@@ -36,14 +36,19 @@ export const scopeLabelSchema = z
   .string()
   .trim()
   .min(2, 'Il nome del listino deve avere almeno 2 caratteri.')
-  .max(LIMITI.scopeLabel, `Il nome del listino può contenere al massimo ${LIMITI.scopeLabel} caratteri.`)
+  .max(
+    LIMITI.scopeLabel,
+    `Il nome del listino può contenere al massimo ${LIMITI.scopeLabel} caratteri.`,
+  )
   .transform(normalizzaCopertura);
 
 export const priceListUploadSchema = z
   .object({
     supplierId: z.string().trim().min(1, 'Scegli il fornitore.').max(64),
     scopeLabel: scopeLabelSchema,
-    documentType: z.enum(['LISTINO', 'PREVENTIVO', 'ORDINE_VENDITA', 'CATALOGO']).default('LISTINO'),
+    documentType: z
+      .enum(['LISTINO', 'PREVENTIVO', 'ORDINE_VENDITA', 'CATALOGO'])
+      .default('LISTINO'),
   })
   .strict();
 
@@ -72,6 +77,14 @@ export const rowsQuerySchema = z
   })
   .strict();
 
+/** Decisione esplicita richiesta quando codice uguale e confezione diversa. */
+export const packagingDecisionSchema = z
+  .object({
+    decisioneConfezione: z.enum(['MANTIENI_PRECEDENTE', 'ACCETTA_NUOVA']),
+  })
+  .strict();
+
 export type PriceListUpload = z.infer<typeof priceListUploadSchema>;
 export type PriceListListQuery = z.infer<typeof priceListListQuerySchema>;
 export type RowsQuery = z.infer<typeof rowsQuerySchema>;
+export type PackagingDecision = z.infer<typeof packagingDecisionSchema>['decisioneConfezione'];

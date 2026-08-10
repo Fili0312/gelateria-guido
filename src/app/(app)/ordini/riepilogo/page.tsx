@@ -33,15 +33,12 @@ export default async function RiepilogoPage() {
           Riepilogo
         </h1>
         <p className="mt-2 max-w-2xl leading-6 text-neutral-500">
-          Quello che stai per ordinare, diviso per fornitore. Le segnalazioni qui sotto non
-          bloccano niente: sono le cose che vale la pena guardare prima.
+          Quello che stai per ordinare, diviso per fornitore. Le segnalazioni qui sotto non bloccano
+          niente: sono le cose che vale la pena guardare prima.
         </p>
       </header>
 
-      <OrderSummary
-        riepilogo={riepilogo}
-        endpointOrdine={withBasePath('/api/orders/current')}
-      />
+      <OrderSummary riepilogo={riepilogo} endpointOrdine={withBasePath('/api/orders/current')} />
     </div>
   );
 }

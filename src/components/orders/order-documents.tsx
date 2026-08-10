@@ -43,10 +43,12 @@ export function OrderDocuments({
   orderId,
   iniziali,
   endpointOrdini,
+  generabile = true,
 }: {
   orderId: string;
   iniziali: DocumentoInElenco[];
   endpointOrdini: string;
+  generabile?: boolean;
 }) {
   const { toast } = useToast();
   const [documenti, setDocumenti] = useState(iniziali);
@@ -103,15 +105,24 @@ export function OrderDocuments({
               Scarica tutto
             </a>
           )}
-          <Button onClick={() => void genera()} disabled={attesa} className="min-h-11">
-            {attesa
-              ? 'Sto preparando…'
-              : documenti.length > 0
-                ? 'Rigenera'
-                : 'Genera i documenti'}
-          </Button>
+          {generabile && (
+            <Button onClick={() => void genera()} disabled={attesa} className="min-h-11">
+              {attesa
+                ? 'Sto preparando…'
+                : documenti.length > 0
+                  ? 'Rigenera'
+                  : 'Genera i documenti'}
+            </Button>
+          )}
         </div>
       </div>
+
+      {!generabile && (
+        <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Ordine annullato: i documenti già prodotti restano scaricabili, ma non si possono
+          rigenerare.
+        </p>
+      )}
 
       {documenti.length === 0 ? (
         <p className="mt-4 rounded-xl border border-dashed border-neutral-300 px-4 py-6 text-center text-sm text-neutral-500">
@@ -128,9 +139,7 @@ export function OrderDocuments({
               >
                 <span
                   className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg text-[10px] font-black ${
-                    d.format === 'PDF'
-                      ? 'bg-red-50 text-red-700'
-                      : 'bg-emerald-50 text-emerald-700'
+                    d.format === 'PDF' ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'
                   }`}
                 >
                   {d.format}

@@ -1,8 +1,19 @@
 import 'server-only';
 
-import type { CodaAbbinamento, RigaDaAbbinare } from '@/features/matching/dto';
+import type { CodaAbbinamento } from '@/features/matching/dto';
 import type { CodaQuery, Decisione } from '@/features/matching/schema';
 import { prismaForOrganization, transactionForOrganization } from '@/server/db';
+import {
+  calcolaPaginazione,
+  caricaPaginaCodaAbbinamento,
+  contaCodaAbbinamento,
+} from '@/server/database/coda-abbinamento';
+import { mappaRigaCoda } from '@/server/domain/matching/queue';
+import {
+  condizioneCasDecisione,
+  motivoDecisioneNonApplicabile,
+  rigaBloccaApplicazione,
+} from '@/server/domain/matching/review';
 import { normalizzaTesto } from '@/server/domain/packaging/normalize';
 
 export class MatchingNotFoundError extends Error {
@@ -13,28 +24,10 @@ export class MatchingConflictError extends Error {
   override readonly name = 'MatchingConflictError';
 }
 
-interface Abbinamento {
-  nucleo?: string;
-  metodo?: string;
-  punteggio?: number;
-  motivo?: string;
-  candidati?: { productId: string; nome: string; punteggio: number; trigram: number; via: string }[];
-}
-
-interface CampiRiga {
-  codice?: string | null;
-  descrizione?: string | null;
-  unitSize?: string | null;
-  unitOfMeasure?: string | null;
-  packQuantity?: number;
-  prezzoNetto?: string | null;
-}
-
-function formatoLeggibile(campi: CampiRiga | undefined): string {
-  if (!campi?.unitSize || !campi.unitOfMeasure) return '—';
-  const unita = campi.unitOfMeasure === 'PIECE' ? 'pz' : campi.unitOfMeasure.toLowerCase();
-  const pezzi = campi.packQuantity && campi.packQuantity > 1 ? ` ×${campi.packQuantity}` : '';
-  return `${campi.unitSize} ${unita}${pezzi}`;
+function errorCode(error: unknown): string | undefined {
+  return typeof error === 'object' && error !== null && 'code' in error
+    ? String((error as { code: unknown }).code)
+    : undefined;
 }
 
 export function matchingRepository(organizationId: string) {
@@ -49,82 +42,26 @@ export function matchingRepository(organizationId: string) {
      * Gli automatici si possono guardare, ma non è lì che serve guardare.
      */
     async coda(query: CodaQuery): Promise<CodaAbbinamento> {
-      const listini = await db.priceList.findMany({
-        where: query.priceListId ? { id: query.priceListId } : {},
-        select: {
-          id: true,
-          scopeLabel: true,
-          supplier: { select: { name: true } },
-          rows: {
-            where: {
-              excluded: false,
-              reviewedAt: null,
-              ...(query.stato === 'tutti' ? {} : { matchStatus: query.stato }),
-              // Le righe che non sono prodotti non hanno niente da abbinare.
-              productId: query.stato === 'NEW' ? null : undefined,
-            },
-            select: {
-              id: true,
-              pageNumber: true,
-              rawText: true,
-              extracted: true,
-              matchStatus: true,
-              productId: true,
-              product: { select: { name: true } },
-            },
-            orderBy: [{ pageNumber: 'asc' }, { lineNumber: 'asc' }],
-            take: query.limite,
-          },
-          _count: { select: { rows: true } },
-        },
-        orderBy: { uploadedAt: 'desc' },
-        take: 20,
-      });
+      const conteggi = await contaCodaAbbinamento(organizationId, query);
+      const paginazione = calcolaPaginazione(conteggi.totaleFiltrato, query.pagina, query.limite);
+      const righe =
+        conteggi.totaleFiltrato > 0
+          ? await caricaPaginaCodaAbbinamento(organizationId, query, paginazione.offset)
+          : [];
 
-      const items: RigaDaAbbinare[] = [];
-      for (const listino of listini) {
-        for (const riga of listino.rows) {
-          const extra = (riga.extracted ?? {}) as { campi?: CampiRiga; abbinamento?: Abbinamento };
-          // Solo le righe prodotto: le sezioni e le non capite non si abbinano.
-          if (!extra.campi?.descrizione) continue;
-          const a = extra.abbinamento ?? {};
-          items.push({
-            id: riga.id,
-            priceListId: listino.id,
-            listino: listino.scopeLabel,
-            fornitore: listino.supplier.name,
-            pagina: riga.pageNumber,
-            descrizione: extra.campi.descrizione,
-            codice: extra.campi.codice ?? null,
-            nucleo: a.nucleo ?? '',
-            formato: formatoLeggibile(extra.campi),
-            prezzoNetto: extra.campi.prezzoNetto ?? null,
-            stato: riga.matchStatus as RigaDaAbbinare['stato'],
-            metodo: a.metodo ?? null,
-            punteggio: a.punteggio ?? null,
-            motivo: a.motivo ?? null,
-            propostoId: riga.productId,
-            propostoNome: riga.product?.name ?? null,
-            candidati: a.candidati ?? [],
-          });
-        }
-      }
-
-      const conta = async (stato: 'AUTO' | 'PENDING' | 'NEW') =>
-        db.priceList
-          .findMany({
-            where: query.priceListId ? { id: query.priceListId } : {},
-            select: { _count: { select: { rows: { where: { matchStatus: stato, reviewedAt: null } } } } },
-          })
-          .then((l) => l.reduce((s, x) => s + x._count.rows, 0));
-
-      const [automatici, daRivedere, nuovi] = await Promise.all([
-        conta('AUTO'),
-        conta('PENDING'),
-        conta('NEW'),
-      ]);
-
-      return { items, daRivedere, automatici, nuovi, giaNoti: 0 };
+      return {
+        items: righe.map(mappaRigaCoda),
+        daRivedere: conteggi.daRivedere,
+        automatici: conteggi.automatici,
+        nuovi: conteggi.nuovi,
+        giaNoti: 0,
+        totale: conteggi.totaleFiltrato,
+        paginaCorrente: paginazione.paginaCorrente,
+        pagine: paginazione.pagine,
+        limite: paginazione.limite,
+        haPrecedente: paginazione.haPrecedente,
+        haSuccessiva: paginazione.haSuccessiva,
+      };
     },
 
     /**
@@ -140,34 +77,60 @@ export function matchingRepository(organizationId: string) {
      * investimento decrescente.
      */
     async decidi(rigaId: string, decisione: Decisione, userId: string): Promise<void> {
-      // Le righe si raggiungono dal listino: `price_list_row` non ha
-      // `organizationId`, quindi il client scoped non lo espone affatto.
-      const listino = await db.priceList.findFirst({
-        where: { rows: { some: { id: rigaId } } },
-        select: {
-          id: true,
-          rows: { where: { id: rigaId }, select: { id: true, extracted: true, reviewedAt: true } },
-        },
-      });
-      const riga = listino?.rows[0];
-      if (!listino || !riga) throw new MatchingNotFoundError('Riga non trovata.');
-      if (riga.reviewedAt) {
-        throw new MatchingConflictError('Questa riga è già stata rivista.');
-      }
-
-      const extra = (riga.extracted ?? {}) as { abbinamento?: Abbinamento };
-      const nucleo = extra.abbinamento?.nucleo?.trim() || null;
-
-      const aggiornaRiga = (
-        tx: ReturnType<typeof prismaForOrganization>,
-        data: Record<string, unknown>,
-      ) =>
-        tx.priceList.update({
-          where: { id: listino.id },
-          data: { rows: { update: { where: { id: rigaId }, data } } },
-        });
-
       await transactionForOrganization(organizationId, async (tx) => {
+        // Lettura e guardia vivono nella stessa transazione serializzabile
+        // della scrittura. Il CAS nested sotto ricontrolla inoltre stato e
+        // `reviewedAt`: solo una richiesta concorrente può produrre effetti.
+        const listino = await tx.priceList.findFirst({
+          where: { rows: { some: { id: rigaId } } },
+          select: {
+            id: true,
+            rows: {
+              where: { id: rigaId },
+              select: {
+                id: true,
+                extracted: true,
+                reviewedAt: true,
+                excluded: true,
+                matchStatus: true,
+                validationErrors: true,
+              },
+            },
+          },
+        });
+        const riga = listino?.rows[0];
+        if (!listino || !riga) throw new MatchingNotFoundError('Riga non trovata.');
+        // Una riga già rivista ma ancora invalida può soltanto essere esclusa:
+        // altrimenti resterebbe un blocco permanente senza azione possibile.
+        const puoEscludereBloccante = decisione.tipo === 'ignora' && rigaBloccaApplicazione(riga);
+        const conflitto = puoEscludereBloccante ? null : motivoDecisioneNonApplicabile(riga);
+        if (conflitto) throw new MatchingConflictError(conflitto);
+
+        const extra = (riga.extracted ?? {}) as { abbinamento?: { nucleo?: string } };
+        const nucleo = extra.abbinamento?.nucleo?.trim() || null;
+        const revisione = { reviewedById: userId, reviewedAt: new Date() };
+
+        const aggiornaRiga = async (data: Record<string, unknown>) => {
+          try {
+            await tx.priceList.update({
+              where: { id: listino.id },
+              data: {
+                rows: {
+                  update: {
+                    where: condizioneCasDecisione(rigaId, riga.matchStatus, riga.reviewedAt),
+                    data,
+                  },
+                },
+              },
+            });
+          } catch (error) {
+            if (errorCode(error) === 'P2025') {
+              throw new MatchingConflictError('Questa riga è già stata decisa altrove.');
+            }
+            throw error;
+          }
+        };
+
         if (decisione.tipo === 'conferma') {
           const prodotto = await tx.product.findFirst({
             where: { id: decisione.productId },
@@ -175,12 +138,11 @@ export function matchingRepository(organizationId: string) {
           });
           if (!prodotto) throw new MatchingNotFoundError('Il prodotto indicato non esiste.');
 
-          await aggiornaRiga(tx, {
+          await aggiornaRiga({
             productId: prodotto.id,
             matchStatus: 'CONFIRMED',
             proposedAction: 'CREATE',
-            reviewedById: userId,
-            reviewedAt: new Date(),
+            ...revisione,
           });
           if (nucleo) await scriviAlias(tx, prodotto.id, nucleo, false);
           return;
@@ -190,32 +152,31 @@ export function matchingRepository(organizationId: string) {
           // Il sinonimo negativo è ciò che impedisce alla stessa proposta
           // sbagliata di tornare a ogni import, e di essere rifiutata ogni
           // volta dalla stessa persona.
-          if (nucleo) await scriviAlias(tx, decisione.productId, nucleo, true);
-          await aggiornaRiga(tx, {
+          await aggiornaRiga({
             productId: null,
-            matchStatus: 'NEW',
+            matchStatus: 'REJECTED',
             proposedAction: 'CREATE',
+            ...revisione,
           });
+          if (nucleo) await scriviAlias(tx, decisione.productId, nucleo, true);
           return;
         }
 
         if (decisione.tipo === 'nuovo') {
-          await aggiornaRiga(tx, {
+          await aggiornaRiga({
             productId: null,
             matchStatus: 'NEW',
             proposedAction: 'CREATE',
-            reviewedById: userId,
-            reviewedAt: new Date(),
+            ...revisione,
           });
           return;
         }
 
-        await aggiornaRiga(tx, {
+        await aggiornaRiga({
           matchStatus: 'IGNORED',
           proposedAction: 'IGNORE',
           excluded: true,
-          reviewedById: userId,
-          reviewedAt: new Date(),
+          ...revisione,
         });
       });
     },

@@ -13,6 +13,8 @@ storage/
 # Build e dipendenze
 node_modules/
 .next/
+.next-release/
+.next-previous/
 dist/
 *.tsbuildinfo
 # Client Prisma: si rigenera a ogni deploy (`prisma generate` in deploy.sh).

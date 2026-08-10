@@ -3,6 +3,7 @@ import 'server-only';
 import { Decimal } from 'decimal.js';
 import { cercaCandidati, prodottiEsclusi } from '@/server/database/candidati-abbinamento';
 import { analizzaDescrizione } from '@/server/domain/packaging/parse';
+import { improntaDaCampi } from '@/server/domain/packaging/fingerprint';
 import type { BaseUnit, UnitOfMeasure } from '@/server/domain/packaging/units';
 import {
   decidiDaPunteggio,
@@ -46,6 +47,9 @@ export interface RigaDaAbbinare {
   codiceFornitore: string | null;
   descrizione: string;
   unitaDiVendita: string | null;
+  unitSize?: string | null;
+  unitOfMeasure?: string | null;
+  packQuantity?: number;
 }
 
 export interface Candidato {
@@ -118,27 +122,44 @@ export async function abbinaRiga(
     },
   };
 
-  // ── 1. Stesso fornitore, stesso codice ─────────────────────────────────
-  // Non è un abbinamento: è la stessa offerta del listino precedente.
-  if (riga.codiceFornitore) {
-    const esistente = await systemPrisma.supplierProduct.findFirst({
-      where: { supplierId: opzioni.supplierId, supplierCode: riga.codiceFornitore },
-      select: { id: true, productId: true, product: { select: { name: true } } },
-    });
-    if (esistente) {
-      return {
-        ...base,
-        supplierProductId: esistente.id,
-        productId: esistente.productId,
-        decisione: decisioneCerta(
-          'CODE',
-          esistente.productId
-            ? `Codice ${riga.codiceFornitore} già noto per questo fornitore, collegato a «${esistente.product?.name}».`
-            : `Codice ${riga.codiceFornitore} già noto per questo fornitore, ma non ancora collegato a un prodotto.`,
-        ),
-        candidati: [],
-      };
-    }
+  // ── 1. Stesso fornitore, stessa identità ───────────────────────────────
+  // Il codice è la prova primaria. Barzelli però non lo fornisce: in quel
+  // caso la stessa impronta usata dal vincolo del catalogo evita che ogni
+  // reimport proponga una nuova offerta identica alla precedente.
+  const fingerprint = improntaDaCampi({
+    descrizione: riga.descrizione,
+    unitaDiVendita: riga.unitaDiVendita,
+    unitSize: riga.unitSize,
+    unitOfMeasure: riga.unitOfMeasure,
+    packQuantity: riga.packQuantity,
+  });
+  const esistente = await systemPrisma.supplierProduct.findFirst({
+    where: {
+      supplierId: opzioni.supplierId,
+      ...(riga.codiceFornitore
+        ? { supplierCode: riga.codiceFornitore }
+        : { supplierCode: null, fingerprint }),
+    },
+    select: { id: true, productId: true, product: { select: { name: true } } },
+  });
+  if (esistente) {
+    const identita = riga.codiceFornitore
+      ? `Codice ${riga.codiceFornitore}`
+      : 'Impronta della riga senza codice';
+    return {
+      ...base,
+      supplierProductId: esistente.id,
+      productId: esistente.productId,
+      // `CODE` qui indica il gradino certo dell'identità fornitore. Non si
+      // aggiunge un valore al DB enum solo per distinguere il suo fallback.
+      decisione: decisioneCerta(
+        'CODE',
+        esistente.productId
+          ? `${identita} già nota per questo fornitore, collegata a «${esistente.product?.name}».`
+          : `${identita} già nota per questo fornitore, ma non ancora collegata a un prodotto.`,
+      ),
+      candidati: [],
+    };
   }
 
   // ── 2-4. Candidati, filtrati sul formato ───────────────────────────────

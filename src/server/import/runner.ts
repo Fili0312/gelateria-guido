@@ -61,35 +61,35 @@ function righeDaScrivere(
   return righe.map((riga) => {
     const campi = strutturate.get(riga);
     return {
-    priceListId,
-    pageNumber: riga.pagina,
-    lineNumber: riga.numero,
-    rawText: riga.testo,
-    rawCells: riga.celle.map((c) => ({ testo: c.testo, colonna: c.colonna, x: Math.round(c.x) })),
-    bbox: riga.bbox,
-    source: 'PROFILE' as const,
-    // `extracted` è la zona in cui la Fase 8 scriverà i campi interpretati.
-    // Per ora ci sta solo ciò che il segmentatore sa con certezza: che tipo
-    // di riga è, cosa ha assorbito, sotto quale sezione stava.
-    extracted: {
-      tipo: riga.tipo,
-      continuazioni: riga.continuazioni,
-      // I codici dichiarati a parte (`EAN: 20561`) stanno qui e non nella
-      // descrizione: nei listini Cecconi ripetono il codice articolo, e
-      // incollarli al nome sporcherebbe la ricerca della Fase 9.
-      codici: riga.codici,
-      sezione: riga.sezione,
-      // I campi interpretati, quando la riga e' un prodotto. `null` sui
-      // titoli di sezione e sulle righe non capite: non e' una mancanza, e'
-      // che non c'e' niente da interpretare.
-      campi: campi ?? null,
-    } as unknown as OrganizationJsonInput,
-    confidence: campi ? (campi.importabile ? '1' : '0.5') : null,
-    validationErrors: campi?.segnalazioni.length
-      ? (campi.segnalazioni as unknown as OrganizationJsonInput)
-      : undefined,
-    matchStatus: 'PENDING' as const,
-    proposedAction: 'AMBIGUOUS' as const,
+      priceListId,
+      pageNumber: riga.pagina,
+      lineNumber: riga.numero,
+      rawText: riga.testo,
+      rawCells: riga.celle.map((c) => ({ testo: c.testo, colonna: c.colonna, x: Math.round(c.x) })),
+      bbox: riga.bbox,
+      source: 'PROFILE' as const,
+      // `extracted` è la zona in cui la Fase 8 scriverà i campi interpretati.
+      // Per ora ci sta solo ciò che il segmentatore sa con certezza: che tipo
+      // di riga è, cosa ha assorbito, sotto quale sezione stava.
+      extracted: {
+        tipo: riga.tipo,
+        continuazioni: riga.continuazioni,
+        // I codici dichiarati a parte (`EAN: 20561`) stanno qui e non nella
+        // descrizione: nei listini Cecconi ripetono il codice articolo, e
+        // incollarli al nome sporcherebbe la ricerca della Fase 9.
+        codici: riga.codici,
+        sezione: riga.sezione,
+        // I campi interpretati, quando la riga e' un prodotto. `null` sui
+        // titoli di sezione e sulle righe non capite: non e' una mancanza, e'
+        // che non c'e' niente da interpretare.
+        campi: campi ?? null,
+      } as unknown as OrganizationJsonInput,
+      confidence: campi ? (campi.importabile ? '1' : '0.5') : null,
+      validationErrors: campi?.segnalazioni.length
+        ? (campi.segnalazioni as unknown as OrganizationJsonInput)
+        : undefined,
+      matchStatus: 'PENDING' as const,
+      proposedAction: 'AMBIGUOUS' as const,
     };
   });
 }

@@ -184,6 +184,8 @@ export interface OrdineCorrente {
  */
 export interface RiepilogoOrdine {
   ordine: OrdineCorrente;
+  /** Firma degli id prezzo correnti mostrati: cambia se arriva un nuovo listino. */
+  priceVersion: string;
   /** Un fornitore sotto il suo minimo: quanto manca. */
   minimiNonRaggiunti: {
     supplierId: string;
@@ -203,7 +205,7 @@ export interface RiepilogoOrdine {
   }[];
   /** Righe con un prezzo che non si aggiorna da troppo. */
   prezziFermi: { rigaId: string; name: string; supplierName: string; valeDa: string }[];
-  /** Righe di prodotti che nessun altro fornitore vende: niente da confrontare. */
+  /** Righe di prodotti con meno di due offerte realmente confrontabili. */
   senzaConfronto: { rigaId: string; name: string; supplierName: string }[];
   /** `false` quando l'ordine è vuoto: non c'è niente da confermare. */
   confermabile: boolean;
@@ -263,6 +265,7 @@ export interface OrdineStorico {
   iva: string;
   lordo: string;
   perFornitore: {
+    supplierId: string;
     supplierName: string;
     righe: {
       id: string;

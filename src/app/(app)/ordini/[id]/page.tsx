@@ -20,11 +20,7 @@ export const dynamic = 'force-dynamic';
  * mostrare i prezzi di oggi anche se il prodotto è stato rinominato, il
  * fornitore cambiato e l'offerta cancellata.
  */
-export default async function OrdineStoricoPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function OrdineStoricoPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
   if (!user) return null;
 
@@ -85,7 +81,7 @@ export default async function OrdineStoricoPage({
 
       {ordine.perFornitore.map((gruppo) => (
         <section
-          key={gruppo.supplierName}
+          key={gruppo.supplierId}
           className="overflow-hidden rounded-2xl border border-neutral-200 bg-white"
         >
           <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-neutral-100 bg-neutral-50 px-4 py-2.5">
@@ -150,6 +146,7 @@ export default async function OrdineStoricoPage({
         orderId={ordine.id}
         iniziali={documenti}
         endpointOrdini={withBasePath('/api/orders')}
+        generabile={!annullato}
       />
 
       <OrderActions
@@ -159,8 +156,7 @@ export default async function OrdineStoricoPage({
       />
 
       <p className="text-xs text-neutral-400">
-        L’invio automatico ai fornitori via email arriva con la Fase 17: per ora i documenti si
-        scaricano e si allegano a mano.
+        L’invio email dall’app è in pausa: scarica i documenti e allegali manualmente.
       </p>
     </div>
   );

@@ -21,7 +21,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     }
 
     const { id } = await context.params;
-    const patch = rigaOrdinePatchSchema.parse(await readJsonRequest(request, DEFAULT_MAX_JSON_BODY_BYTES));
+    const patch = rigaOrdinePatchSchema.parse(
+      await readJsonRequest(request, DEFAULT_MAX_JSON_BODY_BYTES),
+    );
     return jsonSuccess(
       await ordersRepository(user.organizationId).aggiornaRiga(user.id, id, patch),
     );

@@ -17,9 +17,7 @@ export async function GET(request: Request) {
     const user = await getCurrentUser();
     if (!user) return jsonError('Autenticazione richiesta.', 401);
 
-    const query = elencoOrdiniSchema.parse(
-      Object.fromEntries(new URL(request.url).searchParams),
-    );
+    const query = elencoOrdiniSchema.parse(Object.fromEntries(new URL(request.url).searchParams));
     return jsonSuccess(await ordersRepository(user.organizationId).elenco(query));
   } catch (error) {
     return mappedErrorResponse(error, 'I filtri non sono validi.', ERRORI_ORDINE);

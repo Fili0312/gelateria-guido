@@ -71,7 +71,13 @@ function Azione({
 }
 
 /** Il prezzo e la confezione, su una riga sola. */
-function Prezzo({ prodotto, endpointOfferte }: { prodotto: ProductListItem; endpointOfferte: string }) {
+function Prezzo({
+  prodotto,
+  endpointOfferte,
+}: {
+  prodotto: ProductListItem;
+  endpointOfferte: string;
+}) {
   const p = prodotto.price;
   if (!p) {
     return <span className="text-xs text-neutral-400">senza prezzo</span>;
@@ -135,11 +141,16 @@ function Riga({
         method: 'DELETE',
         headers: { Accept: 'application/json' },
       });
-      const corpo = (await risposta.json().catch(() => null)) as
-        | { ok: boolean; error?: string }
-        | null;
+      const corpo = (await risposta.json().catch(() => null)) as {
+        ok: boolean;
+        error?: string;
+      } | null;
       if (!risposta.ok || !corpo?.ok) {
-        toast({ title: 'Non è stato possibile eliminare', description: corpo?.error, tone: 'error' });
+        toast({
+          title: 'Non è stato possibile eliminare',
+          description: corpo?.error,
+          tone: 'error',
+        });
         return;
       }
       toast({ title: 'Prodotto eliminato', tone: 'success' });
@@ -211,7 +222,11 @@ function Riga({
           evidenziate: farle comparire solo al passaggio del mouse le rende
           invisibili su tablet, dove il mouse non c'è. */}
       <span className="flex shrink-0 items-center gap-0.5">
-        <Azione href={`/prodotti/${prodotto.id}`} icona="arrow-right" titolo={`Apri ${prodotto.name}`} />
+        <Azione
+          href={`/prodotti/${prodotto.id}`}
+          icona="arrow-right"
+          titolo={`Apri ${prodotto.name}`}
+        />
         <Azione
           href={`/prodotti/${prodotto.id}/modifica`}
           icona="edit"

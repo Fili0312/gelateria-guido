@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Badge, Button, useToast } from '@/components/ui';
@@ -20,9 +21,13 @@ import type { CodaAbbinamento, MatchingApiBody, RigaDaAbbinare } from '@/feature
 export function MatchingQueue({
   iniziale,
   endpoint,
+  hrefPrecedente,
+  hrefSuccessiva,
 }: {
   iniziale: CodaAbbinamento;
   endpoint: string;
+  hrefPrecedente: string | null;
+  hrefSuccessiva: string | null;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -60,7 +65,7 @@ export function MatchingQueue({
 
   const rimaste = iniziale.items.filter((r) => !fatte.has(r.id));
 
-  if (iniziale.items.length === 0) {
+  if (iniziale.totale === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-neutral-300 bg-white px-5 py-12 text-center">
         <h2 className="text-lg font-black text-neutral-950">Niente da decidere</h2>
@@ -77,7 +82,11 @@ export function MatchingQueue({
       {fatte.size > 0 && (
         <p className="text-sm text-neutral-500">
           {fatte.size} {fatte.size === 1 ? 'riga decisa' : 'righe decise'}.{' '}
-          <button type="button" className="text-brand-700 underline" onClick={() => router.refresh()}>
+          <button
+            type="button"
+            className="text-brand-700 underline"
+            onClick={() => router.refresh()}
+          >
             Ricarica per vedere il resto
           </button>
         </p>
@@ -110,7 +119,15 @@ export function MatchingQueue({
               </p>
             )}
 
-            {riga.candidati.length > 0 ? (
+            {riga.problemi.length > 0 && (
+              <ul className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs leading-5 text-red-900">
+                {riga.problemi.map((problema) => (
+                  <li key={problema}>{problema}</li>
+                ))}
+              </ul>
+            )}
+
+            {!riga.giaRivista && riga.candidati.length > 0 ? (
               <ul className="mt-3 space-y-2">
                 {riga.candidati.map((candidato) => (
                   <li
@@ -158,33 +175,79 @@ export function MatchingQueue({
                   </li>
                 ))}
               </ul>
-            ) : (
+            ) : !riga.giaRivista ? (
               <p className="mt-3 text-sm text-neutral-500">
                 Nessun prodotto simile in catalogo con questo formato.
+              </p>
+            ) : (
+              <p className="mt-3 text-sm leading-6 text-amber-800">
+                La decisione precedente resta registrata, ma questa riga blocca ancora il listino.
+                Puoi escluderla esplicitamente qui sotto.
               </p>
             )}
 
             <div className="mt-3 flex flex-wrap gap-2 border-t border-neutral-100 pt-3">
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={attesa !== null}
-                onClick={() => decidi(riga, { tipo: 'nuovo' }, 'Segnato come prodotto nuovo')}
-              >
-                È un prodotto nuovo
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={attesa !== null}
-                onClick={() => decidi(riga, { tipo: 'ignora' }, 'Riga ignorata')}
-              >
-                Ignora questa riga
-              </Button>
+              {!riga.giaRivista && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={attesa !== null}
+                  onClick={() => decidi(riga, { tipo: 'nuovo' }, 'Segnato come prodotto nuovo')}
+                >
+                  È un prodotto nuovo
+                </Button>
+              )}
+              {(!riga.giaRivista || riga.bloccaImport) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={attesa !== null}
+                  onClick={() => decidi(riga, { tipo: 'ignora' }, 'Riga ignorata')}
+                >
+                  {riga.giaRivista ? 'Escludi e sblocca il listino' : 'Ignora questa riga'}
+                </Button>
+              )}
             </div>
           </li>
         ))}
       </ul>
+
+      {iniziale.pagine > 1 && (
+        <nav
+          aria-label="Pagine della coda di abbinamento"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm"
+        >
+          <span className="text-neutral-600">
+            Pagina {iniziale.paginaCorrente} di {iniziale.pagine} · {iniziale.totale} righe
+          </span>
+          <span className="flex items-center gap-2">
+            {hrefPrecedente ? (
+              <Link
+                href={hrefPrecedente}
+                className="min-h-tap rounded-lg border border-neutral-300 px-3 py-2 font-semibold text-neutral-800 hover:bg-neutral-50"
+              >
+                ← Precedente
+              </Link>
+            ) : (
+              <span className="min-h-tap rounded-lg border border-neutral-200 px-3 py-2 text-neutral-400">
+                ← Precedente
+              </span>
+            )}
+            {hrefSuccessiva ? (
+              <Link
+                href={hrefSuccessiva}
+                className="min-h-tap rounded-lg border border-neutral-300 px-3 py-2 font-semibold text-neutral-800 hover:bg-neutral-50"
+              >
+                Successiva →
+              </Link>
+            ) : (
+              <span className="min-h-tap rounded-lg border border-neutral-200 px-3 py-2 text-neutral-400">
+                Successiva →
+              </span>
+            )}
+          </span>
+        </nav>
+      )}
     </div>
   );
 }

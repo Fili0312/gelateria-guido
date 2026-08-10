@@ -1,6 +1,6 @@
 import { Decimal } from 'decimal.js';
 import { systemPrisma } from '../src/server/database/system-client.js';
-import { ordersRepository } from '../src/server/repositories/orders.js';
+import { ordersRepository, OrderVersionError } from '../src/server/repositories/orders.js';
 
 /**
  * I quattro criteri della Fase 14, su una copia.
@@ -59,9 +59,30 @@ async function main() {
     `     segnalazioni: ${riepilogo.minimiNonRaggiunti.length} minimi, ${riepilogo.prezziCambiati.length} prezzi cambiati, ${riepilogo.prezziFermi.length} fermi, ${riepilogo.senzaConfronto.length} senza confronto`,
   );
 
+  let versionePrezziRifiutata = false;
+  try {
+    await ordini.conferma(utente.id, {
+      orderId: o.id,
+      updatedAt: o.updatedAt,
+      priceVersion: '0'.repeat(64),
+      note: o.note,
+    });
+  } catch (errore) {
+    versionePrezziRifiutata = errore instanceof OrderVersionError;
+  }
+  esito(
+    versionePrezziRifiutata,
+    'una fotografia prezzi diversa da quella del riepilogo blocca la conferma',
+  );
+
   console.log('\n── Criterio 2: gli snapshot si leggono senza il catalogo ────────\n');
 
-  const confermato = await ordini.conferma(utente.id);
+  const confermato = await ordini.conferma(utente.id, {
+    orderId: o.id,
+    updatedAt: o.updatedAt,
+    priceVersion: riepilogo.priceVersion,
+    note: o.note,
+  });
   esito(confermato.code.length > 0, `l'ordine ha il codice ${confermato.code}`);
   esito(!confermato.giaConfermato, 'ed è stato confermato adesso');
 
@@ -119,12 +140,22 @@ async function main() {
     take: 2,
   });
   await ordini.aggiungiRiga(utente.id, { supplierProductId: buone[0]!.id, quantityPacks: 1 });
+  const riepilogoDaConfermare = await ordini.riepilogo(utente.id);
+  const daConfermare = riepilogoDaConfermare.ordine;
+  const richiestaConferma = {
+    orderId: daConfermare.id,
+    updatedAt: daConfermare.updatedAt,
+    priceVersion: riepilogoDaConfermare.priceVersion,
+    note: daConfermare.note,
+  };
 
   const quanti = await systemPrisma.order.count();
   // Cinque conferme insieme: è il doppio clic, o il tasto premuto due volte
   // mentre la rete è lenta.
   const raffica = await Promise.all(
-    Array.from({ length: 5 }, () => ordini.conferma(utente.id).catch((e: Error) => e.message)),
+    Array.from({ length: 5 }, () =>
+      ordini.conferma(utente.id, richiestaConferma).catch((e: Error) => e.message),
+    ),
   );
   const fallite = raffica.filter((r): r is string => typeof r === 'string');
   // Nessuna deve fallire: un errore dopo che l'ordine È stato confermato fa
@@ -134,16 +165,23 @@ async function main() {
     `nessuna delle cinque conferme fallisce (${fallite.length}${fallite[0] ? `: ${fallite[0].slice(0, 60)}` : ''})`,
   );
   const codici = new Set(
-    raffica.filter((r): r is Awaited<ReturnType<typeof ordini.conferma>> => typeof r !== 'string').map((r) => r.code),
+    raffica
+      .filter((r): r is Awaited<ReturnType<typeof ordini.conferma>> => typeof r !== 'string')
+      .map((r) => r.code),
   );
-  esito(codici.size === 1, `cinque conferme simultanee danno un codice solo (${[...codici].join(', ')})`);
   esito(
-    (await systemPrisma.order.count()) === quanti,
-    'e nessun ordine in più nel database',
+    codici.size === 1,
+    `cinque conferme simultanee danno un codice solo (${[...codici].join(', ')})`,
   );
+  esito((await systemPrisma.order.count()) === quanti, 'e nessun ordine in più nel database');
   esito(
     raffica.filter((r) => typeof r !== 'string' && r.giaConfermato).length >= 1,
     'le successive dicono «già confermato» invece di dare errore',
+  );
+  const retryDopoLaRisposta = await ordini.conferma(utente.id, richiestaConferma);
+  esito(
+    retryDopoLaRisposta.giaConfermato && retryDopoLaRisposta.code === [...codici][0],
+    'anche un retry sequenziale restituisce lo stesso ordine, senza creare una bozza vuota',
   );
 
   console.log('\n── Criterio 4: il codice è progressivo, senza buchi ─────────────\n');
@@ -152,7 +190,14 @@ async function main() {
   for (let i = 0; i < 3; i++) {
     await systemPrisma.order.deleteMany({ where: { status: 'DRAFT' } });
     await ordini.aggiungiRiga(utente.id, { supplierProductId: buone[0]!.id, quantityPacks: 1 });
-    await ordini.conferma(utente.id);
+    const riepilogoCorrente = await ordini.riepilogo(utente.id);
+    const corrente = riepilogoCorrente.ordine;
+    await ordini.conferma(utente.id, {
+      orderId: corrente.id,
+      updatedAt: corrente.updatedAt,
+      priceVersion: riepilogoCorrente.priceVersion,
+      note: corrente.note,
+    });
   }
 
   const tutti = await systemPrisma.order.findMany({

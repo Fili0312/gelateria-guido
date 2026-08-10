@@ -33,6 +33,15 @@ che decidono lo schema del database:
 | Quante colonne ha la tabella, e dove cadono? | conferma la scelta dei profili per fornitore |
 | Quali forme di unità e confezione usa questo fornitore? | diventa il **test-set del parser** di Fase 2 |
 
+Le regressioni che leggono questi file si eseguono esplicitamente con:
+
+```bash
+pnpm test:real-pdf
+```
+
+`pnpm test` resta eseguibile anche su CI e clone puliti: se `atteso.json` non
+c'e', salta solo i casi riservati e continua a eseguire tutti i test portabili.
+
 ## Privacy
 
 Questi file contengono i prezzi d'acquisto della gelateria: sono dati

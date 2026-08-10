@@ -1,5 +1,6 @@
 import { getCurrentUser } from '@/server/auth';
 import { jsonError, jsonSuccess, mappedErrorResponse } from '@/server/http/api-response';
+import { hasTrustedMutationOrigin } from '@/server/http/json-request';
 import { proponiAbbinamenti } from '@/server/import/matching/proposte';
 import { prismaForOrganization } from '@/server/db';
 
@@ -22,10 +23,13 @@ export const dynamic = 'force-dynamic';
  * Non si può fare su un listino già applicato: le offerte esistono, e
  * cambiare le proposte a valle non le sposterebbe. Prima si annulla.
  */
-export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
+export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const user = await getCurrentUser();
     if (!user) return jsonError('Autenticazione richiesta.', 401);
+    if (!hasTrustedMutationOrigin(request)) {
+      return jsonError('Origine della richiesta non consentita.', 403);
+    }
 
     const { id } = await context.params;
     const db = prismaForOrganization(user.organizationId);

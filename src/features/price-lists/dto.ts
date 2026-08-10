@@ -153,5 +153,4 @@ export interface CoperturaEsistente {
 }
 
 export type PriceListApiBody<T> =
-  | { ok: true; data: T }
-  | { ok: false; error: string; fields?: Record<string, string[]> };
+  { ok: true; data: T } | { ok: false; error: string; fields?: Record<string, string[]> };

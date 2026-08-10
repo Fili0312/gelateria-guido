@@ -5,7 +5,6 @@ import { join } from 'node:path';
 import { Decimal } from 'decimal.js';
 import ExcelJS from 'exceljs';
 import { systemPrisma } from '../src/server/database/system-client.js';
-import { leggiDocumento } from '../src/server/export/archivio.js';
 import { datiOrdine } from '../src/server/export/dati.js';
 import { TEMPLATE } from '../src/server/export/registro.js';
 import { orderDocumentsRepository } from '../src/server/repositories/order-documents.js';
@@ -163,7 +162,14 @@ async function main() {
     }
   }
 
-  const confermato = await ordini.conferma(utente.id);
+  const riepilogo = await ordini.riepilogo(utente.id);
+  const corrente = riepilogo.ordine;
+  const confermato = await ordini.conferma(utente.id, {
+    orderId: corrente.id,
+    updatedAt: corrente.updatedAt,
+    priceVersion: riepilogo.priceVersion,
+    note: corrente.note,
+  });
   console.log(`     ordine ${confermato.code} · ${scelti.length} fornitori · 9 righe`);
 
   const prodotti = await documenti.genera(utente.id, confermato.orderId);
@@ -215,7 +221,10 @@ async function main() {
   esito(
     pdf.every((d) => {
       const fornitore = dati.gruppi.find((g) => g.supplierId === d.supplierId)!.supplierName;
-      const primaParola = fornitore.toLowerCase().replace(/[^a-z0-9]+/g, '-').split('-')[0]!;
+      const primaParola = fornitore
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .split('-')[0]!;
       return d.fileName.includes(primaParola);
     }),
     'ogni PDF ha dentro il nome del fornitore',

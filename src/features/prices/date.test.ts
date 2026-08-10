@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { businessCalendarDay, isFutureBusinessDay, subtractCalendarDays } from './date';
+import {
+  businessCalendarDay,
+  businessDayStart,
+  isFutureBusinessDay,
+  subtractCalendarDays,
+} from './date';
 
 describe('giorno operativo Europe/Rome', () => {
   it('usa il giorno italiano anche quando il server UTC e ancora al giorno prima', () => {
@@ -9,6 +14,11 @@ describe('giorno operativo Europe/Rome', () => {
     assert.equal(isFutureBusinessDay('2026-08-08', instant), true);
     assert.equal(isFutureBusinessDay('2026-08-07', instant), false);
     assert.equal(isFutureBusinessDay('2026-08-06', instant), false);
+  });
+
+  it('trova la mezzanotte italiana anche durante ora solare e legale', () => {
+    assert.equal(businessDayStart('2026-01-10').toISOString(), '2026-01-09T23:00:00.000Z');
+    assert.equal(businessDayStart('2026-08-10').toISOString(), '2026-08-09T22:00:00.000Z');
   });
 
   it('considera anche il cambio di giorno in ora solare', () => {

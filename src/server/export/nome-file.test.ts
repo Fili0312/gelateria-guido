@@ -45,10 +45,13 @@ test('il nome contiene fornitore e numero d’ordine', () => {
   assert.ok(n.includes('2026-0042'), n);
 });
 
-test('il giorno usa l’ora locale, non UTC', () => {
-  // Alle 23:30 del 10 agosto in Italia, UTC è ancora il 10 — ma alle 00:30
-  // dell'11 UTC è ancora il 10, e il file finirebbe datato il giorno prima.
-  assert.equal(giorno(new Date(2026, 7, 11, 0, 30)), '2026-08-11');
+test('il giorno usa Europe/Rome, non il fuso del server', () => {
+  assert.equal(giorno(new Date('2026-08-10T22:30:00.000Z')), '2026-08-11');
+});
+
+test('nome file e progressivo cambiano anno alla stessa mezzanotte italiana', () => {
+  assert.equal(giorno(new Date('2025-12-31T22:59:59.000Z')), '2025-12-31');
+  assert.equal(giorno(new Date('2025-12-31T23:00:00.000Z')), '2026-01-01');
 });
 
 test('una virgoletta nel nome non rompe l’header', () => {

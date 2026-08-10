@@ -21,6 +21,7 @@ non di prezzo di listino — a mano non si fa.
 | **Ordine** | composizione per reparti, avviso quando esiste di meglio, riepilogo, conferma con codice progressivo |
 | **Storico** | ordini congelati, riordino ai prezzi di oggi, annullamento |
 | **Documenti** | un PDF per ogni fornitore più il riepilogo in Excel |
+| **Analisi** | statistiche acquisti per prodotto, andamento dei prezzi e dashboard operativa |
 
 Manca l'invio automatico per email (Fase 17): i documenti si scaricano e si
 allegano a mano.
@@ -53,11 +54,14 @@ pnpm dev
 
 ```bash
 pnpm test                     # suite completa
+pnpm test:real-pdf            # regressioni sui listini riservati, se presenti
 pnpm exec tsc --noEmit        # tipi
 pnpm build
 ```
 
-I test girano con `tsx --conditions=react-server`.
+I test girano con `tsx --conditions=react-server`. La suite normale e' portabile:
+su un clone senza i listini riservati salta soltanto i casi che leggono quei PDF.
+`test:real-pdf` invece fallisce esplicitamente se le fixture non sono installate.
 
 ### Migrazioni
 
@@ -83,10 +87,15 @@ DATABASE_URL=postgresql://…/gelateria_prova STORAGE_DIR=/tmp/prova \
 ./scripts/deploy.sh
 ```
 
-Build, migrazioni, riavvio di `gelateria.service` (porta 3030) e verifica che
-risponda.
+Test, tipi, lint, formattazione, build, backup pre-migrazione, migrazioni,
+riavvio di `gelateria.service` (porta 3030) e verifica che risponda. Il deploy
+si rifiuta di partire da un worktree non committato.
 
 ## Documentazione
+
+[Il manuale d'uso](docs/MANUALE-USO.md) descrive il flusso quotidiano dalla
+ricezione del listino ai documenti d'ordine. [Il runbook](docs/OPERAZIONI.md)
+copre deploy, backup e ripristino.
 
 `docs/ROADMAP.md` è il documento principale: venti fasi, ciascuna con obiettivo,
 criteri di completamento e — per quelle fatte — cosa è rimasto fuori e perché.

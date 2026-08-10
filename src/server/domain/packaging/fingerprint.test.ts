@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { improntaDaDescrizione } from './fingerprint';
+import { improntaDaCampi, improntaDaDescrizione } from './fingerprint';
 
 /**
  * L'impronta e' l'identita' di ripiego quando il fornitore non da' un
@@ -53,5 +53,24 @@ describe('improntaDaDescrizione', () => {
     const due = improntaDaDescrizione('ALISEA NATURALE CL.50 PET');
     assert.equal(uno, due);
     assert.match(uno, /^[0-9a-f]{32}$/);
+  });
+});
+
+describe('improntaDaCampi', () => {
+  it('usa formato e pezzi delle colonne anche quando non sono nella descrizione', () => {
+    const dodici = improntaDaCampi({
+      descrizione: 'BIRRA XYZ',
+      unitSize: '33',
+      unitOfMeasure: 'CL',
+      packQuantity: 12,
+    });
+    const ventiquattro = improntaDaCampi({
+      descrizione: 'BIRRA XYZ',
+      unitSize: '33',
+      unitOfMeasure: 'CL',
+      packQuantity: 24,
+    });
+    assert.notEqual(dodici, ventiquattro);
+    assert.equal(dodici, improntaDaDescrizione('BIRRA XYZ 33cl x12'));
   });
 });

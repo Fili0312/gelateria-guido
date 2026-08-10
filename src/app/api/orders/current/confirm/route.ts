@@ -1,6 +1,11 @@
+import { confermaOrdineSchema } from '@/features/orders/schema';
 import { getCurrentUser } from '@/server/auth';
 import { jsonError, jsonSuccess, mappedErrorResponse } from '@/server/http/api-response';
-import { hasTrustedMutationOrigin } from '@/server/http/json-request';
+import {
+  DEFAULT_MAX_JSON_BODY_BYTES,
+  hasTrustedMutationOrigin,
+  readJsonRequest,
+} from '@/server/http/json-request';
 import { ordersRepository } from '@/server/repositories/orders';
 import { ERRORI_ORDINE } from '../../errori';
 
@@ -22,7 +27,10 @@ export async function POST(request: Request) {
     if (!hasTrustedMutationOrigin(request)) {
       return jsonError('Origine della richiesta non consentita.', 403);
     }
-    return jsonSuccess(await ordersRepository(user.organizationId).conferma(user.id));
+    const input = confermaOrdineSchema.parse(
+      await readJsonRequest(request, DEFAULT_MAX_JSON_BODY_BYTES),
+    );
+    return jsonSuccess(await ordersRepository(user.organizationId).conferma(user.id, input));
   } catch (error) {
     return mappedErrorResponse(error, 'Non è stato possibile confermare l’ordine.', ERRORI_ORDINE);
   }

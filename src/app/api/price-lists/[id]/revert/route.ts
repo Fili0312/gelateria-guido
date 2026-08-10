@@ -26,7 +26,7 @@ export async function POST(request: Request, { params }: Contesto) {
     }
 
     const { id } = await params;
-    return jsonSuccess(await annullaImport(user.organizationId, id));
+    return jsonSuccess(await annullaImport(user.organizationId, id, user.id));
   } catch (error) {
     return mappedErrorResponse(error, 'Richiesta non valida.', ERRORI_LISTINI);
   }

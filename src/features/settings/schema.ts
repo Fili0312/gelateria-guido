@@ -140,6 +140,4 @@ const _copertura: Record<keyof SettingsValues, unknown> = settingsFormSchema.sha
 void _copertura;
 
 /** I nomi dei campi da leggere dal form: si ricavano dallo schema, non a mano. */
-export const CAMPI_IMPOSTAZIONI = Object.keys(
-  settingsFormSchema.shape,
-) as (keyof SettingsValues)[];
+export const CAMPI_IMPOSTAZIONI = Object.keys(settingsFormSchema.shape) as (keyof SettingsValues)[];

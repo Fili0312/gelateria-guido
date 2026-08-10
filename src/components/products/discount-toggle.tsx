@@ -44,9 +44,10 @@ export function DiscountToggle({
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ extraDiscountExcluded: nuovo }),
       });
-      const corpo = (await risposta.json().catch(() => null)) as
-        | { ok: boolean; error?: string }
-        | null;
+      const corpo = (await risposta.json().catch(() => null)) as {
+        ok: boolean;
+        error?: string;
+      } | null;
       if (!risposta.ok || !corpo?.ok) {
         setEsclusa(!nuovo);
         toast({ title: 'Non è stato possibile salvare', description: corpo?.error, tone: 'error' });

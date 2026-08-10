@@ -5,11 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { AppIcon } from '@/components/app-icon';
 import { Button, useToast } from '@/components/ui';
-import type {
-  EsitoConferma,
-  OrderApiBody,
-  RiepilogoOrdine,
-} from '@/features/orders/dto';
+import type { EsitoConferma, OrderApiBody, RiepilogoOrdine } from '@/features/orders/dto';
+import { haSegnalazioniRiepilogo } from '@/features/orders/summary';
 import { euro, formatoConfezione } from '@/features/products/format';
 
 /**
@@ -75,21 +72,27 @@ export function OrderSummary({
     inVolo.current = true;
     setAttesa(true);
     try {
-      if (nota !== (o.note ?? '')) {
-        await fetch(endpointOrdine, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ note: nota || null }),
-        });
-      }
       const risposta = await fetch(`${endpointOrdine}/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          orderId: o.id,
+          updatedAt: o.updatedAt,
+          priceVersion: riepilogo.priceVersion,
+          note: nota || null,
+        }),
       });
       const corpo = (await risposta.json()) as OrderApiBody<EsitoConferma>;
       if (!corpo.ok) {
-        toast({ title: 'Non è stato possibile confermare', description: corpo.error, tone: 'error' });
+        toast({
+          title: 'Non è stato possibile confermare',
+          description: corpo.error,
+          tone: 'error',
+        });
         inVolo.current = false;
+        // Una versione vecchia del riepilogo viene sostituita con quella vera;
+        // l'operatore ricontrolla i numeri prima di riprovare.
+        router.refresh();
         return;
       }
       toast({
@@ -125,9 +128,7 @@ export function OrderSummary({
   return (
     <div className="space-y-5">
       {/* ── Le segnalazioni, prima delle righe ────────────────────────── */}
-      {(riepilogo.minimiNonRaggiunti.length > 0 ||
-        riepilogo.prezziCambiati.length > 0 ||
-        riepilogo.prezziFermi.length > 0) && (
+      {haSegnalazioniRiepilogo(riepilogo) && (
         <div className="grid gap-3 sm:grid-cols-2">
           {riepilogo.minimiNonRaggiunti.length > 0 && (
             <Segnalazione tono="attenzione" titolo="Minimo d’ordine non raggiunto">
@@ -167,10 +168,13 @@ export function OrderSummary({
           )}
 
           {riepilogo.senzaConfronto.length > 0 && (
-            <Segnalazione tono="nota" titolo={`${riepilogo.senzaConfronto.length} righe senza confronto`}>
+            <Segnalazione
+              tono="nota"
+              titolo={`${riepilogo.senzaConfronto.length} righe senza confronto`}
+            >
               <p>
-                Nessun altro fornitore vende questi articoli, quindi non si sa se convengono. Non è
-                un problema: è una cosa che non si sa.
+                Per questi articoli non ci sono almeno due offerte confrontabili, quindi non si sa
+                se convengono. Non è un problema: è una cosa che non si sa.
               </p>
             </Segnalazione>
           )}
@@ -199,7 +203,10 @@ export function OrderSummary({
             {o.righe
               .filter((r) => r.supplierId === gruppo.supplierId)
               .map((riga) => (
-                <li key={riga.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-2">
+                <li
+                  key={riga.id}
+                  className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-2"
+                >
                   <span className="tabellare w-10 shrink-0 font-bold text-neutral-950">
                     {riga.quantityPacks}×
                   </span>

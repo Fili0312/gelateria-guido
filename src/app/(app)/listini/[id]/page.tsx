@@ -10,6 +10,7 @@ import { prismaForOrganization } from '@/server/db';
 import type { PriceListDetail } from '@/features/price-lists/dto';
 import { priceListsRepository } from '@/server/repositories/price-lists';
 import { anteprima } from '@/server/import/apply';
+import { trovaRigheBloccanti } from '@/server/import/apply-guards';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +35,9 @@ function ProfiloRiconosciuto({ listino }: { listino: PriceListDetail }) {
   return (
     <div
       className={`rounded-xl border px-4 py-3 text-sm leading-6 ${
-        dimostrato ? 'border-green-200 bg-green-50 text-green-900' : 'border-amber-200 bg-amber-50 text-amber-900'
+        dimostrato
+          ? 'border-green-200 bg-green-50 text-green-900'
+          : 'border-amber-200 bg-amber-50 text-amber-900'
       }`}
     >
       {listino.fonteProfilo === 'aritmetica' && (
@@ -64,8 +67,8 @@ function ProfiloRiconosciuto({ listino }: { listino: PriceListDetail }) {
       {listino.fonteProfilo === 'ia' && (
         <>
           <strong className="font-semibold">Colonne proposte da un modello.</strong> Il documento
-          non dichiara il netto, quindi non c’era modo di verificarle con l’aritmetica. Vale la
-          pena controllare qualche riga prima di importare.
+          non dichiara il netto, quindi non c’era modo di verificarle con l’aritmetica. Vale la pena
+          controllare qualche riga prima di importare.
         </>
       )}
       {listino.fonteProfilo === 'indizi' && (
@@ -108,6 +111,17 @@ export default async function PriceListPage({ params }: { params: Promise<{ id: 
   // riesce a calcolarla — un listino ancora in lavorazione, per esempio — la
   // pagina si mostra lo stesso: il pannello sparisce, le righe restano.
   const revisione = await anteprima(user.organizationId, id).catch(() => null);
+  const righeBloccanti = revisione
+    ? trovaRigheBloccanti(
+        [...revisione.righe.values()].map((riga) => ({
+          id: riga.id,
+          excluded: riga.excluded,
+          matchStatus: riga.matchStatus,
+          importabile: riga.campi.importabile,
+          validationErrors: riga.validationErrors,
+        })),
+      )
+    : { pending: [], nonImportabili: [] };
 
   // Quanti prodotti esistono già: serve a capire se questo listino è stato
   // abbinato contro un catalogo più vuoto di quello di adesso.
@@ -151,12 +165,13 @@ export default async function PriceListPage({ params }: { params: Promise<{ id: 
           anteprima={{
             riepilogo: revisione.riepilogo,
             daDecidere: revisione.confronti
-              .filter((c) => c.esito === 'CONFEZIONE_CAMBIATA')
+              .filter((c) => c.esito === 'CONFEZIONE_CAMBIATA' && !c.confezioneRisolta)
               .map((c) => ({
                 rigaId: c.chiaveRiga,
                 differenze: c.differenze,
                 prezzoPrima: c.prezzoPrima?.toString() ?? null,
                 prezzoDopo: c.prezzoDopo?.toString() ?? null,
+                nuovaConfezioneApplicabile: c.nuovaConfezioneApplicabile !== false,
               })),
             anomale: revisione.confronti
               .filter((c) => c.variazionePct !== null && c.variazionePct.abs().gt(40))
@@ -171,8 +186,13 @@ export default async function PriceListPage({ params }: { params: Promise<{ id: 
           endpointApply={withBasePath(`/api/price-lists/${listino.id}/apply`)}
           endpointRevert={withBasePath(`/api/price-lists/${listino.id}/revert`)}
           endpointRematch={withBasePath(`/api/price-lists/${listino.id}/rematch`)}
+          endpointRows={withBasePath(`/api/price-lists/${listino.id}/rows`)}
+          hrefRigheDaDecidere={`/convenienti?priceListId=${encodeURIComponent(listino.id)}`}
+          hrefRigheDaCorreggere={`/convenienti?priceListId=${encodeURIComponent(listino.id)}&stato=tutti&limite=200`}
           prodottiACatalogo={prodottiACatalogo}
           righeAgganciate={righeAgganciate}
+          righeDaDecidere={righeBloccanti.pending.length}
+          righeNonImportabili={righeBloccanti.nonImportabili.length}
         />
       )}
 
@@ -185,9 +205,7 @@ export default async function PriceListPage({ params }: { params: Promise<{ id: 
             <Riquadro etichetta="Con avvisi" valore={listino.conAvvisi} />
           </dl>
 
-          {listino.fonteProfilo && (
-            <ProfiloRiconosciuto listino={listino} />
-          )}
+          {listino.fonteProfilo && <ProfiloRiconosciuto listino={listino} />}
 
           <div>
             <h2 className="text-lg font-black text-neutral-950">Righe del listino</h2>

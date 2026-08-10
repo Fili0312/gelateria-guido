@@ -1,7 +1,13 @@
 import 'server-only';
 
 import { systemPrisma } from '@/server/database/system-client';
-import { abbinaTutte, riepiloga, type EsitoRiga, type RigaDaAbbinare, type RiepilogoAbbinamento } from './cascata';
+import {
+  abbinaTutte,
+  riepiloga,
+  type EsitoRiga,
+  type RigaDaAbbinare,
+  type RiepilogoAbbinamento,
+} from './cascata';
 
 /**
  * Le proposte di abbinamento, scritte sulle righe del listino.
@@ -23,6 +29,9 @@ interface CampiRiga {
   codice?: string | null;
   descrizione?: string | null;
   unitaDiVendita?: string | null;
+  unitSize?: string | null;
+  unitOfMeasure?: string | null;
+  packQuantity?: number;
 }
 
 /**
@@ -82,6 +91,9 @@ export async function proponiAbbinamenti(
       codiceFornitore: e.campi.codice ?? null,
       descrizione: e.campi.descrizione,
       unitaDiVendita: e.campi.unitaDiVendita ?? null,
+      unitSize: e.campi.unitSize ?? null,
+      unitOfMeasure: e.campi.unitOfMeasure ?? null,
+      packQuantity: e.campi.packQuantity,
     });
   }
 

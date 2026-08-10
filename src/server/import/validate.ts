@@ -167,7 +167,11 @@ export function validaRiga(
       );
     }
     if (!Number.isInteger(analisi.formato.packQuantity) || analisi.formato.packQuantity < 1) {
-      aggiungi('packQuantity', 'errore', 'I pezzi per confezione devono essere un intero positivo.');
+      aggiungi(
+        'packQuantity',
+        'errore',
+        'I pezzi per confezione devono essere un intero positivo.',
+      );
     }
     if (analisi.formato.contentPerPack.lte(0)) {
       aggiungi('contentPerPack', 'errore', 'Il contenuto della confezione non è positivo.');

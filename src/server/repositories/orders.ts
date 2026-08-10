@@ -13,16 +13,30 @@ import type {
   RisultatoOrdinabile,
 } from '@/features/orders/dto';
 import type {
+  ConfermaOrdineInput,
   ElencoOrdiniQuery,
   RicercaOrdinabile,
   RigaOrdineInput,
   RigaOrdinePatch,
 } from '@/features/orders/schema';
-import { prismaForOrganization, transactionForOrganization, type OrganizationPrismaClient } from '@/server/db';
-import { calcolaCambio, confrontaPerAvviso, type OffertaPerAvviso } from '@/server/domain/orders/alert';
+import { selezionaRigheSenzaConfronto } from '@/features/orders/summary';
+import {
+  prismaForOrganization,
+  transactionForOrganization,
+  type OrganizationPrismaClient,
+} from '@/server/db';
+import {
+  calcolaCambio,
+  confrontaPerAvviso,
+  contenutoConfezioneFotografato,
+  type OffertaPerAvviso,
+} from '@/server/domain/orders/alert';
 import { prossimoCodiceOrdine } from '@/server/domain/orders/code';
-import { totaliOrdine, totaliRiga } from '@/server/domain/orders/totals';
+import { condizioniRigheStorico, raggruppaRigheStoriche } from '@/server/domain/orders/history';
+import { confezioniValide, totaliOrdine, totaliRiga } from '@/server/domain/orders/totals';
+import { versionePrezziOrdine, type PrezzoVistoOrdine } from '@/server/domain/orders/version';
 import { nettoEffettivo, percentualeApplicata } from '@/server/domain/pricing/extra-discount';
+import { PrezzoIvaError, risolviAliquotaIva } from '@/server/domain/pricing/vat';
 import { SETTINGS_ALL_KEYS, valoriDaRighe } from '@/features/settings/schema';
 import { settingsRepository } from './settings';
 import { comparisonRepository } from './comparison';
@@ -54,6 +68,181 @@ export class OrderNotFoundError extends Error {
 
 export class OrderValidationError extends Error {
   override readonly name = 'OrderValidationError';
+}
+
+/** Il riepilogo aperto non descrive più la bozza che si sta confermando. */
+export class OrderVersionError extends Error {
+  override readonly name = 'OrderVersionError';
+}
+
+/**
+ * Tutto ciò che serve per trasformare un'offerta viva in uno snapshot d'ordine.
+ * La stessa selezione viene usata da aggiunta, cambio fornitore, riordino e
+ * conferma: quattro copie leggermente diverse sono il modo in cui prezzo o IVA
+ * finiscono aggiornati in una strada e vecchi in un'altra.
+ */
+const OFFERTA_ORDINE_SELECT = {
+  id: true,
+  supplierId: true,
+  productId: true,
+  supplierCode: true,
+  rawName: true,
+  packQuantity: true,
+  unitSize: true,
+  unitOfMeasure: true,
+  contentPerPack: true,
+  vatRate: true,
+  active: true,
+  supplier: {
+    select: {
+      id: true,
+      name: true,
+      active: true,
+      defaultVatRate: true,
+    },
+  },
+  product: { select: { name: true } },
+  currentPrice: {
+    select: {
+      id: true,
+      priceNet: true,
+      vatRate: true,
+      unitPriceBasis: true,
+      validFrom: true,
+    },
+  },
+} as const;
+
+type DecimalLike = { toString(): string };
+type OffertaOrdine = {
+  id: string;
+  supplierId: string;
+  productId: string | null;
+  supplierCode: string | null;
+  rawName: string;
+  packQuantity: number;
+  unitSize: DecimalLike;
+  unitOfMeasure: RigaOrdine['unitOfMeasure'];
+  contentPerPack: DecimalLike;
+  vatRate: DecimalLike | null;
+  active: boolean;
+  supplier: {
+    id: string;
+    name: string;
+    active: boolean;
+    defaultVatRate: DecimalLike | null;
+  };
+  product: { name: string } | null;
+  currentPrice: {
+    id: string;
+    priceNet: DecimalLike;
+    vatRate: DecimalLike | null;
+    unitPriceBasis: Exclude<RigaOrdine['unitPriceBasis'], null>;
+    validFrom: Date;
+  } | null;
+};
+type OffertaOrdinabileRecord = OffertaOrdine & {
+  currentPrice: NonNullable<OffertaOrdine['currentPrice']>;
+};
+
+function richiediOffertaOrdinabile(
+  offerta: OffertaOrdine,
+  nome: string,
+): asserts offerta is OffertaOrdinabileRecord {
+  if (!offerta.active) {
+    throw new OrderValidationError(`${nome} non è più a listino.`);
+  }
+  if (!offerta.supplier.active) {
+    throw new OrderValidationError(`Il fornitore di ${nome.toLocaleLowerCase('it')} non è attivo.`);
+  }
+  if (!offerta.currentPrice) {
+    throw new OrderValidationError(`${nome} non ha più un prezzo corrente.`);
+  }
+}
+
+function prezzoOperativo(offerta: OffertaOrdinabileRecord, ivaOrganizzazione: number) {
+  try {
+    const aliquota = risolviAliquotaIva({
+      aliquotaPrezzo: offerta.currentPrice.vatRate?.toString() ?? null,
+      aliquotaOfferta: offerta.vatRate?.toString() ?? null,
+      aliquotaFornitore: offerta.supplier.defaultVatRate?.toString() ?? null,
+      aliquotaOrganizzazione: ivaOrganizzazione,
+    });
+    return {
+      // `price_net` è l'imponibile canonico. Gli eventuali listini lordi
+      // vengono normalizzati quando il prezzo viene scritto, mai qui.
+      prezzoNetto: new Decimal(offerta.currentPrice.priceNet.toString()),
+      aliquotaIva: aliquota.valore,
+    };
+  } catch (errore) {
+    if (!(errore instanceof PrezzoIvaError)) throw errore;
+    const nome = offerta.product?.name ?? offerta.rawName;
+    throw new OrderValidationError(`IVA non valida per «${nome}»: ${errore.message}`);
+  }
+}
+
+function snapshotDaOfferta(
+  offerta: OffertaOrdinabileRecord,
+  confezioni: number,
+  ivaOrganizzazione: number,
+) {
+  const prezzo = prezzoOperativo(offerta, ivaOrganizzazione);
+  const totali = totaliRiga({
+    prezzoConfezione: prezzo.prezzoNetto,
+    confezioni,
+    aliquotaIva: prezzo.aliquotaIva,
+  });
+
+  return {
+    productId: offerta.productId,
+    supplierId: offerta.supplierId,
+    priceId: offerta.currentPrice.id,
+    nameSnapshot: offerta.product?.name ?? offerta.rawName,
+    supplierNameSnapshot: offerta.supplier.name,
+    supplierCodeSnapshot: offerta.supplierCode,
+    packQuantitySnapshot: offerta.packQuantity,
+    unitSizeSnapshot: offerta.unitSize.toString(),
+    uomSnapshot: offerta.unitOfMeasure,
+    unitPriceNetSnapshot: prezzo.prezzoNetto.toString(),
+    vatRateSnapshot: prezzo.aliquotaIva.toString(),
+    unitPriceBasisSnapshot: offerta.currentPrice.unitPriceBasis,
+    lineTotalNet: totali.netto.toString(),
+    lineTotalGross: totali.lordo.toString(),
+  };
+}
+
+/**
+ * Gli stessi valori vivi che la conferma trasferirà nello snapshot di riga.
+ * Riepilogo e conferma devono passare da questa sola funzione: aggiungere un
+ * campo allo snapshot senza aggiungerlo alla firma riaprirebbe una race.
+ */
+function prezzoVistoDaOfferta(
+  offerta: OffertaOrdine,
+  lineId: string,
+  quantityPacks: number,
+  ivaOrganizzazione: number,
+): PrezzoVistoOrdine {
+  const prezzo = offerta.currentPrice
+    ? prezzoOperativo(offerta as OffertaOrdinabileRecord, ivaOrganizzazione)
+    : null;
+
+  return {
+    lineId,
+    quantityPacks,
+    supplierProductId: offerta.id,
+    supplierId: offerta.supplierId,
+    productId: offerta.productId,
+    nameSnapshot: offerta.product?.name ?? offerta.rawName,
+    supplierNameSnapshot: offerta.supplier.name,
+    supplierCodeSnapshot: offerta.supplierCode,
+    packQuantitySnapshot: offerta.packQuantity,
+    unitSizeSnapshot: offerta.unitSize.toString(),
+    uomSnapshot: offerta.unitOfMeasure,
+    currentPriceId: offerta.currentPrice?.id ?? null,
+    priceNet: prezzo?.prezzoNetto.toString() ?? null,
+    vatRate: prezzo?.aliquotaIva.toString() ?? null,
+    unitPriceBasisSnapshot: offerta.currentPrice?.unitPriceBasis ?? null,
+  };
 }
 
 const RIGA_SELECT = {
@@ -217,6 +406,20 @@ export function ordersRepository(organizationId: string) {
   }
 
   /**
+   * Il fallback IVA letto sullo stesso client dell'operazione corrente.
+   * Nelle conferme e nei riordini il client è quello transazionale: un retry
+   * non riusa mai un'impostazione letta dal tentativo precedente.
+   */
+  async function ivaPredefinita(client: OrganizationPrismaClient): Promise<number> {
+    return valoriDaRighe(
+      await client.setting.findMany({
+        where: { key: { in: SETTINGS_ALL_KEYS } },
+        select: { key: true, value: true },
+      }),
+    ).defaultVat;
+  }
+
+  /**
    * La bozza dell'utente, creata se non c'è.
    *
    * Dentro una transazione Serializable: due schede aperte devono trovare la
@@ -274,14 +477,25 @@ export function ordersRepository(organizationId: string) {
         // simultanee si scontrano sul vincolo di unicità invece di mettersi in
         // fila. Toccare `updatedAt` è anche corretto nel merito: l'ordine sta
         // per cambiare.
-        await tx.order.update({ where: { id: orderId }, data: { updatedAt: new Date() } });
+        const bloccata = await tx.order.updateMany({
+          where: { id: orderId, status: 'DRAFT' },
+          data: { updatedAt: new Date() },
+        });
+        if (bloccata.count !== 1) {
+          throw new OrderValidationError(
+            'L’ordine non è più una bozza: ricarica la pagina prima di modificarlo.',
+          );
+        }
         return operazione(tx);
       },
       { isolamento: 'riga-bloccata' },
     );
   }
 
-  async function leggi(orderId: string): Promise<OrdineCorrente> {
+  async function leggi(
+    orderId: string,
+    offerteConfrontatePerProdotto?: Map<string, number>,
+  ): Promise<OrdineCorrente> {
     const ordine = await db.order.findFirstOrThrow({
       where: { id: orderId },
       select: {
@@ -305,15 +519,22 @@ export function ordersRepository(organizationId: string) {
       percentuale: impostazioni.alertPercentage,
       euro: impostazioni.alertEuro,
     };
-    const prodottiInOrdine = [...new Set(righe.map((r) => r.productId).filter((id): id is string => id !== null))];
-    const confronti = await comparisonRepository(organizationId).perProdotti(prodottiInOrdine);
+    const prodottiInOrdine = [
+      ...new Set(righe.map((r) => r.productId).filter((id): id is string => id !== null)),
+    ];
+    const confrontoPerProdotto = await confronti.perProdotti(prodottiInOrdine);
+    if (offerteConfrontatePerProdotto) {
+      for (const [productId, confronto] of confrontoPerProdotto) {
+        offerteConfrontatePerProdotto.set(productId, confronto.offersCompared);
+      }
+    }
 
     let risparmioPotenziale = new Decimal(0);
     let righeConAvviso = 0;
 
     for (const riga of righe) {
       if (!riga.productId) continue;
-      const confronto = confronti.get(riga.productId);
+      const confronto = confrontoPerProdotto.get(riga.productId);
       if (!confronto) continue;
 
       const perAvviso = (o: (typeof confronto.ranked)[number]): OffertaPerAvviso => ({
@@ -451,26 +672,30 @@ export function ordersRepository(organizationId: string) {
       const trovati = query.q
         ? (await productsRepository(organizationId).search({ q: query.q, limite: query.limite }))
             .items
-        : ((await db.product.findMany({
-            where: { supplierProducts: { some: { active: true, currentPriceId: { not: null } } } },
-            select: {
-              id: true,
-              name: true,
-              brand: true,
-              unitSize: true,
-              unitOfMeasure: true,
-              category: { select: CATEGORY_REF_SELECT },
-            },
-            orderBy: { name: 'asc' },
-            take: query.limite,
-          })) as unknown as {
-            id: string;
-            name: string;
-            brand: string | null;
-            unitSize: { toString(): string };
-            unitOfMeasure: string;
-            category: Parameters<typeof mapCategoryRef>[0];
-          }[]).map((p) => ({
+        : (
+            (await db.product.findMany({
+              where: {
+                supplierProducts: { some: { active: true, currentPriceId: { not: null } } },
+              },
+              select: {
+                id: true,
+                name: true,
+                brand: true,
+                unitSize: true,
+                unitOfMeasure: true,
+                category: { select: CATEGORY_REF_SELECT },
+              },
+              orderBy: { name: 'asc' },
+              take: query.limite,
+            })) as unknown as {
+              id: string;
+              name: string;
+              brand: string | null;
+              unitSize: { toString(): string };
+              unitOfMeasure: string;
+              category: Parameters<typeof mapCategoryRef>[0];
+            }[]
+          ).map((p) => ({
             id: p.id,
             name: p.name,
             brand: p.brand,
@@ -491,7 +716,10 @@ export function ordersRepository(organizationId: string) {
       const nellOrdine = new Map<string, number>();
       for (const riga of ordine.righe) {
         if (riga.productId) {
-          nellOrdine.set(riga.productId, (nellOrdine.get(riga.productId) ?? 0) + riga.quantityPacks);
+          nellOrdine.set(
+            riga.productId,
+            (nellOrdine.get(riga.productId) ?? 0) + riga.quantityPacks,
+          );
         }
       }
 
@@ -536,7 +764,8 @@ export function ordersRepository(organizationId: string) {
           unitSize: hit.unitSize,
           unitOfMeasure: hit.unitOfMeasure,
           offerte,
-          nonOrdinabile: offerte.length === 0 ? (confronto.reason ?? 'Nessun prezzo corrente.') : null,
+          nonOrdinabile:
+            offerte.length === 0 ? (confronto.reason ?? 'Nessun prezzo corrente.') : null,
           confrontato: confronto.state === 'CONFRONTATO',
           risparmioPerConfezione: confronto.savingPerPack,
           giaNellOrdine: nellOrdine.get(hit.id) ?? 0,
@@ -557,44 +786,18 @@ export function ordersRepository(organizationId: string) {
     async aggiungiRiga(userId: string, input: RigaOrdineInput): Promise<OrdineCorrente> {
       const orderId = await idBozza(userId);
 
+      if (!confezioniValide(input.quantityPacks)) {
+        throw new OrderValidationError('La quantità richiesta non è valida.');
+      }
+
       const offerta = await db.supplierProduct.findFirst({
         where: { id: input.supplierProductId },
-        select: {
-          id: true,
-          supplierId: true,
-          productId: true,
-          supplierCode: true,
-          rawName: true,
-          packQuantity: true,
-          unitSize: true,
-          unitOfMeasure: true,
-          vatRate: true,
-          active: true,
-          supplier: { select: { name: true } },
-          product: { select: { name: true } },
-          currentPrice: {
-            select: { id: true, priceNet: true, vatRate: true, unitPriceBasis: true },
-          },
-        },
+        select: OFFERTA_ORDINE_SELECT,
       });
       if (!offerta) throw new OrderNotFoundError('L’offerta indicata non esiste.');
+      richiediOffertaOrdinabile(offerta, 'Questa offerta');
 
-      // Un prodotto senza prezzo corrente non è ordinabile: si finirebbe con
-      // una riga il cui totale è zero e nessuno saprebbe quanto costa.
-      if (!offerta.currentPrice) {
-        throw new OrderValidationError(
-          'Questa offerta non ha un prezzo corrente: non si può ordinare finché non se ne registra uno.',
-        );
-      }
-      if (!offerta.active) {
-        throw new OrderValidationError(
-          'Questa offerta non è più a listino: il fornitore non la vende più.',
-        );
-      }
-
-      const confronto = offerta.productId
-        ? await confronti.perProdotto(offerta.productId)
-        : null;
+      const confronto = offerta.productId ? await confronti.perProdotto(offerta.productId) : null;
       const migliore = confronto?.best ?? null;
       // Si registra l'alternativa **solo se è diversa** da ciò che si sta
       // ordinando: annotare «la migliore era questa stessa» riempirebbe le
@@ -610,15 +813,22 @@ export function ordersRepository(organizationId: string) {
             }
           : null;
 
-      const aliquota = offerta.currentPrice.vatRate ?? offerta.vatRate;
-      const netto = offerta.currentPrice.priceNet.toString();
-
       await conOrdineBloccato(orderId, async (tx) => {
+        // Il fornitore può essere stato disattivato fra il caricamento del
+        // catalogo e il clic. La decisione finale si prende sotto il lock
+        // della bozza, non sulla fotografia usata per disegnare la pagina.
+        const corrente = await tx.supplierProduct.findFirst({
+          where: { id: offerta.id },
+          select: OFFERTA_ORDINE_SELECT,
+        });
+        if (!corrente) throw new OrderNotFoundError('L’offerta indicata non esiste.');
+        richiediOffertaOrdinabile(corrente, 'Questa offerta');
+
         const esistente = await tx.order.findFirstOrThrow({
           where: { id: orderId },
           select: {
             lines: {
-              where: { supplierProductId: offerta.id },
+              where: { supplierProductId: corrente.id },
               select: { id: true, quantityPacks: true },
             },
             _count: { select: { lines: true } },
@@ -627,11 +837,12 @@ export function ordersRepository(organizationId: string) {
 
         const riga = esistente.lines[0];
         const quantita = (riga?.quantityPacks ?? 0) + input.quantityPacks;
-        const t = totaliRiga({
-          prezzoConfezione: netto,
-          confezioni: quantita,
-          aliquotaIva: aliquota?.toString() ?? null,
-        });
+        if (!confezioniValide(quantita)) {
+          throw new OrderValidationError(
+            'La quantità complessiva supera il massimo di 9.999 confezioni.',
+          );
+        }
+        const snapshot = snapshotDaOfferta(corrente, quantita, await ivaPredefinita(tx));
 
         if (riga) {
           await tx.order.update({
@@ -642,8 +853,8 @@ export function ordersRepository(organizationId: string) {
                   where: { id: riga.id },
                   data: {
                     quantityPacks: quantita,
-                    lineTotalNet: t.netto.toString(),
-                    lineTotalGross: t.lordo.toString(),
+                    ...snapshot,
+                    ...(input.note !== undefined ? { note: input.note ?? null } : {}),
                   },
                 },
               },
@@ -655,22 +866,9 @@ export function ordersRepository(organizationId: string) {
             data: {
               lines: {
                 create: {
-                  supplierProductId: offerta.id,
-                  productId: offerta.productId,
-                  supplierId: offerta.supplierId,
-                  priceId: offerta.currentPrice!.id,
+                  supplierProductId: corrente.id,
                   quantityPacks: quantita,
-                  nameSnapshot: offerta.product?.name ?? offerta.rawName,
-                  supplierNameSnapshot: offerta.supplier.name,
-                  supplierCodeSnapshot: offerta.supplierCode,
-                  packQuantitySnapshot: offerta.packQuantity,
-                  unitSizeSnapshot: offerta.unitSize,
-                  uomSnapshot: offerta.unitOfMeasure,
-                  unitPriceNetSnapshot: netto,
-                  vatRateSnapshot: aliquota,
-                  unitPriceBasisSnapshot: offerta.currentPrice!.unitPriceBasis,
-                  lineTotalNet: t.netto.toString(),
-                  lineTotalGross: t.lordo.toString(),
+                  ...snapshot,
                   bestAlternativeSnapshot: alternativa ?? undefined,
                   position: esistente._count.lines,
                   note: input.note ?? null,
@@ -752,9 +950,10 @@ export function ordersRepository(organizationId: string) {
      * conto — così quello che si vede prima di premere è esattamente quello
      * che succede dopo.
      *
-     * La riga vecchia sparisce e ne nasce una nuova: è un altro articolo di un
-     * altro fornitore, con un altro codice e un altro prezzo. Modificare
-     * quella esistente lascerebbe uno snapshot che non corrisponde a niente.
+     * La riga viene aggiornata nello stesso lock della bozza: così id,
+     * posizione, nota e motivazione dell'operatore restano intatti, mentre
+     * tutti i dati fotografati dell'offerta cambiano insieme oppure non cambia
+     * niente.
      */
     async cambiaFornitore(
       userId: string,
@@ -762,59 +961,109 @@ export function ordersRepository(organizationId: string) {
       nuovoSupplierProductId: string,
     ): Promise<OrdineCorrente> {
       const orderId = await idBozza(userId);
-      const attuale = await leggi(orderId);
-      const riga = attuale.righe.find((r) => r.id === rigaId);
-      if (!riga) throw new OrderNotFoundError('Riga non trovata in questo ordine.');
-      if (riga.supplierProductId === nuovoSupplierProductId) {
-        throw new OrderValidationError('È già questo il fornitore della riga.');
-      }
+      await conOrdineBloccato(orderId, async (tx) => {
+        const ordine = await tx.order.findFirstOrThrow({
+          where: { id: orderId },
+          select: {
+            lines: {
+              select: {
+                id: true,
+                supplierProductId: true,
+                productId: true,
+                supplierNameSnapshot: true,
+                packQuantitySnapshot: true,
+                unitSizeSnapshot: true,
+                uomSnapshot: true,
+                unitPriceNetSnapshot: true,
+                quantityPacks: true,
+              },
+            },
+          },
+        });
+        const riga = ordine.lines.find((linea) => linea.id === rigaId);
+        if (!riga) throw new OrderNotFoundError('Riga non trovata in questo ordine.');
+        if (riga.supplierProductId === nuovoSupplierProductId) {
+          throw new OrderValidationError('È già questo il fornitore della riga.');
+        }
+        if (ordine.lines.some((linea) => linea.supplierProductId === nuovoSupplierProductId)) {
+          throw new OrderValidationError(
+            'Questa offerta è già nell’ordine: modifica quella riga invece di crearne una seconda.',
+          );
+        }
 
-      // Si leggono **entrambe** le offerte: il contenuto per confezione è il
-      // numero su cui gira tutto il ricalcolo, e ricavarlo dividendo il netto
-      // per il prezzo unitario sarebbe fragile — basta un prezzo unitario
-      // mancante e il conto salta senza dirlo.
-      const offerte = await db.supplierProduct.findMany({
-        where: { id: { in: [riga.supplierProductId, nuovoSupplierProductId] } },
-        select: {
-          id: true,
-          packQuantity: true,
-          contentPerPack: true,
-          active: true,
-          currentPrice: { select: { priceNet: true } },
-        },
-      });
-      const vecchia = offerte.find((o) => o.id === riga.supplierProductId);
-      const nuova = offerte.find((o) => o.id === nuovoSupplierProductId);
-      if (!nuova || !vecchia) throw new OrderNotFoundError('L’offerta indicata non esiste.');
-      if (!nuova.currentPrice || !nuova.active) {
-        throw new OrderValidationError(
-          'Quell’offerta non ha un prezzo corrente o non è più a listino.',
+        // Tutto dentro lo stesso lock della bozza: se la nuova offerta non è
+        // valida, la vecchia riga non viene mai rimossa né modificata.
+        const offerte = await tx.supplierProduct.findMany({
+          where: { id: { in: [riga.supplierProductId, nuovoSupplierProductId] } },
+          select: OFFERTA_ORDINE_SELECT,
+        });
+        const vecchia = offerte.find((o) => o.id === riga.supplierProductId);
+        const nuova = offerte.find((o) => o.id === nuovoSupplierProductId);
+        if (!nuova || !vecchia) throw new OrderNotFoundError('L’offerta indicata non esiste.');
+        richiediOffertaOrdinabile(nuova, 'La nuova offerta');
+
+        if (
+          !riga.productId ||
+          nuova.productId !== riga.productId ||
+          vecchia.productId !== riga.productId
+        ) {
+          throw new OrderValidationError(
+            'Le due offerte non appartengono allo stesso prodotto: il cambio è stato annullato.',
+          );
+        }
+
+        const ivaOrganizzazione = await ivaPredefinita(tx);
+        const prezzoNuovo = prezzoOperativo(nuova, ivaOrganizzazione);
+        const cambio = calcolaCambio(
+          {
+            supplierProductId: vecchia.id,
+            supplierName: riga.supplierNameSnapshot,
+            prezzoConfezione: riga.unitPriceNetSnapshot.toString(),
+            contenutoPerConfezione: contenutoConfezioneFotografato(
+              riga.unitSizeSnapshot.toString(),
+              riga.uomSnapshot,
+              riga.packQuantitySnapshot,
+            ),
+            pezziPerConfezione: riga.packQuantitySnapshot,
+          },
+          {
+            supplierProductId: nuova.id,
+            supplierName: nuova.supplier.name,
+            prezzoConfezione: prezzoNuovo.prezzoNetto.toString(),
+            contenutoPerConfezione: nuova.contentPerPack.toString(),
+            pezziPerConfezione: nuova.packQuantity,
+          },
+          riga.quantityPacks,
         );
-      }
+        if (!confezioniValide(cambio.confezioni)) {
+          throw new OrderValidationError(
+            'Il cambio produrrebbe una quantità non valida: la riga è rimasta invariata.',
+          );
+        }
 
-      const cambio = calcolaCambio(
-        {
-          supplierProductId: vecchia.id,
-          supplierName: riga.supplierName,
-          prezzoConfezione: riga.priceNet,
-          contenutoPerConfezione: vecchia.contentPerPack.toString(),
-          pezziPerConfezione: vecchia.packQuantity,
-        },
-        {
-          supplierProductId: nuova.id,
-          supplierName: '',
-          prezzoConfezione: nuova.currentPrice.priceNet.toString(),
-          contenutoPerConfezione: nuova.contentPerPack.toString(),
-          pezziPerConfezione: nuova.packQuantity,
-        },
-        riga.quantityPacks,
-      );
-
-      await this.rimuoviRiga(userId, rigaId);
-      return this.aggiungiRiga(userId, {
-        supplierProductId: nuovoSupplierProductId,
-        quantityPacks: cambio.confezioni,
+        const snapshot = snapshotDaOfferta(nuova, cambio.confezioni, ivaOrganizzazione);
+        await tx.order.update({
+          where: { id: orderId },
+          data: {
+            lines: {
+              update: {
+                where: { id: riga.id },
+                data: {
+                  supplierProductId: nuova.id,
+                  quantityPacks: cambio.confezioni,
+                  ...snapshot,
+                  // `note` e `overrideReason` non compaiono qui di proposito:
+                  // appartengono alla scelta dell'operatore e sopravvivono al
+                  // cambio, insieme a id e posizione della riga.
+                },
+              },
+            },
+          },
+        });
+        await ricalcolaTotali(tx, orderId);
       });
+
+      return leggi(orderId);
     },
 
     async rimuoviRiga(userId: string, rigaId: string): Promise<OrdineCorrente> {
@@ -848,7 +1097,11 @@ export function ordersRepository(organizationId: string) {
      */
     async riepilogo(userId: string): Promise<RiepilogoOrdine> {
       const orderId = await idBozza(userId);
-      const ordine = await leggi(orderId);
+      // `leggi` usa già questa stessa fotografia del confronto per gli avvisi:
+      // riusarla evita una seconda query e due giudizi incoerenti se il
+      // catalogo cambia nel mezzo della richiesta.
+      const offerteConfrontatePerProdotto = new Map<string, number>();
+      const ordine = await leggi(orderId, offerteConfrontatePerProdotto);
       const { impostazioni } = await contesto();
 
       // ── Minimi d'ordine ────────────────────────────────────────────
@@ -881,12 +1134,43 @@ export function ordersRepository(organizationId: string) {
       // è il modo più veloce per non fidarsi più dei numeri.
       const offerte = await db.supplierProduct.findMany({
         where: { id: { in: ordine.righe.map((r) => r.supplierProductId) } },
-        select: {
-          id: true,
-          currentPrice: { select: { priceNet: true, validFrom: true } },
-        },
+        select: OFFERTA_ORDINE_SELECT,
       });
-      const perOffertaCorrente = new Map(offerte.map((o) => [o.id, o.currentPrice] as const));
+      const perOffertaCorrente = new Map(offerte.map((o) => [o.id, o] as const));
+      const priceVersion = versionePrezziOrdine(
+        ordine.righe.map((riga) => {
+          const offerta = perOffertaCorrente.get(riga.supplierProductId);
+          if (offerta) {
+            return prezzoVistoDaOfferta(
+              offerta,
+              riga.id,
+              riga.quantityPacks,
+              impostazioni.defaultVat,
+            );
+          }
+
+          // Un'offerta referenziata dalla riga normalmente non può sparire
+          // (FK), ma una fotografia completa rende deterministico anche uno
+          // stato corrotto e farà comunque fallire la conferma.
+          return {
+            lineId: riga.id,
+            quantityPacks: riga.quantityPacks,
+            supplierProductId: riga.supplierProductId,
+            supplierId: riga.supplierId,
+            productId: riga.productId,
+            nameSnapshot: riga.name,
+            supplierNameSnapshot: riga.supplierName,
+            supplierCodeSnapshot: riga.supplierCode,
+            packQuantitySnapshot: riga.packQuantity,
+            unitSizeSnapshot: riga.unitSize,
+            uomSnapshot: riga.unitOfMeasure,
+            currentPriceId: null,
+            priceNet: null,
+            vatRate: null,
+            unitPriceBasisSnapshot: null,
+          };
+        }),
+      );
 
       const limiteFermo = new Date();
       limiteFermo.setMonth(limiteFermo.getMonth() - impostazioni.staleMonths);
@@ -894,10 +1178,14 @@ export function ordersRepository(organizationId: string) {
       const prezziCambiati: RiepilogoOrdine['prezziCambiati'] = [];
       const prezziFermi: RiepilogoOrdine['prezziFermi'] = [];
       for (const riga of ordine.righe) {
-        const corrente = perOffertaCorrente.get(riga.supplierProductId);
-        if (!corrente) continue;
+        const offerta = perOffertaCorrente.get(riga.supplierProductId);
+        const corrente = offerta?.currentPrice;
+        if (!offerta || !corrente) continue;
 
-        const adesso = new Decimal(corrente.priceNet.toString());
+        const adesso = prezzoOperativo(
+          offerta as OffertaOrdinabileRecord,
+          impostazioni.defaultVat,
+        ).prezzoNetto;
         const allora = new Decimal(riga.priceNet);
         if (!adesso.equals(allora)) {
           prezziCambiati.push({
@@ -920,12 +1208,14 @@ export function ordersRepository(organizationId: string) {
       }
 
       // ── Righe senza confronto ──────────────────────────────────────
-      const senzaConfronto = ordine.righe
-        .filter((r) => r.avviso === null)
-        .map((r) => ({ rigaId: r.id, name: r.name, supplierName: r.supplierName }));
+      const senzaConfronto = selezionaRigheSenzaConfronto(
+        ordine.righe,
+        offerteConfrontatePerProdotto,
+      ).map((r) => ({ rigaId: r.id, name: r.name, supplierName: r.supplierName }));
 
       return {
         ordine,
+        priceVersion,
         minimiNonRaggiunti,
         prezziCambiati,
         prezziFermi,
@@ -937,7 +1227,9 @@ export function ordersRepository(organizationId: string) {
     /** La nota dell'ordine intero. */
     async scriviNota(userId: string, nota: string | null): Promise<OrdineCorrente> {
       const orderId = await idBozza(userId);
-      await db.order.update({ where: { id: orderId }, data: { note: nota } });
+      await conOrdineBloccato(orderId, async (tx) => {
+        await tx.order.update({ where: { id: orderId }, data: { note: nota } });
+      });
       return leggi(orderId);
     },
 
@@ -961,87 +1253,123 @@ export function ordersRepository(organizationId: string) {
      * Si calcola **dentro** la transazione: se la conferma fallisce, il
      * numero non è mai stato preso e non resta un buco in contabilità.
      */
-    async conferma(userId: string): Promise<EsitoConferma> {
-      const orderId = await idBozza(userId);
-      const prima = await leggi(orderId);
-      if (prima.righe.length === 0) {
-        throw new OrderValidationError('L’ordine è vuoto: non c’è niente da confermare.');
-      }
-
-      // I prezzi correnti si leggono fuori dalla transazione: sono una
-      // fotografia, e tenerla dentro allungherebbe il lock per niente.
-      const offerte = await db.supplierProduct.findMany({
-        where: { id: { in: prima.righe.map((r) => r.supplierProductId) } },
-        select: {
-          id: true,
-          vatRate: true,
-          currentPrice: { select: { id: true, priceNet: true, vatRate: true } },
-        },
-      });
-      const correnti = new Map(offerte.map((o) => [o.id, o] as const));
-
+    async conferma(userId: string, input: ConfermaOrdineInput): Promise<EsitoConferma> {
+      const versioneVista = new Date(input.updatedAt);
       return transactionForOrganization(
         organizationId,
         async (tx) => {
-          const ordine = await tx.order.findUniqueOrThrow({
-            where: { id: orderId },
-            select: {
-              id: true,
-              status: true,
-              code: true,
-              confirmedAt: true,
-              totalNet: true,
-              totalGross: true,
-              _count: { select: { lines: true } },
+          // Il lock è anche il confronto ottimistico col riepilogo. Tutte le
+          // mutazioni della bozza aggiornano `updatedAt` passando da
+          // `conOrdineBloccato`: se un'altra scheda ha cambiato una quantità,
+          // questa UPDATE non trova nulla e la conferma si ferma.
+          const bloccata = await tx.order.updateMany({
+            where: {
+              id: input.orderId,
+              createdById: userId,
+              status: 'DRAFT',
+              updatedAt: versioneVista,
             },
+            data: { updatedAt: new Date() },
           });
 
-          // Già confermato: la seconda chiamata non fa niente e lo dice.
-          if (ordine.status !== 'DRAFT') {
+          if (bloccata.count === 0) {
+            const esistente = await tx.order.findFirst({
+              where: { id: input.orderId, createdById: userId },
+              select: {
+                id: true,
+                status: true,
+                code: true,
+                confirmedAt: true,
+                totalNet: true,
+                totalGross: true,
+                _count: { select: { lines: true } },
+              },
+            });
+            if (!esistente) throw new OrderNotFoundError('Ordine non trovato.');
+            if (esistente.status === 'DRAFT') {
+              throw new OrderVersionError(
+                'L’ordine è cambiato dopo l’apertura del riepilogo. Ricaricalo e controllalo di nuovo.',
+              );
+            }
+            if (!esistente.code || !esistente.confirmedAt) {
+              throw new OrderValidationError(
+                'L’ordine non è più una bozza, ma non ha una conferma valida.',
+              );
+            }
+
+            // Retry sequenziale dopo una risposta persa: l'id della bozza è
+            // nel corpo, quindi non si crea una nuova bozza vuota e si torna
+            // esattamente allo stesso ordine.
             return {
-              orderId: ordine.id,
-              code: ordine.code ?? '',
-              confirmedAt: (ordine.confirmedAt ?? new Date()).toISOString(),
-              righe: ordine._count.lines,
-              netto: ordine.totalNet.toString(),
-              lordo: ordine.totalGross.toString(),
+              orderId: esistente.id,
+              code: esistente.code,
+              confirmedAt: esistente.confirmedAt.toISOString(),
+              righe: esistente._count.lines,
+              netto: esistente.totalNet.toString(),
+              lordo: esistente.totalGross.toString(),
               giaConfermato: true,
             } satisfies EsitoConferma;
+          }
+
+          // Righe, offerte e prezzi vengono riletti **dopo** il lock e dentro
+          // ogni tentativo Serializable. Se PostgreSQL ritenta la transazione,
+          // non riutilizziamo mai una fotografia presa dal tentativo prima.
+          const ordine = await tx.order.findFirstOrThrow({
+            where: { id: input.orderId, createdById: userId, status: 'DRAFT' },
+            select: {
+              id: true,
+              lines: {
+                select: {
+                  id: true,
+                  quantityPacks: true,
+                  supplierProduct: { select: OFFERTA_ORDINE_SELECT },
+                },
+                orderBy: { position: 'asc' },
+              },
+            },
+          });
+          if (ordine.lines.length === 0) {
+            throw new OrderValidationError('L’ordine è vuoto: non c’è niente da confermare.');
+          }
+          const ivaOrganizzazione = await ivaPredefinita(tx);
+          const versionePrezziAttuale = versionePrezziOrdine(
+            ordine.lines.map((riga) =>
+              prezzoVistoDaOfferta(
+                riga.supplierProduct,
+                riga.id,
+                riga.quantityPacks,
+                ivaOrganizzazione,
+              ),
+            ),
+          );
+          if (versionePrezziAttuale !== input.priceVersion) {
+            throw new OrderVersionError(
+              'Uno o più prezzi sono cambiati dopo l’apertura del riepilogo. Ricaricalo e controllali di nuovo.',
+            );
           }
 
           // Gli snapshot, ai prezzi di adesso.
           let netto = new Decimal(0);
           let iva = new Decimal(0);
-          for (const riga of prima.righe) {
-            const offerta = correnti.get(riga.supplierProductId);
-            const prezzo = offerta?.currentPrice;
-            if (!prezzo) {
+          for (const riga of ordine.lines) {
+            const offerta = riga.supplierProduct;
+            richiediOffertaOrdinabile(offerta, `«${offerta.product?.name ?? offerta.rawName}»`);
+            if (!confezioniValide(riga.quantityPacks)) {
               throw new OrderValidationError(
-                `«${riga.name}» non ha più un prezzo corrente da ${riga.supplierName}: toglila o cambiale fornitore.`,
+                `La quantità di «${offerta.product?.name ?? offerta.rawName}» non è valida.`,
               );
             }
-            const aliquota = prezzo.vatRate ?? offerta.vatRate;
-            const t = totaliRiga({
-              prezzoConfezione: prezzo.priceNet.toString(),
-              confezioni: riga.quantityPacks,
-              aliquotaIva: aliquota?.toString() ?? null,
-            });
-            netto = netto.plus(t.netto);
-            iva = iva.plus(t.iva);
+            const snapshot = snapshotDaOfferta(offerta, riga.quantityPacks, ivaOrganizzazione);
+            netto = netto.plus(snapshot.lineTotalNet);
+            iva = iva.plus(new Decimal(snapshot.lineTotalGross).minus(snapshot.lineTotalNet));
 
             await tx.order.update({
-              where: { id: orderId },
+              where: { id: ordine.id },
               data: {
                 lines: {
                   update: {
                     where: { id: riga.id },
-                    data: {
-                      priceId: prezzo.id,
-                      unitPriceNetSnapshot: prezzo.priceNet.toString(),
-                      vatRateSnapshot: aliquota,
-                      lineTotalNet: t.netto.toString(),
-                      lineTotalGross: t.lordo.toString(),
-                    },
+                    data: snapshot,
                   },
                 },
               },
@@ -1053,26 +1381,40 @@ export function ordersRepository(organizationId: string) {
             where: { code: { not: null } },
             select: { code: true },
           });
-          const code = prossimoCodiceOrdine(usati.map((o) => o.code));
           const confirmedAt = new Date();
+          const code = prossimoCodiceOrdine(
+            usati.map((o) => o.code),
+            confirmedAt,
+          );
 
           await tx.order.update({
-            where: { id: orderId },
+            where: { id: ordine.id },
             data: {
               code,
               status: 'CONFIRMED',
               confirmedAt,
+              note: input.note ?? null,
               totalNet: netto.toString(),
               totalVat: iva.toString(),
               totalGross: netto.plus(iva).toString(),
             },
           });
+          await tx.auditLog.create({
+            data: {
+              organizationId,
+              userId,
+              action: 'ORDER_CONFIRMED',
+              entityType: 'Order',
+              entityId: ordine.id,
+              detail: { code, lines: ordine.lines.length },
+            },
+          });
 
           return {
-            orderId,
+            orderId: ordine.id,
             code,
             confirmedAt: confirmedAt.toISOString(),
-            righe: prima.righe.length,
+            righe: ordine.lines.length,
             netto: netto.toString(),
             lordo: netto.plus(iva).toString(),
             giaConfermato: false,
@@ -1093,17 +1435,15 @@ export function ordersRepository(organizationId: string) {
      */
     async elenco(query: ElencoOrdiniQuery): Promise<ElencoOrdini> {
       const da = query.giorni > 0 ? new Date(Date.now() - query.giorni * 86_400_000) : null;
+      const condizioniRighe = condizioniRigheStorico(query);
 
       const where = {
         status: query.stato === 'tutti' ? { not: 'DRAFT' as const } : query.stato,
         ...(da ? { OR: [{ confirmedAt: { gte: da } }, { createdAt: { gte: da } }] } : {}),
-        ...(query.supplierId ? { lines: { some: { supplierId: query.supplierId } } } : {}),
         // La ricerca guarda i **nomi fotografati** nelle righe: cercando
         // «amaretto» si vuole l'ordine in cui c'era l'amaretto, e quel nome
         // sta nello snapshot anche se il prodotto nel frattempo è cambiato.
-        ...(query.q
-          ? { lines: { some: { nameSnapshot: { contains: query.q, mode: 'insensitive' as const } } } }
-          : {}),
+        ...(condizioniRighe.length > 0 ? { AND: condizioniRighe } : {}),
       };
 
       const [totale, righe] = await Promise.all([
@@ -1119,7 +1459,9 @@ export function ordersRepository(organizationId: string) {
             createdAt: true,
             totalNet: true,
             totalGross: true,
-            lines: { select: { quantityPacks: true, supplierNameSnapshot: true } },
+            lines: {
+              select: { quantityPacks: true, supplierId: true, supplierNameSnapshot: true },
+            },
           },
           orderBy: [{ confirmedAt: 'desc' }, { createdAt: 'desc' }],
           skip: (query.pagina - 1) * query.perPagina,
@@ -1139,9 +1481,11 @@ export function ordersRepository(organizationId: string) {
           confezioni: o.lines.reduce((n, l) => n + l.quantityPacks, 0),
           netto: o.totalNet.toString(),
           lordo: o.totalGross.toString(),
-          fornitori: [...new Set(o.lines.map((l) => l.supplierNameSnapshot))].sort((a, b) =>
-            a.localeCompare(b, 'it'),
-          ),
+          fornitori: [
+            ...new Map(
+              o.lines.map((l) => [l.supplierId, l.supplierNameSnapshot] as const),
+            ).values(),
+          ].sort((a, b) => a.localeCompare(b, 'it')),
         })),
         totale,
         pagina: query.pagina,
@@ -1174,6 +1518,7 @@ export function ordersRepository(organizationId: string) {
           lines: {
             select: {
               id: true,
+              supplierId: true,
               nameSnapshot: true,
               supplierNameSnapshot: true,
               supplierCodeSnapshot: true,
@@ -1191,29 +1536,6 @@ export function ordersRepository(organizationId: string) {
       });
       if (!o) return null;
 
-      const gruppi = new Map<string, OrdineStorico['perFornitore'][number]>();
-      for (const riga of o.lines) {
-        const g = gruppi.get(riga.supplierNameSnapshot) ?? {
-          supplierName: riga.supplierNameSnapshot,
-          righe: [],
-          netto: '0',
-        };
-        g.righe.push({
-          id: riga.id,
-          name: riga.nameSnapshot,
-          supplierCode: riga.supplierCodeSnapshot,
-          packQuantity: riga.packQuantitySnapshot,
-          unitSize: riga.unitSizeSnapshot.toString(),
-          unitOfMeasure: riga.uomSnapshot as OrdineStorico['perFornitore'][number]['righe'][number]['unitOfMeasure'],
-          quantityPacks: riga.quantityPacks,
-          priceNet: riga.unitPriceNetSnapshot.toString(),
-          lineTotalNet: riga.lineTotalNet.toString(),
-          note: riga.note,
-        });
-        g.netto = new Decimal(g.netto).plus(riga.lineTotalNet.toString()).toString();
-        gruppi.set(riga.supplierNameSnapshot, g);
-      }
-
       return {
         id: o.id,
         code: o.code,
@@ -1225,9 +1547,7 @@ export function ordersRepository(organizationId: string) {
         netto: o.totalNet.toString(),
         iva: o.totalVat.toString(),
         lordo: o.totalGross.toString(),
-        perFornitore: [...gruppi.values()].sort((a, b) =>
-          a.supplierName.localeCompare(b.supplierName, 'it'),
-        ),
+        perFornitore: raggruppaRigheStoriche(o.lines),
       };
     },
 
@@ -1244,92 +1564,115 @@ export function ordersRepository(organizationId: string) {
      *    fallisce: la mancanza si scopre alla consegna.
      */
     async riordina(userId: string, orderId: string): Promise<EsitoRiordino> {
-      const vecchio = await db.order.findFirst({
-        where: { id: orderId, status: { not: 'DRAFT' } },
-        select: {
-          lines: {
-            select: {
-              supplierProductId: true,
-              quantityPacks: true,
-              nameSnapshot: true,
-              supplierNameSnapshot: true,
-              unitPriceNetSnapshot: true,
+      const draftId = await idBozza(userId);
+
+      return conOrdineBloccato(draftId, async (tx) => {
+        const vecchio = await tx.order.findFirst({
+          where: { id: orderId, status: { not: 'DRAFT' } },
+          select: {
+            note: true,
+            lines: {
+              select: {
+                supplierProductId: true,
+                quantityPacks: true,
+                nameSnapshot: true,
+                supplierNameSnapshot: true,
+                unitPriceNetSnapshot: true,
+                note: true,
+              },
+              orderBy: { position: 'asc' },
             },
-            orderBy: { position: 'asc' },
           },
-        },
-      });
-      if (!vecchio) throw new OrderNotFoundError('Ordine non trovato.');
-
-      const bozzaPrima = await leggi(await idBozza(userId));
-      const bozzaSvuotata = bozzaPrima.righe.length > 0;
-      if (bozzaSvuotata) await this.svuota(userId);
-
-      const offerte = await db.supplierProduct.findMany({
-        where: { id: { in: vecchio.lines.map((l) => l.supplierProductId) } },
-        select: {
-          id: true,
-          active: true,
-          currentPrice: { select: { priceNet: true } },
-        },
-      });
-      const stato = new Map(offerte.map((o) => [o.id, o] as const));
-
-      const esito: EsitoRiordino = {
-        orderId,
-        copiate: 0,
-        cambiate: [],
-        saltate: [],
-        bozzaSvuotata,
-      };
-
-      for (const riga of vecchio.lines) {
-        const offerta = stato.get(riga.supplierProductId);
-        if (!offerta) {
-          esito.saltate.push({
-            name: riga.nameSnapshot,
-            supplierName: riga.supplierNameSnapshot,
-            motivo: 'l’articolo non è più a catalogo',
-          });
-          continue;
-        }
-        if (!offerta.active) {
-          esito.saltate.push({
-            name: riga.nameSnapshot,
-            supplierName: riga.supplierNameSnapshot,
-            motivo: 'il fornitore non lo tiene più a listino',
-          });
-          continue;
-        }
-        if (!offerta.currentPrice) {
-          esito.saltate.push({
-            name: riga.nameSnapshot,
-            supplierName: riga.supplierNameSnapshot,
-            motivo: 'non ha più un prezzo corrente',
-          });
-          continue;
-        }
-
-        await this.aggiungiRiga(userId, {
-          supplierProductId: riga.supplierProductId,
-          quantityPacks: riga.quantityPacks,
         });
-        esito.copiate += 1;
+        if (!vecchio) throw new OrderNotFoundError('Ordine non trovato.');
 
-        const adesso = new Decimal(offerta.currentPrice.priceNet.toString());
-        const allora = new Decimal(riga.unitPriceNetSnapshot.toString());
-        if (!adesso.equals(allora)) {
-          esito.cambiate.push({
-            name: riga.nameSnapshot,
-            supplierName: riga.supplierNameSnapshot,
-            prezzoAllora: allora.toString(),
-            prezzoAdesso: adesso.toString(),
-            differenza: adesso.minus(allora).toDecimalPlaces(2).toString(),
+        const bozza = await tx.order.findFirstOrThrow({
+          where: { id: draftId, status: 'DRAFT' },
+          select: { _count: { select: { lines: true } } },
+        });
+        const offerte = await tx.supplierProduct.findMany({
+          where: { id: { in: vecchio.lines.map((linea) => linea.supplierProductId) } },
+          select: OFFERTA_ORDINE_SELECT,
+        });
+        const stato = new Map(offerte.map((offerta) => [offerta.id, offerta] as const));
+
+        const esito: EsitoRiordino = {
+          orderId,
+          copiate: 0,
+          cambiate: [],
+          saltate: [],
+          bozzaSvuotata: bozza._count.lines > 0,
+        };
+        const nuove: Array<
+          ReturnType<typeof snapshotDaOfferta> & {
+            supplierProductId: string;
+            quantityPacks: number;
+            position: number;
+            note: string | null;
+          }
+        > = [];
+        const ivaOrganizzazione = await ivaPredefinita(tx);
+
+        for (const riga of vecchio.lines) {
+          const offerta = stato.get(riga.supplierProductId);
+          let motivo: string | null = null;
+          if (!offerta) motivo = 'l’articolo non è più a catalogo';
+          else if (!offerta.active) motivo = 'il fornitore non lo tiene più a listino';
+          else if (!offerta.supplier.active) motivo = 'il fornitore non è più attivo';
+          else if (!offerta.currentPrice) motivo = 'non ha più un prezzo corrente';
+          else if (!confezioniValide(riga.quantityPacks)) motivo = 'la quantità non è più valida';
+
+          if (motivo || !offerta || !offerta.currentPrice) {
+            esito.saltate.push({
+              name: riga.nameSnapshot,
+              supplierName: riga.supplierNameSnapshot,
+              motivo: motivo ?? 'non è più ordinabile',
+            });
+            continue;
+          }
+
+          const snapshot = snapshotDaOfferta(
+            offerta as OffertaOrdinabileRecord,
+            riga.quantityPacks,
+            ivaOrganizzazione,
+          );
+          nuove.push({
+            supplierProductId: offerta.id,
+            quantityPacks: riga.quantityPacks,
+            position: nuove.length,
+            note: riga.note,
+            ...snapshot,
           });
-        }
-      }
+          esito.copiate += 1;
 
-      return esito;
+          const adesso = new Decimal(offerta.currentPrice.priceNet.toString());
+          const allora = new Decimal(riga.unitPriceNetSnapshot.toString());
+          if (!adesso.equals(allora)) {
+            esito.cambiate.push({
+              name: riga.nameSnapshot,
+              supplierName: riga.supplierNameSnapshot,
+              prezzoAllora: allora.toString(),
+              prezzoAdesso: adesso.toString(),
+              differenza: adesso.minus(allora).toDecimalPlaces(2).toString(),
+            });
+          }
+        }
+
+        // Svuotamento e copia sono una sola scrittura transazionale. Un errore
+        // in qualunque riga fa rollback e lascia intatta la bozza precedente.
+        await tx.order.update({
+          where: { id: draftId },
+          data: {
+            note: vecchio.note,
+            lines: {
+              deleteMany: {},
+              ...(nuove.length > 0 ? { create: nuove } : {}),
+            },
+          },
+        });
+        await ricalcolaTotali(tx, draftId);
+        return esito;
+      });
     },
 
     /**
@@ -1339,25 +1682,41 @@ export function ordersRepository(organizationId: string) {
      * sparito lascia un buco nella numerazione e nessun modo di sapere se è
      * stato mandato o no.
      */
-    async annulla(orderId: string): Promise<OrdineStorico> {
-      const o = await db.order.findFirst({
-        where: { id: orderId },
-        select: { id: true, status: true },
-      });
-      if (!o) throw new OrderNotFoundError('Ordine non trovato.');
-      if (o.status === 'DRAFT') {
-        throw new OrderValidationError('Una bozza non si annulla: si svuota.');
-      }
-      if (o.status === 'CANCELLED') {
-        // Già annullato: si restituisce com'è, senza errore e senza riscrivere
-        // la data — la seconda pressione non deve cambiare quando è successo.
-        return (await this.storico(orderId))!;
-      }
+    async annulla(userId: string, orderId: string): Promise<OrdineStorico> {
+      await transactionForOrganization(
+        organizationId,
+        async (tx) => {
+          const cambiato = await tx.order.updateMany({
+            where: { id: orderId, status: { in: ['CONFIRMED', 'SENT', 'RECEIVED'] } },
+            data: { status: 'CANCELLED', cancelledAt: new Date() },
+          });
+          if (cambiato.count === 1) {
+            await tx.auditLog.create({
+              data: {
+                organizationId,
+                userId,
+                action: 'ORDER_CANCELLED',
+                entityType: 'Order',
+                entityId: orderId,
+                detail: {},
+              },
+            });
+            return;
+          }
 
-      await db.order.update({
-        where: { id: orderId },
-        data: { status: 'CANCELLED', cancelledAt: new Date() },
-      });
+          const o = await tx.order.findFirst({
+            where: { id: orderId },
+            select: { status: true },
+          });
+          if (!o) throw new OrderNotFoundError('Ordine non trovato.');
+          if (o.status === 'DRAFT') {
+            throw new OrderValidationError('Una bozza non si annulla: si svuota.');
+          }
+          // Già annullato: nessuna riscrittura della data e, soprattutto,
+          // nessun secondo audit log su retry o doppio clic.
+        },
+        { isolamento: 'riga-bloccata' },
+      );
       return (await this.storico(orderId))!;
     },
 

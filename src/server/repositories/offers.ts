@@ -78,7 +78,12 @@ export interface OfferRecord {
   active: boolean;
   matchStatus: string;
   productId: string | null;
-  supplier: { id: string; name: string; active: boolean; extraDiscountPct: { toString(): string } | null };
+  supplier: {
+    id: string;
+    name: string;
+    active: boolean;
+    extraDiscountPct: { toString(): string } | null;
+  };
   currentPrice: {
     priceList: DecimalLike;
     discounts: unknown;

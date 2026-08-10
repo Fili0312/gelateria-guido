@@ -4,6 +4,16 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium, type Browser } from 'playwright-core';
+import {
+  entroTempo,
+  LimiteConcorrente,
+  MAX_GENERAZIONI_PDF_CONCORRENTI,
+  MAX_HTML_PDF_BYTES,
+  OperazioneScadutaError,
+  TIMEOUT_AVVIO_CHROMIUM_MS,
+  TIMEOUT_CARICAMENTO_HTML_MS,
+  TIMEOUT_GENERAZIONE_PDF_MS,
+} from './pdf-limits';
 
 /**
  * Da HTML a PDF, col Chromium che sul server c'è già.
@@ -24,6 +34,20 @@ import { chromium, type Browser } from 'playwright-core';
 export class PdfError extends Error {
   override readonly name = 'PdfError';
 }
+
+export class PdfCapacityError extends Error {
+  override readonly name = 'PdfCapacityError';
+}
+
+export class PdfTimeoutError extends Error {
+  override readonly name = 'PdfTimeoutError';
+}
+
+type GlobalePdf = typeof globalThis & { __gelateriaPdfLimit?: LimiteConcorrente };
+const globalePdf = globalThis as GlobalePdf;
+const LIMITE_GLOBALE = (globalePdf.__gelateriaPdfLimit ??= new LimiteConcorrente(
+  MAX_GENERAZIONI_PDF_CONCORRENTI,
+));
 
 /**
  * Il binario di Chromium.
@@ -92,48 +116,81 @@ function casaPerChromium(): string {
 export async function conStampante<T>(
   lavoro: (stampaPdf: (html: string) => Promise<Uint8Array>) => Promise<T>,
 ): Promise<T> {
+  const rilascia = LIMITE_GLOBALE.provaAcquisire();
+  if (!rilascia) {
+    throw new PdfCapacityError(
+      'Sono già in corso troppe generazioni PDF. Attendi che finiscano e riprova.',
+    );
+  }
+
   let browser: Browser;
   try {
-    browser = await chromium.launch({
-      executablePath: percorsoChromium(),
-      args: argomenti(),
-      env: { ...process.env, HOME: casaPerChromium() },
-    });
+    browser = await entroTempo(
+      chromium.launch({
+        executablePath: percorsoChromium(),
+        args: argomenti(),
+        env: { ...process.env, HOME: casaPerChromium() },
+        timeout: TIMEOUT_AVVIO_CHROMIUM_MS,
+      }),
+      TIMEOUT_AVVIO_CHROMIUM_MS,
+    );
   } catch (errore) {
+    rilascia();
+    if (errore instanceof OperazioneScadutaError) {
+      throw new PdfTimeoutError('Chromium non si è avviato entro 30 secondi.');
+    }
     throw new PdfError(
       `Non è stato possibile avviare Chromium: ${errore instanceof Error ? errore.message : String(errore)}`,
     );
   }
 
   try {
-    return await lavoro(async (html) => {
-      const pagina = await browser.newPage();
-      try {
-        // `setContent` e non un file temporaneo: niente da scrivere su disco
-        // e niente da ripulire se il processo muore a metà.
-        await pagina.setContent(html, { waitUntil: 'load' });
-        const pdf = await pagina.pdf({
-          format: 'A4',
-          printBackground: true,
-          margin: { top: '14mm', bottom: '16mm', left: '12mm', right: '12mm' },
-          // I margini sopra li riempiono intestazione e piè di pagina del
-          // template, che deve poterci mettere il numero di pagina.
-          displayHeaderFooter: true,
-          headerTemplate: '<span></span>',
-          footerTemplate:
-            '<div style="width:100%;font-size:8px;color:#737373;padding:0 12mm;' +
-            'display:flex;justify-content:space-between;font-family:sans-serif">' +
-            '<span class="title"></span>' +
-            '<span>pagina <span class="pageNumber"></span> di <span class="totalPages"></span></span>' +
-            '</div>',
-        });
-        if (pdf.length === 0) throw new PdfError('Chromium ha prodotto un PDF vuoto.');
-        return new Uint8Array(pdf);
-      } finally {
-        await pagina.close().catch(() => {});
+    try {
+      return await entroTempo(
+        lavoro(async (html) => {
+          if (Buffer.byteLength(html, 'utf8') > MAX_HTML_PDF_BYTES) {
+            throw new PdfError('Il documento è troppo grande per essere trasformato in PDF.');
+          }
+          const pagina = await browser.newPage();
+          try {
+            // `setContent` e non un file temporaneo: niente da scrivere su disco
+            // e niente da ripulire se il processo muore a metà.
+            await pagina.setContent(html, {
+              waitUntil: 'load',
+              timeout: TIMEOUT_CARICAMENTO_HTML_MS,
+            });
+            const pdf = await pagina.pdf({
+              format: 'A4',
+              printBackground: true,
+              margin: { top: '14mm', bottom: '16mm', left: '12mm', right: '12mm' },
+              // I margini sopra li riempiono intestazione e piè di pagina del
+              // template, che deve poterci mettere il numero di pagina.
+              displayHeaderFooter: true,
+              headerTemplate: '<span></span>',
+              footerTemplate:
+                '<div style="width:100%;font-size:8px;color:#737373;padding:0 12mm;' +
+                'display:flex;justify-content:space-between;font-family:sans-serif">' +
+                '<span class="title"></span>' +
+                '<span>pagina <span class="pageNumber"></span> di <span class="totalPages"></span></span>' +
+                '</div>',
+            });
+            if (pdf.length === 0) throw new PdfError('Chromium ha prodotto un PDF vuoto.');
+            return new Uint8Array(pdf);
+          } finally {
+            await pagina.close().catch(() => {});
+          }
+        }),
+        TIMEOUT_GENERAZIONE_PDF_MS,
+        () => browser.close().catch(() => {}),
+      );
+    } catch (errore) {
+      if (errore instanceof OperazioneScadutaError) {
+        throw new PdfTimeoutError('La generazione PDF ha superato il limite di 120 secondi.');
       }
-    });
+      throw errore;
+    }
   } finally {
     await browser.close().catch(() => {});
+    rilascia();
   }
 }

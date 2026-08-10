@@ -6,7 +6,11 @@ import { chiediAlModello, leggiRisposta, type ProviderAi } from '@/server/ai';
 import { SISTEMA_DOPPIONI, utenteDoppioni, VERSIONE_PROMPT } from '@/server/ai/prompts';
 import { prismaForOrganization } from '@/server/db';
 import { unisciProdotti } from './merge';
-import { formatiCompatibili, nucleoPerAbbinamento, sovrapposizioneParole } from '@/server/domain/matching/score';
+import {
+  formatiCompatibili,
+  nucleoPerAbbinamento,
+  sovrapposizioneParole,
+} from '@/server/domain/matching/score';
 import { inUnitaBase, type BaseUnit, type UnitOfMeasure } from '@/server/domain/packaging/units';
 
 /**
@@ -239,7 +243,11 @@ export async function cercaDoppioni(
   };
   if (coppie.length === 0) return esito;
 
-  const componi = (c: (typeof coppie)[number], motivo: string | null, sicuro: boolean): Doppione => {
+  const componi = (
+    c: (typeof coppie)[number],
+    motivo: string | null,
+    sicuro: boolean,
+  ): Doppione => {
     const ua = unitarioMigliore(c.a);
     const ub = unitarioMigliore(c.b);
     let risparmio: string | null = null;

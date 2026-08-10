@@ -49,6 +49,7 @@ export function OrderScreen({
   const [schedaOrdine, setSchedaOrdine] = useState(false);
   const [reparto, setReparto] = useState<string | null>(null);
   const [categoria, setCategoria] = useState<string | null>(null);
+  const [mutazioniInCorso, setMutazioniInCorso] = useState(0);
 
   const campo = useRef<HTMLInputElement>(null);
   const richiestaInCorso = useRef<AbortController | null>(null);
@@ -57,6 +58,17 @@ export function OrderScreen({
   // vincolo di unicità nel database impedisce il doppione comunque, ma qui si
   // evita anche il raddoppio involontario di quantità.
   const inVolo = useRef(new Set<string>());
+  // Le route serializzano correttamente il database, ma due risposte HTTP
+  // possono tornare in ordine inverso. Anche il client mette quindi le
+  // mutazioni in coda: ogni risposta parte dallo stato restituito dalla
+  // precedente e non puo' sovrascriverla con una fotografia piu' vecchia.
+  const codaMutazioni = useRef<Promise<void>>(Promise.resolve());
+  const ordineCorrente = useRef(ordineIniziale);
+
+  const mostraOrdine = useCallback((successivo: OrdineCorrente) => {
+    ordineCorrente.current = successivo;
+    setOrdine(successivo);
+  }, []);
 
   useEffect(() => {
     campo.current?.focus();
@@ -109,41 +121,54 @@ export function OrderScreen({
   }, [termine, cerca]);
 
   const muta = useCallback(
-    async (
+    (
       url: string,
       init: RequestInit,
       chiave: string,
       previsione?: (precedente: OrdineCorrente) => OrdineCorrente,
     ) => {
-      if (inVolo.current.has(chiave)) return;
+      if (inVolo.current.has(chiave)) return Promise.resolve();
       inVolo.current.add(chiave);
-      const precedente = ordine;
-      if (previsione) setOrdine(previsione(precedente));
+      setMutazioniInCorso((numero) => numero + 1);
 
-      try {
-        const risposta = await fetch(url, {
-          ...init,
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            ...init.headers,
-          },
-        });
-        const corpo = (await risposta.json()) as OrderApiBody<OrdineCorrente>;
-        if (!corpo.ok) {
-          setOrdine(precedente);
-          toast({ title: 'Non è stato possibile aggiornare l’ordine', description: corpo.error, tone: 'error' });
-          return;
+      const esegui = async () => {
+        const precedente = ordineCorrente.current;
+        if (previsione) mostraOrdine(previsione(precedente));
+
+        try {
+          const risposta = await fetch(url, {
+            ...init,
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+              ...init.headers,
+            },
+          });
+          const corpo = (await risposta.json()) as OrderApiBody<OrdineCorrente>;
+          if (!corpo.ok) {
+            mostraOrdine(precedente);
+            toast({
+              title: 'Non è stato possibile aggiornare l’ordine',
+              description: corpo.error,
+              tone: 'error',
+            });
+            return;
+          }
+          mostraOrdine(corpo.data);
+        } catch {
+          mostraOrdine(precedente);
+          toast({ title: 'Server non raggiungibile', tone: 'error' });
+        } finally {
+          inVolo.current.delete(chiave);
+          setMutazioniInCorso((numero) => Math.max(0, numero - 1));
         }
-        setOrdine(corpo.data);
-      } catch {
-        setOrdine(precedente);
-        toast({ title: 'Server non raggiungibile', tone: 'error' });
-      } finally {
-        inVolo.current.delete(chiave);
-      }
+      };
+
+      const operazione = codaMutazioni.current.then(esegui, esegui);
+      codaMutazioni.current = operazione.catch(() => {});
+      return operazione;
     },
-    [ordine, toast],
+    [mostraOrdine, toast],
   );
 
   const aggiungi = useCallback(
@@ -326,11 +351,14 @@ export function OrderScreen({
           onSeleziona={setSelezione}
           onAggiungi={aggiungi}
           onCambiaQuantita={cambiaQuantita}
+          onRimuovi={rimuovi}
         />
       </div>
 
       {/* ── Colonna destra: l'ordine ──────────────────────────────────── */}
-      <aside className={`${schedaOrdine ? '' : 'hidden lg:block'} lg:sticky lg:top-4 lg:self-start`}>
+      <aside
+        className={`${schedaOrdine ? '' : 'hidden lg:block'} lg:sticky lg:top-4 lg:self-start`}
+      >
         <OrderPanel
           ordine={ordine}
           onCambiaQuantita={cambiaQuantita}
@@ -338,7 +366,7 @@ export function OrderScreen({
           onSvuota={svuota}
           onCambiaFornitore={cambiaFornitore}
           onIgnoraAvviso={ignoraAvviso}
-          inCorso={inVolo.current.size > 0}
+          inCorso={mutazioniInCorso > 0}
         />
       </aside>
 

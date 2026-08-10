@@ -1,8 +1,14 @@
 import 'server-only';
 
-import { nuovaGenerazione, percorsoDocumento, rimuoviGenerazione, salvaDocumento } from './archivio';
+import {
+  nuovaGenerazione,
+  percorsoDocumento,
+  rimuoviGenerazione,
+  salvaDocumento,
+} from './archivio';
 import { datiOrdine, soloFornitore } from './dati';
 import { conStampante } from './pdf';
+import { numeroDocumentiConsentito } from './pdf-limits';
 import { templatePerChiave, templatePredefiniti } from './registro';
 import type { DatiDocumento, DocumentTemplate, FormatoDocumento } from './template';
 
@@ -70,6 +76,11 @@ export async function generaDocumenti(
 ): Promise<EsitoGenerazione> {
   const dati = await datiOrdine(organizationId, orderId);
   if (!dati) throw new GenerazioneError('L’ordine non esiste, o è ancora una bozza.');
+  if (dati.ordine.stato === 'CANCELLED') {
+    throw new GenerazioneError(
+      'L’ordine è annullato: i documenti esistenti restano scaricabili, ma non si possono rigenerare.',
+    );
+  }
   if (dati.gruppi.length === 0) {
     throw new GenerazioneError('L’ordine non ha righe: non c’è niente da mandare.');
   }
@@ -83,6 +94,11 @@ export async function generaDocumenti(
     : templatePredefiniti();
 
   const daFare = lavori(dati, scelti);
+  if (!numeroDocumentiConsentito(daFare.length)) {
+    throw new GenerazioneError(
+      'La generazione richiede troppi documenti in una sola volta. Riduci i formati o i fornitori.',
+    );
+  }
   const generazione = nuovaGenerazione();
   const prodotti: DocumentoProdotto[] = [];
 

@@ -28,7 +28,7 @@ export interface RigaDaAbbinare {
   nucleo: string;
   formato: string;
   prezzoNetto: string | null;
-  stato: 'AUTO' | 'PENDING' | 'NEW';
+  stato: 'AUTO' | 'PENDING' | 'NEW' | 'CONFIRMED' | 'REJECTED' | 'IGNORED';
   metodo: string | null;
   punteggio: number | null;
   motivo: string | null;
@@ -36,6 +36,10 @@ export interface RigaDaAbbinare {
   propostoId: string | null;
   propostoNome: string | null;
   candidati: CandidatoProposto[];
+  /** Errori che bloccano l'import; la riga resta visibile per poterla escludere. */
+  problemi: string[];
+  giaRivista: boolean;
+  bloccaImport: boolean;
 }
 
 export interface CodaAbbinamento {
@@ -44,8 +48,13 @@ export interface CodaAbbinamento {
   automatici: number;
   nuovi: number;
   giaNoti: number;
+  totale: number;
+  paginaCorrente: number;
+  pagine: number;
+  limite: number;
+  haPrecedente: boolean;
+  haSuccessiva: boolean;
 }
 
 export type MatchingApiBody<T> =
-  | { ok: true; data: T }
-  | { ok: false; error: string; fields?: Record<string, string[]> };
+  { ok: true; data: T } | { ok: false; error: string; fields?: Record<string, string[]> };

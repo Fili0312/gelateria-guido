@@ -34,8 +34,9 @@ function sql(query: string): string {
 }
 
 async function main() {
-  const organizationId = (await systemPrisma.organization.findFirstOrThrow({ select: { id: true } }))
-    .id;
+  const organizationId = (
+    await systemPrisma.organization.findFirstOrThrow({ select: { id: true } })
+  ).id;
   const confronti = comparisonRepository(organizationId);
 
   console.log('\n── Criterio 1: tre offerte a confezioni diverse ─────────────────\n');
@@ -133,7 +134,10 @@ async function main() {
   const ordinato = perEuro.comparisons.every(
     (r, i, tutti) => i === 0 || Number(tutti[i - 1]!.savingPerPack) >= Number(r.savingPerPack),
   );
-  esito(ordinato, `i ${perEuro.comparisons.length} confronti sono in ordine di risparmio decrescente`);
+  esito(
+    ordinato,
+    `i ${perEuro.comparisons.length} confronti sono in ordine di risparmio decrescente`,
+  );
 
   const perPercentuale = await confronti.report({ sort: 'saving-pct-desc' });
   esito(
@@ -264,7 +268,6 @@ async function main() {
   });
   await systemPrisma.supplierProduct.deleteMany({ where: { id: { in: creati } } });
   await systemPrisma.product.delete({ where: { id: prodotto.id } });
-
 }
 
 main()

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { leggiBbox, type PaginaParole, type Parola } from './bbox';
@@ -23,10 +23,20 @@ import {
  */
 
 const LISTINI = join(import.meta.dirname, '..', '..', '..', '..', 'tests', 'fixtures', 'listini');
+const FILE_ATTESO = join(LISTINI, 'atteso.json');
+const LISTINI_REALI_DISPONIBILI = existsSync(FILE_ATTESO);
 
-const ATTESO: Record<string, { prodotti: number }> = JSON.parse(
-  readFileSync(join(LISTINI, 'atteso.json'), 'utf8'),
-);
+if (process.env.REQUIRE_REAL_PDF_FIXTURES === '1' && !LISTINI_REALI_DISPONIBILI) {
+  throw new Error(
+    'Fixture PDF riservate assenti. Copiale in tests/fixtures/listini prima di eseguire test:real-pdf.',
+  );
+}
+
+const ATTESO: Record<string, { prodotti: number }> = LISTINI_REALI_DISPONIBILI
+  ? JSON.parse(readFileSync(FILE_ATTESO, 'utf8'))
+  : {};
+
+const describeConListiniReali = LISTINI_REALI_DISPONIBILI ? describe : describe.skip;
 
 function parole(righe: [number, number, string][]): PaginaParole {
   const elenco: Parola[] = righe.map(([x, y, testo]) => ({
@@ -166,14 +176,18 @@ describe('colonne', () => {
 // ─────────────────────────────────────────────────────────────────────────
 
 function segmentaFile(file: string) {
-  const xml = execFileSync('pdftotext', ['-bbox-layout', '-enc', 'UTF-8', join(LISTINI, file), '-'], {
-    encoding: 'utf8',
-    maxBuffer: 64 * 1024 * 1024,
-  });
+  const xml = execFileSync(
+    'pdftotext',
+    ['-bbox-layout', '-enc', 'UTF-8', join(LISTINI, file), '-'],
+    {
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+    },
+  );
   return segmenta(leggiBbox(xml).pagine);
 }
 
-describe('copertura sui listini veri — criterio della Fase 7', () => {
+describeConListiniReali('copertura sui listini veri — criterio della Fase 7', () => {
   const SOGLIA = 0.9;
 
   for (const [file, riferimento] of Object.entries(ATTESO)) {
@@ -196,7 +210,7 @@ describe('copertura sui listini veri — criterio della Fase 7', () => {
   }
 });
 
-describe('il caso più insidioso: le descrizioni che vanno a capo', () => {
+describeConListiniReali('il caso più insidioso: le descrizioni che vanno a capo', () => {
   const CECCONI = 'Cecconi Listino prezzi al 28.02.25 (escluso Vino_spumante).pdf';
 
   it('ricompone la descrizione spezzata su due righe', () => {
@@ -222,7 +236,7 @@ describe('il caso più insidioso: le descrizioni che vanno a capo', () => {
   });
 });
 
-describe('i codici dichiarati a parte non finiscono nella descrizione', () => {
+describeConListiniReali('i codici dichiarati a parte non finiscono nella descrizione', () => {
   const CECCONI = 'Cecconi Listino prezzi al 28.02.25 (escluso Vino_spumante).pdf';
 
   it('riconosce le forme in cui i listini scrivono un codice', () => {
@@ -246,7 +260,7 @@ describe('i codici dichiarati a parte non finiscono nella descrizione', () => {
     assert.deepEqual(
       sporche.map((r) => r.celle[1]?.testo),
       [],
-      'l\'EAN incollato alla descrizione finirebbe nel nome normalizzato della ricerca',
+      "l'EAN incollato alla descrizione finirebbe nel nome normalizzato della ricerca",
     );
   });
 
@@ -258,7 +272,10 @@ describe('i codici dichiarati a parte non finiscono nella descrizione', () => {
     const conCodice = prodotti.filter((r) => r.codici.length > 0);
     assert.equal(conCodice.length, prodotti.length, 'ogni prodotto Cecconi ha la sua riga EAN');
     const diversi = conCodice.filter((r) => r.codici[0] !== r.celle[0]?.testo);
-    assert.deepEqual(diversi.map((r) => [r.celle[0]?.testo, r.codici]), []);
+    assert.deepEqual(
+      diversi.map((r) => [r.celle[0]?.testo, r.codici]),
+      [],
+    );
   });
 
   it('un codice a inizio pagina si attacca lo stesso al suo prodotto', () => {
@@ -273,7 +290,7 @@ describe('i codici dichiarati a parte non finiscono nella descrizione', () => {
   });
 });
 
-describe('la cornice di pagina viene davvero riconosciuta', () => {
+describeConListiniReali('la cornice di pagina viene davvero riconosciuta', () => {
   /**
    * Il conteggio dei prodotti non basta a dire che la segmentazione sta bene.
    * Un giro in cui il riconoscimento delle intestazioni si era spento da 8
@@ -306,7 +323,7 @@ describe('la cornice di pagina viene davvero riconosciuta', () => {
   });
 });
 
-describe('i totali di fine documento non entrano nell’ultimo prodotto', () => {
+describeConListiniReali('i totali di fine documento non entrano nell’ultimo prodotto', () => {
   it('nessun listino finisce con «Totale» dentro l’ultima riga', () => {
     // È l'errore che il conteggio non vede: le righe restano 189, ma
     // l'ultima porta dentro «Totale ordine: 5.287,11» e in fase di import

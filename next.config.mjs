@@ -11,11 +11,20 @@
  *
  * @type {import('next').NextConfig}
  */
+const requestedDistDir = process.env.NEXT_DIST_DIR?.trim();
+if (
+  requestedDistDir &&
+  (!/^[.a-zA-Z0-9_-]+$/.test(requestedDistDir) || ['.', '..'].includes(requestedDistDir))
+) {
+  throw new Error('NEXT_DIST_DIR deve essere il nome semplice di una directory locale.');
+}
+
 const nextConfig = {
   reactStrictMode: true,
   basePath: process.env.NEXT_BASE_PATH ?? '/gelateria',
   poweredByHeader: false,
   outputFileTracingRoot: import.meta.dirname,
+  ...(requestedDistDir ? { distDir: requestedDistDir } : {}),
 };
 
 export default nextConfig;

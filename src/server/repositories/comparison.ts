@@ -14,6 +14,7 @@ import { normalizzaTesto } from '@/server/domain/packaging/normalize';
 import type { BaseUnit } from '@/server/domain/packaging/units';
 import { confrontaProdotto, meritaAvviso } from '@/server/domain/pricing/comparison';
 import { nettoEffettivo, percentualeApplicata } from '@/server/domain/pricing/extra-discount';
+import { risolviAliquotaIva } from '@/server/domain/pricing/vat';
 import { CATEGORY_REF_SELECT, mapCategoryRef } from './taxonomy';
 import { settingsRepository } from './settings';
 
@@ -57,10 +58,13 @@ const OFFERTE_SELECT = {
   contentPerPack: true,
   baseUnit: true,
   active: true,
-  supplier: { select: { name: true, extraDiscountPct: true } },
+  supplier: {
+    select: { name: true, extraDiscountPct: true, defaultVatRate: true },
+  },
   currentPrice: {
     select: {
       priceNet: true,
+      vatRate: true,
       unitPrice: true,
       unitPriceBasis: true,
       validFrom: true,
@@ -84,9 +88,14 @@ type OffertaRecord = {
   contentPerPack: { toString(): string };
   baseUnit: string;
   active: boolean;
-  supplier: { name: string; extraDiscountPct: { toString(): string } | null };
+  supplier: {
+    name: string;
+    extraDiscountPct: { toString(): string } | null;
+    defaultVatRate: { toString(): string } | null;
+  };
   currentPrice: {
     priceNet: { toString(): string };
+    vatRate: { toString(): string } | null;
     unitPrice: { toString(): string };
     unitPriceBasis: string;
     validFrom: Date;
@@ -102,7 +111,7 @@ function scontoDi(o: OffertaRecord) {
   };
 }
 
-function mapOfferta(o: OffertaRecord, fermo: boolean): ComparedOffer {
+function mapOfferta(o: OffertaRecord, fermo: boolean, defaultVat: number): ComparedOffer {
   const sconto = scontoDi(o);
   const netto = o.currentPrice!.priceNet.toString();
   return {
@@ -122,7 +131,12 @@ function mapOfferta(o: OffertaRecord, fermo: boolean): ComparedOffer {
     unitOfMeasure: o.unitOfMeasure as ComparedOffer['unitOfMeasure'],
     contentPerPack: o.contentPerPack.toString(),
     baseUnit: o.baseUnit as ComparedOffer['baseUnit'],
-    vatRate: o.vatRate?.toString() ?? null,
+    vatRate: risolviAliquotaIva({
+      aliquotaPrezzo: o.currentPrice!.vatRate?.toString() ?? null,
+      aliquotaOfferta: o.vatRate?.toString() ?? null,
+      aliquotaFornitore: o.supplier.defaultVatRate?.toString() ?? null,
+      aliquotaOrganizzazione: defaultVat,
+    }).valore.toString(),
     stale: fermo,
     validFrom: o.currentPrice!.validFrom.toISOString(),
   };
@@ -160,6 +174,7 @@ function costruisciRiga(
   prodotto: ProdottoRecord,
   opzioni: Parameters<typeof confrontaProdotto>[1],
   soglie: { percentuale: number; euro: number },
+  defaultVat: number,
 ): ComparisonRow {
   const perId = new Map(prodotto.supplierProducts.map((o) => [o.id, o]));
   const esito = confrontaProdotto(
@@ -194,10 +209,14 @@ function costruisciRiga(
     unitOfMeasure: prodotto.unitOfMeasure as ComparisonRow['unitOfMeasure'],
     state: esito.stato,
     reason: esito.motivo,
-    best: esito.migliore ? mapOfferta(perId.get(esito.migliore.id)!, esito.migliore.fermo) : null,
-    worst: esito.piuCara ? mapOfferta(perId.get(esito.piuCara.id)!, esito.piuCara.fermo) : null,
+    best: esito.migliore
+      ? mapOfferta(perId.get(esito.migliore.id)!, esito.migliore.fermo, defaultVat)
+      : null,
+    worst: esito.piuCara
+      ? mapOfferta(perId.get(esito.piuCara.id)!, esito.piuCara.fermo, defaultVat)
+      : null,
     offersCompared: esito.classifica.length,
-    ranked: esito.classifica.map((r) => mapOfferta(perId.get(r.id)!, r.fermo)),
+    ranked: esito.classifica.map((r) => mapOfferta(perId.get(r.id)!, r.fermo, defaultVat)),
     excluded: escluse,
     unitDifference: esito.differenzaUnitaria?.toString() ?? null,
     savingPerPack: esito.risparmioPerConfezione?.toString() ?? null,
@@ -232,25 +251,27 @@ export function comparisonRepository(organizationId: string) {
      */
     async perProdotti(productIds: readonly string[]): Promise<Map<string, ComparisonRow>> {
       if (productIds.length === 0) return new Map();
-      const { opzioni, soglie } = await contesto();
+      const { impostazioni, opzioni, soglie } = await contesto();
       const prodotti = (await db.product.findMany({
         where: { id: { in: [...productIds] } },
         select: PRODOTTO_SELECT,
       })) as unknown as ProdottoRecord[];
       return new Map(
-        prodotti.map((p) => [p.id, costruisciRiga(p, opzioni, soglie)] as const),
+        prodotti.map(
+          (p) => [p.id, costruisciRiga(p, opzioni, soglie, impostazioni.defaultVat)] as const,
+        ),
       );
     },
 
     /** Il confronto di un prodotto solo, con la stessa regola del report. */
     async perProdotto(productId: string): Promise<ComparisonRow | null> {
-      const { opzioni, soglie } = await contesto();
+      const { impostazioni, opzioni, soglie } = await contesto();
       const prodotto = (await db.product.findFirst({
         where: { id: productId },
         select: PRODOTTO_SELECT,
       })) as unknown as ProdottoRecord | null;
       if (!prodotto) return null;
-      return costruisciRiga(prodotto, opzioni, soglie);
+      return costruisciRiga(prodotto, opzioni, soglie, impostazioni.defaultVat);
     },
 
     async report(query: ComparisonQuery = {}): Promise<ComparisonReport> {
@@ -277,7 +298,7 @@ export function comparisonRepository(organizationId: string) {
       const senzaConfronto: ComparisonRow[] = [];
 
       for (const prodotto of prodotti) {
-        const riga = costruisciRiga(prodotto, opzioni, soglie);
+        const riga = costruisciRiga(prodotto, opzioni, soglie, impostazioni.defaultVat);
         if (riga.state === 'CONFRONTATO') confronti.push(riga);
         else senzaConfronto.push(riga);
       }

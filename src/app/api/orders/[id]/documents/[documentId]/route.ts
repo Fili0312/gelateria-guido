@@ -44,6 +44,10 @@ export async function GET(
       },
     });
   } catch (error) {
-    return mappedErrorResponse(error, 'Non è stato possibile scaricare il documento.', ERRORI_ORDINE);
+    return mappedErrorResponse(
+      error,
+      'Non è stato possibile scaricare il documento.',
+      ERRORI_ORDINE,
+    );
   }
 }

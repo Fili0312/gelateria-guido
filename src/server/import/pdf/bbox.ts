@@ -67,7 +67,9 @@ function decodifica(grezzo: string): string {
   return grezzo
     .replace(/&(amp|lt|gt|quot|apos);/g, (intero) => ENTITA[intero] ?? intero)
     .replace(/&#(\d+);/g, (_, codice: string) => String.fromCodePoint(Number(codice)))
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, codice: string) => String.fromCodePoint(parseInt(codice, 16)));
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, codice: string) =>
+      String.fromCodePoint(parseInt(codice, 16)),
+    );
 }
 
 function testaMetadati(xml: string): MetadatiPdf {

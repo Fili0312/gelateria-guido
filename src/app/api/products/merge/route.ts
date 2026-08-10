@@ -10,9 +10,7 @@ import { unisciProdotti } from '@/server/catalog/merge';
 
 export const dynamic = 'force-dynamic';
 
-const corpoSchema = z
-  .object({ primoId: z.string().min(1), secondoId: z.string().min(1) })
-  .strict();
+const corpoSchema = z.object({ primoId: z.string().min(1), secondoId: z.string().min(1) }).strict();
 
 /** Unisce due prodotti: le offerte restano distinte, cambia solo a chi appartengono. */
 export async function POST(request: Request) {

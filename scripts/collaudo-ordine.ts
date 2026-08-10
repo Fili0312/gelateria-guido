@@ -52,7 +52,10 @@ async function main() {
     Array.from({ length: 5 }, () => ordini.corrente(utente.id)),
   );
   const distinti = new Set(contemporanee.map((o) => o.id));
-  esito(distinti.size === 1, `cinque richieste simultanee creano una bozza sola (${distinti.size})`);
+  esito(
+    distinti.size === 1,
+    `cinque richieste simultanee creano una bozza sola (${distinti.size})`,
+  );
   esito(Number(sql('SELECT count(*) FROM "order"')) === 1, 'nel database c’è un ordine solo');
 
   console.log('\n── Aggiungere ──────────────────────────────────────────────────\n');
@@ -73,11 +76,17 @@ async function main() {
   const a = offerte[0]!;
   const b = offerte[1]!;
 
-  const conUna = await ordini.aggiungiRiga(utente.id, { supplierProductId: a.id, quantityPacks: 2 });
+  const conUna = await ordini.aggiungiRiga(utente.id, {
+    supplierProductId: a.id,
+    quantityPacks: 2,
+  });
   esito(conUna.righe.length === 1, `una riga dopo la prima aggiunta`);
   esito(conUna.righe[0]!.quantityPacks === 2, 'con la quantità richiesta');
 
-  const conDue = await ordini.aggiungiRiga(utente.id, { supplierProductId: a.id, quantityPacks: 1 });
+  const conDue = await ordini.aggiungiRiga(utente.id, {
+    supplierProductId: a.id,
+    quantityPacks: 1,
+  });
   esito(conDue.righe.length === 1, 'aggiungere la stessa offerta NON crea una seconda riga');
   esito(conDue.righe[0]!.quantityPacks === 3, 'aumenta la quantità: 2 + 1 = 3');
 
@@ -97,7 +106,8 @@ async function main() {
     ),
   );
   const fallite = raffica.filter((r) => r !== null);
-  if (fallite.length > 0) console.log('    motivo:', fallite[0]!.replace(/\s+/g, ' ').slice(0, 200));
+  if (fallite.length > 0)
+    console.log('    motivo:', fallite[0]!.replace(/\s+/g, ' ').slice(0, 200));
   esito(
     fallite.length === 0,
     `nessuna delle dieci aggiunte simultanee fallisce (${fallite.length} fallite${fallite[0] ? `: ${fallite[0].slice(0, 70)}` : ''})`,
@@ -198,8 +208,7 @@ async function main() {
   const dopo = await altraSessione.corrente(utente.id);
   esito(dopo.id === prima.id, 'una sessione nuova ritrova la stessa bozza');
   esito(
-    dopo.righe.length === prima.righe.length &&
-      dopo.totali.netto === prima.totali.netto,
+    dopo.righe.length === prima.righe.length && dopo.totali.netto === prima.totali.netto,
     `con le stesse ${dopo.righe.length} righe e lo stesso totale (${dopo.totali.netto})`,
   );
 

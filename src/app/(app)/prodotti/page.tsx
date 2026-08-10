@@ -112,67 +112,69 @@ export default async function ProductsPage({
       <details className="group rounded-2xl border border-neutral-200 bg-white px-4 py-3">
         <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-neutral-800">
           Filtra e ordina l’elenco
-          <span aria-hidden className="text-neutral-400 group-open:rotate-90">›</span>
+          <span aria-hidden className="text-neutral-400 group-open:rotate-90">
+            ›
+          </span>
         </summary>
-      <form className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-5" role="search">
-        <Input
-          name="q"
-          label="Filtra l’elenco"
-          defaultValue={filtri.q}
-          placeholder="Nome del prodotto"
-        />
-        <Select name="departmentId" label="Reparto" defaultValue={filtri.departmentId}>
-          <option value="">Tutti</option>
-          {tassonomia.departments.map((reparto) => (
-            <option key={reparto.id} value={reparto.id}>
-              {reparto.name} ({reparto.productsCount})
-            </option>
-          ))}
-        </Select>
-        {/* La categoria puntuale, con i reparti come gruppi: chi sa già cosa
+        <form className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-5" role="search">
+          <Input
+            name="q"
+            label="Filtra l’elenco"
+            defaultValue={filtri.q}
+            placeholder="Nome del prodotto"
+          />
+          <Select name="departmentId" label="Reparto" defaultValue={filtri.departmentId}>
+            <option value="">Tutti</option>
+            {tassonomia.departments.map((reparto) => (
+              <option key={reparto.id} value={reparto.id}>
+                {reparto.name} ({reparto.productsCount})
+              </option>
+            ))}
+          </Select>
+          {/* La categoria puntuale, con i reparti come gruppi: chi sa già cosa
             cerca la sceglie qui e salta il filtro per reparto, che è meno
             preciso ma più veloce da usare. */}
-        <Select name="categoryId" label="Categoria" defaultValue={filtri.categoryId}>
-          <option value="">Tutte</option>
-          {tassonomia.departments.map((reparto) => (
-            <optgroup key={reparto.id} label={reparto.name}>
-              {reparto.categories.map((categoria) => (
-                <option key={categoria.id} value={categoria.id}>
-                  {categoria.name} ({categoria.productsCount})
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </Select>
-        {/* «Classificazione» e «Offerte» erano due filtri che nessuno usava:
+          <Select name="categoryId" label="Categoria" defaultValue={filtri.categoryId}>
+            <option value="">Tutte</option>
+            {tassonomia.departments.map((reparto) => (
+              <optgroup key={reparto.id} label={reparto.name}>
+                {reparto.categories.map((categoria) => (
+                  <option key={categoria.id} value={categoria.id}>
+                    {categoria.name} ({categoria.productsCount})
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </Select>
+          {/* «Classificazione» e «Offerte» erano due filtri che nessuno usava:
             il primo perché i prodotti sono tutti classificati, il secondo
             perché un prodotto senza offerte è un caso raro e si vede
             dall'elenco. Al loro posto il fornitore, che è il modo in cui si
             guarda il catalogo quando si sistema un accordo. */}
-        <Select name="supplierId" label="Fornitore" defaultValue={filtri.supplierId}>
-          <option value="">Tutti</option>
-          {fornitori.map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.name}
-              {f.extraDiscountPct ? ` · −${f.extraDiscountPct}%` : ''}
-            </option>
-          ))}
-        </Select>
-        <Select name="sort" label="Ordina" defaultValue={filtri.sort}>
-          <option value="name-asc">Nome (A→Z)</option>
-          <option value="name-desc">Nome (Z→A)</option>
-          <option value="updated-desc">Modificati di recente</option>
-          <option value="offers-desc">Più offerte</option>
-        </Select>
-        <div className="sm:col-span-3 lg:col-span-5">
-          <button
-            type="submit"
-            className="focus-visible:ring-brand-600 min-h-11 rounded-lg border border-neutral-300 bg-white px-4 text-sm font-semibold text-neutral-800 hover:border-neutral-400 focus-visible:ring-2 focus-visible:outline-none"
-          >
-            Applica i filtri
-          </button>
-        </div>
-      </form>
+          <Select name="supplierId" label="Fornitore" defaultValue={filtri.supplierId}>
+            <option value="">Tutti</option>
+            {fornitori.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+                {f.extraDiscountPct ? ` · −${f.extraDiscountPct}%` : ''}
+              </option>
+            ))}
+          </Select>
+          <Select name="sort" label="Ordina" defaultValue={filtri.sort}>
+            <option value="name-asc">Nome (A→Z)</option>
+            <option value="name-desc">Nome (Z→A)</option>
+            <option value="updated-desc">Modificati di recente</option>
+            <option value="offers-desc">Più offerte</option>
+          </Select>
+          <div className="sm:col-span-3 lg:col-span-5">
+            <button
+              type="submit"
+              className="focus-visible:ring-brand-600 min-h-11 rounded-lg border border-neutral-300 bg-white px-4 text-sm font-semibold text-neutral-800 hover:border-neutral-400 focus-visible:ring-2 focus-visible:outline-none"
+            >
+              Applica i filtri
+            </button>
+          </div>
+        </form>
       </details>
 
       {/* Filtrare per un fornitore senza sconto e non vedere nessun pulsante

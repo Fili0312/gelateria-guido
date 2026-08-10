@@ -34,8 +34,23 @@ const ALIQUOTE_IVA = new Set([0, 4, 5, 10, 22]);
 
 /** I codici U.M. che i listini della gelateria usano davvero. */
 const CODICI_UM = new Set([
-  'bt', 'btg', 'un', 'pz', 'cad', 'nr', 'bot',
-  'co', 'ct', 'cf', 'cart', 'sc', 'conf', 'box', 'cs', 'kg', 'lt',
+  'bt',
+  'btg',
+  'un',
+  'pz',
+  'cad',
+  'nr',
+  'bot',
+  'co',
+  'ct',
+  'cf',
+  'cart',
+  'sc',
+  'conf',
+  'box',
+  'cs',
+  'kg',
+  'lt',
 ]);
 
 export interface IndizioColonna {

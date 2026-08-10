@@ -1,3 +1,5 @@
+import { businessCalendarDay } from '@/features/prices/date';
+
 /**
  * Il codice dell'ordine.
  *
@@ -59,7 +61,7 @@ export function prossimoCodiceOrdine(
   codiciEsistenti: readonly (string | null)[],
   adesso: Date = new Date(),
 ): string {
-  const anno = adesso.getFullYear();
+  const anno = Number(businessCalendarDay(adesso).slice(0, 4));
   const massimo = codiciEsistenti.reduce<number>((piuAlto, codice) => {
     const numero = progressivoDi(codice, anno);
     return numero !== null && numero > piuAlto ? numero : piuAlto;
