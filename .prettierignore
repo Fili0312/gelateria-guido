@@ -11,3 +11,8 @@ tests/fixtures
 # produce solo rumore nei diff.
 docs
 *.md
+
+# `next build` riscrive tsconfig.json espandendo gli array. Se Prettier lo
+# ricompatta, ogni build sporca il worktree e il deploy successivo si ferma
+# sul controllo «albero pulito». Vince Next: è lui a scriverlo.
+tsconfig.json
