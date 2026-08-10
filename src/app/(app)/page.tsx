@@ -123,23 +123,6 @@ const DATA_BREVE = new Intl.DateTimeFormat('it-IT', {
   timeZone: 'Europe/Rome',
 });
 
-const STATI_LISTINO: Record<
-  string,
-  { testo: string; variante: 'neutral' | 'brand' | 'success' | 'warning' | 'danger' }
-> = {
-  UPLOADED: { testo: 'caricato', variante: 'neutral' },
-  EXTRACTING: { testo: 'estrazione', variante: 'brand' },
-  EXTRACTED: { testo: 'estratto', variante: 'brand' },
-  STRUCTURING: { testo: 'lettura', variante: 'brand' },
-  MATCHING: { testo: 'abbinamento', variante: 'brand' },
-  REVIEW: { testo: 'da rivedere', variante: 'warning' },
-  APPLYING: { testo: 'applicazione', variante: 'brand' },
-  APPLIED: { testo: 'applicato', variante: 'success' },
-  FAILED: { testo: 'errore', variante: 'danger' },
-  DISCARDED: { testo: 'scartato', variante: 'neutral' },
-  REVERTED: { testo: 'annullato', variante: 'neutral' },
-};
-
 function SchedaDati({
   titolo,
   href,
@@ -211,7 +194,14 @@ export default async function DashboardPage() {
         </div>
       </header>
 
-      <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* Due riquadri, non quattro. «Prodotti confrontabili» e «Da sistemare»
+          erano conteggi che non facevano fare niente: il primo dice quanto è
+          grande il catalogo, cosa che non cambia una decisione; il secondo
+          ripeteva quello che l'elenco «Da fare» in fondo dice già, con i
+          numeri separati e cliccabili invece che sommati in uno solo. Quello
+          che resta risponde alle due domande di chi apre l'app la mattina:
+          cosa sto ordinando adesso, e quanto ho speso ultimamente. */}
+      <dl className="grid gap-3 sm:grid-cols-2">
         <Riquadro
           href="/ordini"
           etichetta="Ordine in corso"
@@ -231,26 +221,6 @@ export default async function DashboardPage() {
             p.ordini.confermati > 0
               ? `${p.ordini.ultimi30giorni} ordini · ultimo il ${ultimo}`
               : 'Nessun ordine ancora confermato'
-          }
-        />
-        <Riquadro
-          href="/convenienti"
-          etichetta="Prodotti confrontabili"
-          valore={String(p.catalogo.conConfronto)}
-          nota={`su ${p.catalogo.prodotti} a catalogo, da ${p.catalogo.fornitori} fornitori`}
-        />
-        <Riquadro
-          href="/convenienti"
-          etichetta="Da sistemare"
-          valore={String(
-            p.daFare.righeDaAbbinare + p.daFare.listiniInRevisione + p.daFare.confezioniDaDefinire,
-          )}
-          nota="righe, listini e confezioni in sospeso"
-          tono={
-            p.daFare.righeDaAbbinare + p.daFare.listiniInRevisione + p.daFare.confezioniDaDefinire >
-            0
-              ? 'attenzione'
-              : 'neutro'
           }
         />
       </dl>
@@ -293,6 +263,9 @@ export default async function DashboardPage() {
             <span className="flex items-center gap-2 text-sm font-semibold text-green-800">
               <AppIcon name="savings" className="h-5 w-5" />
               Risparmio potenziale annuo
+              <span className="rounded-md border border-green-300 bg-white/70 px-1.5 py-0.5 text-[11px] font-bold tracking-wide text-green-800 uppercase">
+                stima
+              </span>
             </span>
             <span className="tabellare mt-2 block text-4xl font-black tracking-[-0.04em] text-green-950 group-hover:underline">
               {Number(p.risparmioPotenziale.importoAnnuo) > 0
@@ -301,16 +274,19 @@ export default async function DashboardPage() {
             </span>
             <span className="mt-1 block text-sm leading-6 text-green-900/75">
               {p.risparmioPotenziale.prodotti > 0
-                ? `${p.risparmioPotenziale.prodotti} prodotti · circa ${p.risparmioPotenziale.incidenzaPct}% della spesa annualizzata`
+                ? `se comprassi sempre dal più conveniente, su ${p.risparmioPotenziale.prodotti} ${p.risparmioPotenziale.prodotti === 1 ? 'prodotto' : 'prodotti'} · circa il ${p.risparmioPotenziale.incidenzaPct}% di quanto spendi`
                 : 'Servono acquisti e almeno due offerte confrontabili.'}
             </span>
           </Link>
 
           <div>
             <p className="mb-2 text-xs leading-5 text-green-900/70">
-              Consumi reali degli ultimi {p.periodo.giorniOsservati} giorni, annualizzati e
-              moltiplicati per la differenza attuale fra offerta migliore e più cara. È una stima
-              massima: minimi d’ordine e consegne possono cambiare la scelta.
+              <strong className="font-semibold">Come nasce il numero:</strong> si prendono i tuoi
+              acquisti veri degli ultimi {p.periodo.giorniOsservati} giorni, si portano a dodici
+              mesi, e si moltiplicano per la differenza di prezzo di oggi fra il fornitore più
+              conveniente e il più caro. È il <strong className="font-semibold">massimo</strong>{' '}
+              ottenibile: minimi d’ordine, giorni di consegna e accordi in corso possono rendere la
+              scelta migliore un’altra.
             </p>
             {p.risparmioPotenziale.dettaglio.length > 0 && (
               <ul className="divide-y divide-green-200/70 overflow-hidden rounded-xl border border-green-200 bg-white/75">
@@ -442,113 +418,14 @@ export default async function DashboardPage() {
             </ul>
           )}
         </SchedaDati>
-
-        <SchedaDati
-          titolo="Ultimi listini caricati"
-          href="/listini"
-          nota="Stato reale della lavorazione, dal più recente."
-        >
-          {p.ultimiListini.length === 0 ? (
-            <NessunDato>Nessun listino caricato.</NessunDato>
-          ) : (
-            <ul className="divide-y divide-neutral-100">
-              {p.ultimiListini.map((listino) => {
-                const stato = STATI_LISTINO[listino.stato] ?? {
-                  testo: listino.stato.toLocaleLowerCase('it'),
-                  variante: 'neutral' as const,
-                };
-                return (
-                  <li key={listino.id}>
-                    <Link
-                      href={`/listini/${listino.id}`}
-                      className="focus-visible:ring-brand-600 flex items-center gap-3 px-5 py-3 hover:bg-neutral-50 focus-visible:ring-2 focus-visible:outline-none"
-                    >
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-semibold text-neutral-950">
-                          {listino.fornitore} · {listino.copertura}
-                        </span>
-                        <span className="block truncate text-xs text-neutral-500">
-                          {DATA_BREVE.format(new Date(listino.caricatoIl))} · {listino.righe} righe
-                          · {listino.nomeFile}
-                        </span>
-                      </span>
-                      <Badge variant={stato.variante} className="shrink-0">
-                        {stato.testo}
-                      </Badge>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </SchedaDati>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <SchedaDati
-          titolo={`Prodotti senza confronto (${p.senzaConfronto.totale})`}
-          href="/convenienti"
-          nota="Un solo fornitore, prezzo mancante oppure confezione non confrontabile."
-        >
-          {p.senzaConfronto.prodotti.length === 0 ? (
-            <NessunDato>Tutti i prodotti con offerte hanno un confronto valido.</NessunDato>
-          ) : (
-            <ul className="divide-y divide-neutral-100">
-              {p.senzaConfronto.prodotti.map((prodotto) => (
-                <li key={prodotto.productId}>
-                  <Link
-                    href={`/prodotti/${prodotto.productId}`}
-                    className="focus-visible:ring-brand-600 flex items-center gap-3 px-5 py-3 hover:bg-neutral-50 focus-visible:ring-2 focus-visible:outline-none"
-                  >
-                    <span className="min-w-0 flex-1 truncate font-semibold text-neutral-950">
-                      {prodotto.nome}
-                    </span>
-                    <span className="max-w-[55%] shrink-0 text-right text-xs text-neutral-500">
-                      {prodotto.motivo}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </SchedaDati>
-
-        <SchedaDati
-          titolo={`Prodotti spariti dai listini (${p.spariti.totale})`}
-          href="/prodotti"
-          nota="Offerte non più presenti nell'ultima copertura applicata del fornitore."
-        >
-          {p.spariti.prodotti.length === 0 ? (
-            <NessunDato>Nessuna offerta risulta sparita.</NessunDato>
-          ) : (
-            <ul className="divide-y divide-neutral-100">
-              {p.spariti.prodotti.map((prodotto) => (
-                <li key={prodotto.supplierProductId}>
-                  <Link
-                    href={hrefProdotto(prodotto.productId, prodotto.supplierId)}
-                    className="focus-visible:ring-brand-600 flex items-center gap-3 px-5 py-3 hover:bg-neutral-50 focus-visible:ring-2 focus-visible:outline-none"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold text-neutral-950">
-                        {prodotto.prodotto}
-                      </span>
-                      <span className="block truncate text-xs text-neutral-500">
-                        {prodotto.fornitore}
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-xs text-neutral-500">
-                      {DATA_BREVE.format(new Date(prodotto.sparitoIl))}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </SchedaDati>
       </div>
 
       <section className="space-y-3">
-        <h2 className="font-black text-neutral-950">Da fare</h2>
+        <h2 className="font-black text-neutral-950">Da sistemare</h2>
+        <p className="-mt-1 text-sm text-neutral-500">
+          Ogni voce toglie un pezzo di catalogo dai confronti: finché restano, su quei prodotti
+          l’app non sa dirti chi conviene.
+        </p>
         <DaFareList daFare={p.daFare} />
       </section>
     </div>
