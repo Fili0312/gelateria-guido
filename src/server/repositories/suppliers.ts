@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { supplierData } from './suppliers-data';
+
 import { cache } from 'react';
 import {
   supplierHasLinkedData,
@@ -191,28 +193,6 @@ function detailAsInput(supplier: SupplierDetail): SupplierInput {
   };
 }
 
-function supplierData(organizationId: string, input: SupplierInput) {
-  return {
-    organizationId,
-    name: input.name,
-    code: input.code,
-    vatNumber: input.vatNumber,
-    email: input.email,
-    phone: input.phone,
-    contactName: input.contactName,
-    address: input.address,
-    notes: input.notes,
-    pricesIncludeVat: input.pricesIncludeVat,
-    defaultVatRate: input.defaultVatRate,
-    minOrderValue: input.minOrderValue,
-    deliveryDays: input.deliveryDays,
-    orderEmail: input.orderEmail,
-    orderEmailCc: input.orderEmailCc,
-    sendOrdersByEmail: input.sendOrdersByEmail,
-    emailNote: input.emailNote,
-    active: input.active,
-  };
-}
 
 function listOrderBy(sort: SupplierListQuery['sort']) {
   if (sort === 'name-desc') return [{ name: 'desc' as const }];
