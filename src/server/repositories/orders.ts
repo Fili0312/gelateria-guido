@@ -88,6 +88,7 @@ const OFFERTA_ORDINE_SELECT = {
   supplierCode: true,
   rawName: true,
   packQuantity: true,
+  packagingType: true,
   unitSize: true,
   unitOfMeasure: true,
   contentPerPack: true,
@@ -121,6 +122,7 @@ type OffertaOrdine = {
   supplierCode: string | null;
   rawName: string;
   packQuantity: number;
+  packagingType: string | null;
   unitSize: DecimalLike;
   unitOfMeasure: RigaOrdine['unitOfMeasure'];
   contentPerPack: DecimalLike;
@@ -201,6 +203,7 @@ function snapshotDaOfferta(
     supplierNameSnapshot: offerta.supplier.name,
     supplierCodeSnapshot: offerta.supplierCode,
     packQuantitySnapshot: offerta.packQuantity,
+    packagingTypeSnapshot: offerta.packagingType,
     unitSizeSnapshot: offerta.unitSize.toString(),
     uomSnapshot: offerta.unitOfMeasure,
     unitPriceNetSnapshot: prezzo.prezzoNetto.toString(),
@@ -236,6 +239,7 @@ function prezzoVistoDaOfferta(
     supplierNameSnapshot: offerta.supplier.name,
     supplierCodeSnapshot: offerta.supplierCode,
     packQuantitySnapshot: offerta.packQuantity,
+    packagingTypeSnapshot: offerta.packagingType,
     unitSizeSnapshot: offerta.unitSize.toString(),
     uomSnapshot: offerta.unitOfMeasure,
     currentPriceId: offerta.currentPrice?.id ?? null,
@@ -1162,6 +1166,7 @@ export function ordersRepository(organizationId: string) {
             supplierNameSnapshot: riga.supplierName,
             supplierCodeSnapshot: riga.supplierCode,
             packQuantitySnapshot: riga.packQuantity,
+            packagingTypeSnapshot: riga.packagingType,
             unitSizeSnapshot: riga.unitSize,
             uomSnapshot: riga.unitOfMeasure,
             currentPriceId: null,

@@ -44,6 +44,9 @@ export interface RigaDocumento {
   supplierCode: string | null;
   name: string;
   packQuantity: number;
+  /** La sigla d'imballo congelata: distingue «collo da 12» da «bottiglia». */
+  packagingType: string | null;
+  packQuantityConfirmed: boolean;
   unitSize: string;
   unitOfMeasure: UnitOfMeasureValue;
   quantityPacks: number;

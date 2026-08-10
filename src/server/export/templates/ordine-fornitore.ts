@@ -1,6 +1,7 @@
 import 'server-only';
 
-import { euro, formatoConfezione, numero } from '@/features/products/format';
+import { euro, numero } from '@/features/products/format';
+import { descriviCollo } from '@/features/products/packaging';
 import { nomeFile } from '../nome-file';
 import type { DatiDocumento, DocumentTemplate } from '../template';
 
@@ -107,12 +108,13 @@ function html(dati: DatiDocumento): string {
 
   const righe = g.righe
     .map((r) => {
-      const pezzi = r.packQuantity * r.quantityPacks;
+      const collo = descriviCollo(r);
+      const pezzi = collo.pezzi * r.quantityPacks;
       return `<tr>
         <td class="codice">${r.supplierCode ? scampa(r.supplierCode) : '<span style="color:#a3a3a3;font-weight:400">—</span>'}</td>
         <td>
           <div class="descrizione">${scampa(r.name)}</div>
-          <div class="confezione">${scampa(formatoConfezione(r.unitSize, r.unitOfMeasure, r.packQuantity))}</div>
+          <div class="confezione">${scampa(collo.titolo)}${collo.dettaglio ? ` · ${scampa(collo.dettaglio)}` : ''}</div>
           ${r.note ? `<div class="nota-riga">${scampa(r.note)}</div>` : ''}
         </td>
         <td class="num quantita">${numero(r.quantityPacks, 0)}</td>
@@ -150,9 +152,9 @@ function html(dati: DatiDocumento): string {
       <tr>
         <th style="width:12%">Cod. art.</th>
         <th>Descrizione</th>
-        <th class="num" style="width:8%">Conf.</th>
-        <th class="num" style="width:10%">Pezzi</th>
-        <th class="num" style="width:13%">Prezzo</th>
+        <th class="num" style="width:9%">Q.tà colli</th>
+        <th class="num" style="width:10%">Pezzi tot.</th>
+        <th class="num" style="width:13%">Prezzo/collo</th>
         <th class="num" style="width:14%">Totale</th>
       </tr>
     </thead>

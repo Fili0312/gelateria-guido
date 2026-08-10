@@ -10,6 +10,7 @@ export interface PrezzoVistoOrdine {
   supplierNameSnapshot: string;
   supplierCodeSnapshot: string | null;
   packQuantitySnapshot: number;
+  packagingTypeSnapshot: string | null;
   unitSizeSnapshot: string;
   uomSnapshot: string;
   currentPriceId: string | null;

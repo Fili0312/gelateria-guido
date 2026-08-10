@@ -98,6 +98,7 @@ export async function datiOrdine(
           supplierNameSnapshot: true,
           supplierCodeSnapshot: true,
           packQuantitySnapshot: true,
+          packagingTypeSnapshot: true,
           unitSizeSnapshot: true,
           uomSnapshot: true,
           quantityPacks: true,
@@ -152,6 +153,11 @@ export async function datiOrdine(
       supplierCode: riga.supplierCodeSnapshot,
       name: riga.nameSnapshot,
       packQuantity: riga.packQuantitySnapshot,
+      packagingType: riga.packagingTypeSnapshot,
+      // Gli snapshot non portano il nostro flag «confezione da definire»:
+      // congelano cosa si è comprato, non i dubbi che avevamo. Un imballo
+      // contraddittorio lo riconosce comunque `descriviCollo`.
+      packQuantityConfirmed: true,
       unitSize: riga.unitSizeSnapshot.toString(),
       unitOfMeasure: riga.uomSnapshot as UnitOfMeasureValue,
       quantityPacks: riga.quantityPacks,

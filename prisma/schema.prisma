@@ -872,6 +872,11 @@ model OrderLine {
   supplierNameSnapshot   String        @map("supplier_name_snapshot")
   supplierCodeSnapshot   String?       @map("supplier_code_snapshot")
   packQuantitySnapshot   Int           @map("pack_quantity_snapshot")
+  /// La sigla dell'imballo del listino (`BT`, `CO`, `CT`): serve a scrivere
+  /// sul documento «3 colli da 12» invece di «3». Congelata come il resto —
+  /// leggerla dal catalogo farebbe cambiare un ordine di sei mesi fa quando
+  /// il fornitore reimpagina il listino.
+  packagingTypeSnapshot  String?       @map("packaging_type_snapshot")
   unitSizeSnapshot       Decimal       @map("unit_size_snapshot") @db.Decimal(12, 4)
   uomSnapshot            UnitOfMeasure @map("uom_snapshot")
   unitPriceNetSnapshot   Decimal       @map("unit_price_net_snapshot") @db.Decimal(12, 4)

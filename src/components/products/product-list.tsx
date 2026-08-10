@@ -4,18 +4,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { AppIcon } from '@/components/app-icon';
-import { CategoryBadge } from '@/components/taxonomy/category-badge';
+import { aCosaSiRiferisce, ColloBadge } from './collo-badge';
 import { DiscountToggle } from './discount-toggle';
 import { PackagingQuickSet } from './packaging-quick-set';
 import { useToast } from '@/components/ui';
 import type { ProductListItem } from '@/features/products/dto';
-import {
-  confezioneDelPrezzo,
-  etichettaBasis,
-  euro,
-  formatoUnitario,
-  numero,
-} from '@/features/products/format';
+import { euro, formatoUnitario, numero } from '@/features/products/format';
 
 /**
  * Il catalogo: una riga per prodotto, densa.
@@ -71,42 +65,31 @@ function Azione({
 }
 
 /** Il prezzo e la confezione, su una riga sola. */
-function Prezzo({
-  prodotto,
-  endpointOfferte,
-}: {
-  prodotto: ProductListItem;
-  endpointOfferte: string;
-}) {
+function Prezzo({ prodotto }: { prodotto: ProductListItem }) {
   const p = prodotto.price;
   if (!p) {
     return <span className="text-xs text-neutral-400">senza prezzo</span>;
   }
 
   return (
-    <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-      <span className="tabellare text-sm font-bold text-neutral-950">{euro(p.priceNet)}</span>
-      {p.unitPrice && p.unitPriceBasis ? (
-        <span className="tabellare text-xs text-neutral-400">
-          {`${euro(p.unitPrice, 4)}${etichettaBasis(p.unitPriceBasis).slice(1)}`}
-        </span>
-      ) : (
-        <PackagingQuickSet
-          supplierProductId={p.supplierProductId}
-          supplierName={p.supplierName}
-          endpoint={endpointOfferte}
-        />
-      )}
-      <span className="text-xs text-neutral-500">{confezioneDelPrezzo(p)}</span>
-      <span className="text-xs text-neutral-400">{p.supplierName}</span>
+    <span className="flex items-baseline justify-end gap-2">
       {p.compared && p.savingPct && Number(p.savingPct) > 0 && (
         <span
-          className="rounded bg-green-100 px-1.5 py-0.5 text-[11px] font-semibold text-green-800"
+          className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-[11px] font-bold text-emerald-800"
           title={`Il più conveniente fra ${p.offersWithPrice}: costa il ${numero(p.savingPct, 1)}% in meno del più caro`}
         >
           −{numero(p.savingPct, 1)}%
         </span>
       )}
+      <span className="text-right">
+        <span className="tabellare block text-[15px] leading-5 font-bold text-neutral-950">
+          {euro(p.priceNet)}
+        </span>
+        {/* A cosa si riferisce la cifra. Senza, «4,72 €» può essere la
+            bottiglia o il collo da ventiquattro: due letture che differiscono
+            di ventiquattro volte. */}
+        <span className="block text-[11px] leading-4 text-neutral-400">{aCosaSiRiferisce(p)}</span>
+      </span>
     </span>
   );
 }
@@ -162,28 +145,47 @@ function Riga({
     }
   }
 
-  const incomplete = prodotto.offersCount - prodotto.comparableOffersCount;
-
   return (
-    <li className="group flex items-center gap-3 px-3 py-2 transition-colors hover:bg-neutral-50">
+    <li className="group hover:bg-brand-50/50 flex items-center gap-3 px-3 py-2.5 transition-colors">
       <div className="min-w-0 flex-1">
-        <p className="flex flex-wrap items-baseline gap-x-2">
-          <Link
-            href={`/prodotti/${prodotto.id}`}
-            className="focus-visible:ring-brand-600 cursor-pointer truncate text-sm font-semibold text-neutral-950 hover:underline focus-visible:ring-2 focus-visible:outline-none"
-          >
-            {prodotto.name}
-          </Link>
-          <span className="text-xs text-neutral-500">
-            {formatoUnitario(prodotto.unitSize, prodotto.unitOfMeasure)}
-          </span>
+        <Link
+          href={`/prodotti/${prodotto.id}`}
+          className="focus-visible:ring-brand-600 block cursor-pointer truncate text-sm font-semibold text-neutral-950 hover:underline focus-visible:ring-2 focus-visible:outline-none"
+        >
+          {prodotto.name}
+        </Link>
+        {/* La seconda riga risponde a una domanda sola: cosa arriva se ne
+            ordino una. Il formato del pezzo sta dentro l'etichetta del collo
+            e non anche accanto al nome — scritto due volte non informa il
+            doppio, occupa il doppio. La categoria è sparita: si filtra da
+            lassù, e ripeterla su ogni riga aggiungeva colore e non notizie. */}
+        <p className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          {prodotto.price ? (
+            <ColloBadge
+              confezione={prodotto.price}
+              onDefinisci={
+                <PackagingQuickSet
+                  supplierProductId={prodotto.price.supplierProductId}
+                  supplierName={prodotto.price.supplierName}
+                  endpoint={endpointOfferte}
+                />
+              }
+            />
+          ) : (
+            <span className="text-xs text-neutral-500">
+              {formatoUnitario(prodotto.unitSize, prodotto.unitOfMeasure)}
+            </span>
+          )}
+          {prodotto.price && (
+            <span className="text-xs text-neutral-400">{prodotto.price.supplierName}</span>
+          )}
           {prodotto.brand && <span className="text-xs text-neutral-400">{prodotto.brand}</span>}
-          <CategoryBadge categoria={prodotto.category} />
-        </p>
-        <p className="mt-0.5">
-          <Prezzo prodotto={prodotto} endpointOfferte={endpointOfferte} />
         </p>
       </div>
+
+      <span className="shrink-0">
+        <Prezzo prodotto={prodotto} />
+      </span>
 
       {/* Solo dove c'è un accordo: il comando compare accanto al prodotto e
           si preme scorrendo, senza aprire niente. */}
@@ -200,21 +202,20 @@ function Riga({
         </span>
       )}
 
-      <span className="hidden w-24 shrink-0 text-right text-xs text-neutral-500 sm:block">
+      {/* Quante offerte: è il segnale che dice se il prezzo mostrato è una
+          scelta fra alternative o l'unico che c'è. «Da definire» non si
+          ripete qui — lo dice già l'etichetta ambra sulla riga sopra. */}
+      <span className="hidden w-20 shrink-0 text-right text-xs sm:block">
         {prodotto.offersCount === 0 ? (
           <span className="text-neutral-400">nessuna offerta</span>
+        ) : prodotto.comparableOffersCount > 1 ? (
+          <span className="font-semibold text-emerald-700">
+            {prodotto.comparableOffersCount} a confronto
+          </span>
         ) : (
-          <>
+          <span className="text-neutral-400">
             {prodotto.offersCount} {prodotto.offersCount === 1 ? 'offerta' : 'offerte'}
-            {incomplete > 0 && (
-              <span
-                className="block text-amber-600"
-                title="Confezione non dichiarata: non entrano nel confronto"
-              >
-                {incomplete} da definire
-              </span>
-            )}
-          </>
+          </span>
         )}
       </span>
 
