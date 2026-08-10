@@ -220,6 +220,85 @@ export interface EsitoConferma {
   giaConfermato: boolean;
 }
 
+/** Una riga dell'elenco storico. */
+export interface OrdineInElenco {
+  id: string;
+  code: string | null;
+  status: string;
+  confirmedAt: string | null;
+  cancelledAt: string | null;
+  createdAt: string;
+  righe: number;
+  confezioni: number;
+  netto: string;
+  lordo: string;
+  /** I nomi dei fornitori, dagli snapshot: restano quelli di allora. */
+  fornitori: string[];
+}
+
+export interface ElencoOrdini {
+  items: OrdineInElenco[];
+  totale: number;
+  pagina: number;
+  perPagina: number;
+}
+
+/**
+ * Un ordine congelato, letto **solo dagli snapshot**.
+ *
+ * Nessun campo viene dal catalogo attuale: è la ragione per cui gli snapshot
+ * esistono. Un ordine di sei mesi fa deve aprirsi e mostrare i prezzi di
+ * allora anche se il prodotto è stato rinominato, il fornitore cambiato e
+ * l'offerta cancellata.
+ */
+export interface OrdineStorico {
+  id: string;
+  code: string | null;
+  status: string;
+  note: string | null;
+  createdAt: string;
+  confirmedAt: string | null;
+  cancelledAt: string | null;
+  netto: string;
+  iva: string;
+  lordo: string;
+  perFornitore: {
+    supplierName: string;
+    righe: {
+      id: string;
+      name: string;
+      supplierCode: string | null;
+      packQuantity: number;
+      unitSize: string;
+      unitOfMeasure: UnitOfMeasureValue;
+      quantityPacks: number;
+      priceNet: string;
+      lineTotalNet: string;
+      note: string | null;
+    }[];
+    netto: string;
+  }[];
+}
+
+/** Cosa è successo riordinando: il pezzo che rende «riordina» affidabile. */
+export interface EsitoRiordino {
+  orderId: string;
+  /** Righe rimesse nella bozza. */
+  copiate: number;
+  /** Righe il cui prezzo è cambiato da allora. */
+  cambiate: {
+    name: string;
+    supplierName: string;
+    prezzoAllora: string;
+    prezzoAdesso: string;
+    differenza: string;
+  }[];
+  /** Righe che non si sono potute rimettere, e perché. */
+  saltate: { name: string; supplierName: string; motivo: string }[];
+  /** L'ordine in corso è stato svuotato per far posto. */
+  bozzaSvuotata: boolean;
+}
+
 export interface OrderApiErrorBody {
   ok: false;
   error: string;

@@ -60,6 +60,27 @@ export const ricercaOrdinabileSchema = z
   })
   .strict();
 
+/**
+ * I filtri dello storico.
+ *
+ * La paginazione c'è da subito e non «quando serviranno»: un elenco che
+ * cresce di un ordine al giorno diventa illeggibile fra un anno, e aggiungerla
+ * dopo vuol dire rifare la schermata quando è già in uso.
+ */
+export const elencoOrdiniSchema = z
+  .object({
+    /** Cerca fra i **nomi dei prodotti dentro l'ordine**, non fra i codici. */
+    q: z.string().trim().max(MAX_QUERY_LENGTH).default(''),
+    stato: z.enum(['tutti', 'CONFIRMED', 'SENT', 'RECEIVED', 'CANCELLED']).default('tutti'),
+    supplierId: z.string().trim().max(64).default(''),
+    /** Periodo, in giorni indietro da oggi. `0` significa senza limite. */
+    giorni: z.coerce.number().int().min(0).max(3_650).default(0),
+    pagina: z.coerce.number().int().min(1).default(1),
+    perPagina: z.coerce.number().int().min(5).max(100).default(20),
+  })
+  .strict();
+
+export type ElencoOrdiniQuery = z.infer<typeof elencoOrdiniSchema>;
 export type RigaOrdineInput = z.infer<typeof rigaOrdineInputSchema>;
 export type RigaOrdinePatch = z.infer<typeof rigaOrdinePatchSchema>;
 export type RicercaOrdinabile = z.infer<typeof ricercaOrdinabileSchema>;

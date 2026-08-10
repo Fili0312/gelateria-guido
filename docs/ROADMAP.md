@@ -897,10 +897,22 @@ frattempo spariti. Paginazione fin da subito.
 
 **Completata quando**
 
-- [ ] un ordine di sei mesi fa si apre e mostra i prezzi di allora, anche se
-      nel frattempo prodotti e fornitori sono cambiati
-- [ ] "riordina" crea una bozza corretta e segnala le differenze di prezzo
-- [ ] i filtri funzionano su un volume realistico
+- [x] un ordine di sei mesi fa si apre e mostra i prezzi di allora, anche se
+      nel frattempo prodotti e fornitori sono cambiati — provato **facendo
+      passare i sei mesi**: prezzi raddoppiati, nomi cambiati, offerta
+      disattivata, e l'ordine non si muove
+- [x] "riordina" crea una bozza corretta e segnala le differenze di prezzo —
+      e dice articolo per articolo cosa non ha potuto rimettere
+- [x] i filtri funzionano su un volume realistico — provati anche **in
+      negativo**, con un fornitore e un prodotto che negli ordini non ci sono
+
+**Fatta il 2026-08-10** (`docs/FASE-15.md`). Il dettaglio non tocca il
+catalogo: nessun `select` passa da prodotti, offerte o fornitori. Annullare
+non cancella — l'ordine resta col suo numero, o resterebbe un buco.
+
+Restano fuori: la riscarica dell'Excel (non esiste ancora niente da
+riscaricare, è la Fase 16) e gli stati `SENT`/`RECEIVED`, che sono nei filtri
+ma nessuno li imposta finché non c'è l'invio.
 
 ---
 

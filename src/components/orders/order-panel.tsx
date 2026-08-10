@@ -182,6 +182,12 @@ export function OrderPanel({
     <div className="flex max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
       <header className="flex items-baseline justify-between gap-2 border-b border-neutral-100 px-4 py-3">
         <h2 className="font-black text-neutral-950">Ordine</h2>
+        <Link
+          href="/ordini/storico"
+          className="cursor-pointer text-xs text-neutral-500 hover:text-neutral-900 hover:underline"
+        >
+          Storico
+        </Link>
         {ordine.righe.length > 0 && (
           <button
             type="button"

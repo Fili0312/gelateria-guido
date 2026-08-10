@@ -97,7 +97,7 @@ export function OrderSummary({
         description: `${corpo.data.righe} righe · ${euro(corpo.data.netto)}`,
         tone: 'success',
       });
-      router.push(`/ordini/confermato/${corpo.data.orderId}`);
+      router.push(`/ordini/${corpo.data.orderId}`);
     } catch {
       toast({ title: 'Server non raggiungibile', tone: 'error' });
       inVolo.current = false;

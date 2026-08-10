@@ -2,14 +2,22 @@ import 'server-only';
 
 import { Decimal } from 'decimal.js';
 import type {
+  ElencoOrdini,
   EsitoConferma,
+  EsitoRiordino,
+  OrdineStorico,
   OffertaOrdinabile,
   OrdineCorrente,
   RiepilogoOrdine,
   RigaOrdine,
   RisultatoOrdinabile,
 } from '@/features/orders/dto';
-import type { RicercaOrdinabile, RigaOrdineInput, RigaOrdinePatch } from '@/features/orders/schema';
+import type {
+  ElencoOrdiniQuery,
+  RicercaOrdinabile,
+  RigaOrdineInput,
+  RigaOrdinePatch,
+} from '@/features/orders/schema';
 import { prismaForOrganization, transactionForOrganization, type OrganizationPrismaClient } from '@/server/db';
 import { calcolaCambio, confrontaPerAvviso, type OffertaPerAvviso } from '@/server/domain/orders/alert';
 import { prossimoCodiceOrdine } from '@/server/domain/orders/code';
@@ -1074,6 +1082,283 @@ export function ordersRepository(organizationId: string) {
         // stesso numero, e il numero si legge e si scrive qui dentro.
         { isolamento: 'serializable', maxAttempts: 5 },
       );
+    },
+
+    /**
+     * Lo storico, paginato.
+     *
+     * Le bozze non compaiono: una bozza non è un ordine, è un ordine che non
+     * è ancora successo. Mostrarla insieme alle altre farebbe contare due
+     * volte la spesa di questo mese.
+     */
+    async elenco(query: ElencoOrdiniQuery): Promise<ElencoOrdini> {
+      const da = query.giorni > 0 ? new Date(Date.now() - query.giorni * 86_400_000) : null;
+
+      const where = {
+        status: query.stato === 'tutti' ? { not: 'DRAFT' as const } : query.stato,
+        ...(da ? { OR: [{ confirmedAt: { gte: da } }, { createdAt: { gte: da } }] } : {}),
+        ...(query.supplierId ? { lines: { some: { supplierId: query.supplierId } } } : {}),
+        // La ricerca guarda i **nomi fotografati** nelle righe: cercando
+        // «amaretto» si vuole l'ordine in cui c'era l'amaretto, e quel nome
+        // sta nello snapshot anche se il prodotto nel frattempo è cambiato.
+        ...(query.q
+          ? { lines: { some: { nameSnapshot: { contains: query.q, mode: 'insensitive' as const } } } }
+          : {}),
+      };
+
+      const [totale, righe] = await Promise.all([
+        db.order.count({ where }),
+        db.order.findMany({
+          where,
+          select: {
+            id: true,
+            code: true,
+            status: true,
+            confirmedAt: true,
+            cancelledAt: true,
+            createdAt: true,
+            totalNet: true,
+            totalGross: true,
+            lines: { select: { quantityPacks: true, supplierNameSnapshot: true } },
+          },
+          orderBy: [{ confirmedAt: 'desc' }, { createdAt: 'desc' }],
+          skip: (query.pagina - 1) * query.perPagina,
+          take: query.perPagina,
+        }),
+      ]);
+
+      return {
+        items: righe.map((o) => ({
+          id: o.id,
+          code: o.code,
+          status: o.status,
+          confirmedAt: o.confirmedAt?.toISOString() ?? null,
+          cancelledAt: o.cancelledAt?.toISOString() ?? null,
+          createdAt: o.createdAt.toISOString(),
+          righe: o.lines.length,
+          confezioni: o.lines.reduce((n, l) => n + l.quantityPacks, 0),
+          netto: o.totalNet.toString(),
+          lordo: o.totalGross.toString(),
+          fornitori: [...new Set(o.lines.map((l) => l.supplierNameSnapshot))].sort((a, b) =>
+            a.localeCompare(b, 'it'),
+          ),
+        })),
+        totale,
+        pagina: query.pagina,
+        perPagina: query.perPagina,
+      };
+    },
+
+    /**
+     * Un ordine congelato.
+     *
+     * **Solo snapshot.** Nessun `select` qui dentro tocca prodotti, offerte o
+     * fornitori: è la ragione per cui gli snapshot esistono, e basta una join
+     * di comodo perché un ordine di sei mesi fa cominci a mostrare il nome di
+     * oggi.
+     */
+    async storico(orderId: string): Promise<OrdineStorico | null> {
+      const o = await db.order.findFirst({
+        where: { id: orderId, status: { not: 'DRAFT' } },
+        select: {
+          id: true,
+          code: true,
+          status: true,
+          note: true,
+          createdAt: true,
+          confirmedAt: true,
+          cancelledAt: true,
+          totalNet: true,
+          totalVat: true,
+          totalGross: true,
+          lines: {
+            select: {
+              id: true,
+              nameSnapshot: true,
+              supplierNameSnapshot: true,
+              supplierCodeSnapshot: true,
+              packQuantitySnapshot: true,
+              unitSizeSnapshot: true,
+              uomSnapshot: true,
+              quantityPacks: true,
+              unitPriceNetSnapshot: true,
+              lineTotalNet: true,
+              note: true,
+            },
+            orderBy: { position: 'asc' },
+          },
+        },
+      });
+      if (!o) return null;
+
+      const gruppi = new Map<string, OrdineStorico['perFornitore'][number]>();
+      for (const riga of o.lines) {
+        const g = gruppi.get(riga.supplierNameSnapshot) ?? {
+          supplierName: riga.supplierNameSnapshot,
+          righe: [],
+          netto: '0',
+        };
+        g.righe.push({
+          id: riga.id,
+          name: riga.nameSnapshot,
+          supplierCode: riga.supplierCodeSnapshot,
+          packQuantity: riga.packQuantitySnapshot,
+          unitSize: riga.unitSizeSnapshot.toString(),
+          unitOfMeasure: riga.uomSnapshot as OrdineStorico['perFornitore'][number]['righe'][number]['unitOfMeasure'],
+          quantityPacks: riga.quantityPacks,
+          priceNet: riga.unitPriceNetSnapshot.toString(),
+          lineTotalNet: riga.lineTotalNet.toString(),
+          note: riga.note,
+        });
+        g.netto = new Decimal(g.netto).plus(riga.lineTotalNet.toString()).toString();
+        gruppi.set(riga.supplierNameSnapshot, g);
+      }
+
+      return {
+        id: o.id,
+        code: o.code,
+        status: o.status,
+        note: o.note,
+        createdAt: o.createdAt.toISOString(),
+        confirmedAt: o.confirmedAt?.toISOString() ?? null,
+        cancelledAt: o.cancelledAt?.toISOString() ?? null,
+        netto: o.totalNet.toString(),
+        iva: o.totalVat.toString(),
+        lordo: o.totalGross.toString(),
+        perFornitore: [...gruppi.values()].sort((a, b) =>
+          a.supplierName.localeCompare(b.supplierName, 'it'),
+        ),
+      };
+    },
+
+    /**
+     * Rimette un ordine vecchio nella bozza, ai prezzi di oggi.
+     *
+     * Le due cose che rendono «riordina» affidabile invece che comodo:
+     *
+     *  - i prezzi sono **quelli di adesso**, non quelli fotografati allora:
+     *    riordinare a prezzi vecchi darebbe una bozza che cambia totale alla
+     *    conferma, e la conferma è dove non si vogliono sorprese;
+     *  - ciò che non si può rimettere **si dice**, articolo per articolo. Un
+     *    riordino che salta in silenzio tre righe è peggio di uno che
+     *    fallisce: la mancanza si scopre alla consegna.
+     */
+    async riordina(userId: string, orderId: string): Promise<EsitoRiordino> {
+      const vecchio = await db.order.findFirst({
+        where: { id: orderId, status: { not: 'DRAFT' } },
+        select: {
+          lines: {
+            select: {
+              supplierProductId: true,
+              quantityPacks: true,
+              nameSnapshot: true,
+              supplierNameSnapshot: true,
+              unitPriceNetSnapshot: true,
+            },
+            orderBy: { position: 'asc' },
+          },
+        },
+      });
+      if (!vecchio) throw new OrderNotFoundError('Ordine non trovato.');
+
+      const bozzaPrima = await leggi(await idBozza(userId));
+      const bozzaSvuotata = bozzaPrima.righe.length > 0;
+      if (bozzaSvuotata) await this.svuota(userId);
+
+      const offerte = await db.supplierProduct.findMany({
+        where: { id: { in: vecchio.lines.map((l) => l.supplierProductId) } },
+        select: {
+          id: true,
+          active: true,
+          currentPrice: { select: { priceNet: true } },
+        },
+      });
+      const stato = new Map(offerte.map((o) => [o.id, o] as const));
+
+      const esito: EsitoRiordino = {
+        orderId,
+        copiate: 0,
+        cambiate: [],
+        saltate: [],
+        bozzaSvuotata,
+      };
+
+      for (const riga of vecchio.lines) {
+        const offerta = stato.get(riga.supplierProductId);
+        if (!offerta) {
+          esito.saltate.push({
+            name: riga.nameSnapshot,
+            supplierName: riga.supplierNameSnapshot,
+            motivo: 'l’articolo non è più a catalogo',
+          });
+          continue;
+        }
+        if (!offerta.active) {
+          esito.saltate.push({
+            name: riga.nameSnapshot,
+            supplierName: riga.supplierNameSnapshot,
+            motivo: 'il fornitore non lo tiene più a listino',
+          });
+          continue;
+        }
+        if (!offerta.currentPrice) {
+          esito.saltate.push({
+            name: riga.nameSnapshot,
+            supplierName: riga.supplierNameSnapshot,
+            motivo: 'non ha più un prezzo corrente',
+          });
+          continue;
+        }
+
+        await this.aggiungiRiga(userId, {
+          supplierProductId: riga.supplierProductId,
+          quantityPacks: riga.quantityPacks,
+        });
+        esito.copiate += 1;
+
+        const adesso = new Decimal(offerta.currentPrice.priceNet.toString());
+        const allora = new Decimal(riga.unitPriceNetSnapshot.toString());
+        if (!adesso.equals(allora)) {
+          esito.cambiate.push({
+            name: riga.nameSnapshot,
+            supplierName: riga.supplierNameSnapshot,
+            prezzoAllora: allora.toString(),
+            prezzoAdesso: adesso.toString(),
+            differenza: adesso.minus(allora).toDecimalPlaces(2).toString(),
+          });
+        }
+      }
+
+      return esito;
+    },
+
+    /**
+     * Annulla un ordine confermato.
+     *
+     * Non si cancella: resta, con lo stato che dice cosa è successo. Un ordine
+     * sparito lascia un buco nella numerazione e nessun modo di sapere se è
+     * stato mandato o no.
+     */
+    async annulla(orderId: string): Promise<OrdineStorico> {
+      const o = await db.order.findFirst({
+        where: { id: orderId },
+        select: { id: true, status: true },
+      });
+      if (!o) throw new OrderNotFoundError('Ordine non trovato.');
+      if (o.status === 'DRAFT') {
+        throw new OrderValidationError('Una bozza non si annulla: si svuota.');
+      }
+      if (o.status === 'CANCELLED') {
+        // Già annullato: si restituisce com'è, senza errore e senza riscrivere
+        // la data — la seconda pressione non deve cambiare quando è successo.
+        return (await this.storico(orderId))!;
+      }
+
+      await db.order.update({
+        where: { id: orderId },
+        data: { status: 'CANCELLED', cancelledAt: new Date() },
+      });
+      return (await this.storico(orderId))!;
     },
 
     async svuota(userId: string): Promise<OrdineCorrente> {
