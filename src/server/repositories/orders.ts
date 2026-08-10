@@ -2,14 +2,17 @@ import 'server-only';
 
 import { Decimal } from 'decimal.js';
 import type {
+  EsitoConferma,
   OffertaOrdinabile,
   OrdineCorrente,
+  RiepilogoOrdine,
   RigaOrdine,
   RisultatoOrdinabile,
 } from '@/features/orders/dto';
 import type { RicercaOrdinabile, RigaOrdineInput, RigaOrdinePatch } from '@/features/orders/schema';
 import { prismaForOrganization, transactionForOrganization, type OrganizationPrismaClient } from '@/server/db';
 import { calcolaCambio, confrontaPerAvviso, type OffertaPerAvviso } from '@/server/domain/orders/alert';
+import { prossimoCodiceOrdine } from '@/server/domain/orders/code';
 import { totaliOrdine, totaliRiga } from '@/server/domain/orders/totals';
 import { nettoEffettivo, percentualeApplicata } from '@/server/domain/pricing/extra-discount';
 import { SETTINGS_ALL_KEYS, valoriDaRighe } from '@/features/settings/schema';
@@ -825,6 +828,252 @@ export function ordersRepository(organizationId: string) {
       });
 
       return leggi(orderId);
+    },
+
+    /**
+     * Cosa guardare prima di confermare.
+     *
+     * Nessuna di queste segnalazioni blocca. Chi ordina sa cose che l'app non
+     * sa — che quel fornitore fa un'eccezione, che quelle tre bottiglie
+     * servono stasera — e un blocco su un minimo d'ordine impedirebbe proprio
+     * l'ordine urgente che si fa comunque. Si dicono, e si va avanti.
+     */
+    async riepilogo(userId: string): Promise<RiepilogoOrdine> {
+      const orderId = await idBozza(userId);
+      const ordine = await leggi(orderId);
+      const { impostazioni } = await contesto();
+
+      // ── Minimi d'ordine ────────────────────────────────────────────
+      const fornitori = await db.supplier.findMany({
+        where: { id: { in: ordine.perFornitore.map((g) => g.supplierId) } },
+        select: { id: true, name: true, minOrderValue: true },
+      });
+      const minimiNonRaggiunti = ordine.perFornitore
+        .map((gruppo) => {
+          const fornitore = fornitori.find((f) => f.id === gruppo.supplierId);
+          if (!fornitore?.minOrderValue) return null;
+          const minimo = new Decimal(fornitore.minOrderValue.toString());
+          const netto = new Decimal(gruppo.netto);
+          if (netto.gte(minimo)) return null;
+          return {
+            supplierId: gruppo.supplierId,
+            supplierName: gruppo.supplierName,
+            minimo: minimo.toString(),
+            netto: netto.toString(),
+            manca: minimo.minus(netto).toDecimalPlaces(2).toString(),
+          };
+        })
+        .filter((m): m is NonNullable<typeof m> => m !== null);
+
+      // ── Prezzi cambiati dopo l'aggiunta ────────────────────────────
+      //
+      // La riga porta il prezzo di quando è nata; il listino può essere
+      // cambiato nel frattempo. Confermando si userà quello di adesso, quindi
+      // va detto **prima**: un ordine che cambia totale mentre lo si conferma
+      // è il modo più veloce per non fidarsi più dei numeri.
+      const offerte = await db.supplierProduct.findMany({
+        where: { id: { in: ordine.righe.map((r) => r.supplierProductId) } },
+        select: {
+          id: true,
+          currentPrice: { select: { priceNet: true, validFrom: true } },
+        },
+      });
+      const perOffertaCorrente = new Map(offerte.map((o) => [o.id, o.currentPrice] as const));
+
+      const limiteFermo = new Date();
+      limiteFermo.setMonth(limiteFermo.getMonth() - impostazioni.staleMonths);
+
+      const prezziCambiati: RiepilogoOrdine['prezziCambiati'] = [];
+      const prezziFermi: RiepilogoOrdine['prezziFermi'] = [];
+      for (const riga of ordine.righe) {
+        const corrente = perOffertaCorrente.get(riga.supplierProductId);
+        if (!corrente) continue;
+
+        const adesso = new Decimal(corrente.priceNet.toString());
+        const allora = new Decimal(riga.priceNet);
+        if (!adesso.equals(allora)) {
+          prezziCambiati.push({
+            rigaId: riga.id,
+            name: riga.name,
+            supplierName: riga.supplierName,
+            prezzoAllora: allora.toString(),
+            prezzoAdesso: adesso.toString(),
+            differenza: adesso.minus(allora).toDecimalPlaces(2).toString(),
+          });
+        }
+        if (corrente.validFrom < limiteFermo) {
+          prezziFermi.push({
+            rigaId: riga.id,
+            name: riga.name,
+            supplierName: riga.supplierName,
+            valeDa: corrente.validFrom.toISOString(),
+          });
+        }
+      }
+
+      // ── Righe senza confronto ──────────────────────────────────────
+      const senzaConfronto = ordine.righe
+        .filter((r) => r.avviso === null)
+        .map((r) => ({ rigaId: r.id, name: r.name, supplierName: r.supplierName }));
+
+      return {
+        ordine,
+        minimiNonRaggiunti,
+        prezziCambiati,
+        prezziFermi,
+        senzaConfronto,
+        confermabile: ordine.righe.length > 0,
+      };
+    },
+
+    /** La nota dell'ordine intero. */
+    async scriviNota(userId: string, nota: string | null): Promise<OrdineCorrente> {
+      const orderId = await idBozza(userId);
+      await db.order.update({ where: { id: orderId }, data: { note: nota } });
+      return leggi(orderId);
+    },
+
+    /**
+     * Congela l'ordine.
+     *
+     * ── I prezzi si rileggono adesso ───────────────────────────────
+     * Gli snapshot si riscrivono coi prezzi correnti, non con quelli di
+     * quando le righe sono nate. Confermare un ordine a prezzi vecchi
+     * significherebbe mandare al fornitore un documento che lui non
+     * riconosce, e scoprirlo in fattura. Il riepilogo li ha già segnalati:
+     * chi conferma sa cosa sta confermando.
+     *
+     * ── Il doppio invio ────────────────────────────────────────────
+     * Due chiamate simultanee risolvono la **stessa** bozza; dentro la
+     * transazione la seconda trova lo stato già cambiato e restituisce
+     * l'ordine com'è, senza toccare niente e senza errore. Un errore
+     * farebbe pensare che la prima non abbia funzionato.
+     *
+     * ── Il codice ───────────────────────────────────────────────────
+     * Si calcola **dentro** la transazione: se la conferma fallisce, il
+     * numero non è mai stato preso e non resta un buco in contabilità.
+     */
+    async conferma(userId: string): Promise<EsitoConferma> {
+      const orderId = await idBozza(userId);
+      const prima = await leggi(orderId);
+      if (prima.righe.length === 0) {
+        throw new OrderValidationError('L’ordine è vuoto: non c’è niente da confermare.');
+      }
+
+      // I prezzi correnti si leggono fuori dalla transazione: sono una
+      // fotografia, e tenerla dentro allungherebbe il lock per niente.
+      const offerte = await db.supplierProduct.findMany({
+        where: { id: { in: prima.righe.map((r) => r.supplierProductId) } },
+        select: {
+          id: true,
+          vatRate: true,
+          currentPrice: { select: { id: true, priceNet: true, vatRate: true } },
+        },
+      });
+      const correnti = new Map(offerte.map((o) => [o.id, o] as const));
+
+      return transactionForOrganization(
+        organizationId,
+        async (tx) => {
+          const ordine = await tx.order.findUniqueOrThrow({
+            where: { id: orderId },
+            select: {
+              id: true,
+              status: true,
+              code: true,
+              confirmedAt: true,
+              totalNet: true,
+              totalGross: true,
+              _count: { select: { lines: true } },
+            },
+          });
+
+          // Già confermato: la seconda chiamata non fa niente e lo dice.
+          if (ordine.status !== 'DRAFT') {
+            return {
+              orderId: ordine.id,
+              code: ordine.code ?? '',
+              confirmedAt: (ordine.confirmedAt ?? new Date()).toISOString(),
+              righe: ordine._count.lines,
+              netto: ordine.totalNet.toString(),
+              lordo: ordine.totalGross.toString(),
+              giaConfermato: true,
+            } satisfies EsitoConferma;
+          }
+
+          // Gli snapshot, ai prezzi di adesso.
+          let netto = new Decimal(0);
+          let iva = new Decimal(0);
+          for (const riga of prima.righe) {
+            const offerta = correnti.get(riga.supplierProductId);
+            const prezzo = offerta?.currentPrice;
+            if (!prezzo) {
+              throw new OrderValidationError(
+                `«${riga.name}» non ha più un prezzo corrente da ${riga.supplierName}: toglila o cambiale fornitore.`,
+              );
+            }
+            const aliquota = prezzo.vatRate ?? offerta.vatRate;
+            const t = totaliRiga({
+              prezzoConfezione: prezzo.priceNet.toString(),
+              confezioni: riga.quantityPacks,
+              aliquotaIva: aliquota?.toString() ?? null,
+            });
+            netto = netto.plus(t.netto);
+            iva = iva.plus(t.iva);
+
+            await tx.order.update({
+              where: { id: orderId },
+              data: {
+                lines: {
+                  update: {
+                    where: { id: riga.id },
+                    data: {
+                      priceId: prezzo.id,
+                      unitPriceNetSnapshot: prezzo.priceNet.toString(),
+                      vatRateSnapshot: aliquota,
+                      lineTotalNet: t.netto.toString(),
+                      lineTotalGross: t.lordo.toString(),
+                    },
+                  },
+                },
+              },
+            });
+          }
+
+          // Il codice: massimo dell'anno più uno, calcolato qui dentro.
+          const usati = await tx.order.findMany({
+            where: { code: { not: null } },
+            select: { code: true },
+          });
+          const code = prossimoCodiceOrdine(usati.map((o) => o.code));
+          const confirmedAt = new Date();
+
+          await tx.order.update({
+            where: { id: orderId },
+            data: {
+              code,
+              status: 'CONFIRMED',
+              confirmedAt,
+              totalNet: netto.toString(),
+              totalVat: iva.toString(),
+              totalGross: netto.plus(iva).toString(),
+            },
+          });
+
+          return {
+            orderId,
+            code,
+            confirmedAt: confirmedAt.toISOString(),
+            righe: prima.righe.length,
+            netto: netto.toString(),
+            lordo: netto.plus(iva).toString(),
+            giaConfermato: false,
+          } satisfies EsitoConferma;
+        },
+        // Serializable: due conferme simultanee non devono poter prendere lo
+        // stesso numero, e il numero si legge e si scrive qui dentro.
+        { isolamento: 'serializable', maxAttempts: 5 },
+      );
     },
 
     async svuota(userId: string): Promise<OrdineCorrente> {

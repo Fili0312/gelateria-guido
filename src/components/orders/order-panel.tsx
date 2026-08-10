@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { AppIcon } from '@/components/app-icon';
 import type { OrdineCorrente } from '@/features/orders/dto';
 import { CONFEZIONI_MAX, CONFEZIONI_MIN } from '@/features/orders/schema';
@@ -270,14 +271,20 @@ export function OrderPanel({
           </p>
         )}
 
-        <button
-          type="button"
-          disabled
-          title="La conferma dell’ordine arriva con la Fase 14."
-          className="mt-3 min-h-11 w-full cursor-not-allowed rounded-lg bg-neutral-200 px-4 text-sm font-semibold text-neutral-500"
+        {/* Porta al riepilogo, non conferma da qui: confermare è la cosa più
+            difficile da disfare di tutta l'app, e merita che ci si arrivi
+            apposta invece di trovarcisi con un clic di fianco al «+». */}
+        <Link
+          href={ordine.righe.length > 0 ? '/ordini/riepilogo' : '#'}
+          aria-disabled={ordine.righe.length === 0}
+          className={`mt-3 flex min-h-11 w-full items-center justify-center rounded-lg px-4 text-sm font-semibold transition-colors ${
+            ordine.righe.length > 0
+              ? 'bg-brand-600 hover:bg-brand-700 cursor-pointer text-white'
+              : 'pointer-events-none bg-neutral-200 text-neutral-500'
+          }`}
         >
-          Conferma l’ordine
-        </button>
+          Vai al riepilogo
+        </Link>
       </footer>
     </div>
   );

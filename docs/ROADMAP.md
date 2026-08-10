@@ -854,10 +854,21 @@ Un ordine confermato non è più modificabile (solo annullabile).
 
 **Completata quando**
 
-- [ ] i subtotali per fornitore e il totale generale sono corretti, IVA inclusa
-- [ ] confermando, tutti gli snapshot sono salvati e leggibili senza il catalogo
-- [ ] doppio invio non crea due ordini
-- [ ] il codice ordine è progressivo e non ha buchi né duplicati
+- [x] i subtotali per fornitore e il totale generale sono corretti, IVA inclusa
+- [x] confermando, tutti gli snapshot sono salvati e leggibili senza il
+      catalogo — provato **cancellando** ciò che l'ordine referenziava
+- [x] doppio invio non crea due ordini — cinque conferme simultanee, un
+      codice solo, nessuna fallita
+- [x] il codice ordine è progressivo e non ha buchi né duplicati
+
+**Fatta il 2026-08-10** (`docs/FASE-14.md`). Il codice si calcola **dentro**
+la transazione che conferma: se la conferma fallisce, il numero non è mai
+stato preso e non resta un buco. I prezzi si rileggono al momento della
+conferma, e il riepilogo li ha già elencati uno per uno prima di far premere.
+
+Restano fuori: l'Excel alla conferma (è la Fase 16, e la schermata lo dice),
+la modifica delle righe dal riepilogo (si torna all'ordine, dove i comandi
+già ci sono) e l'annullamento di un ordine confermato (Fase 15).
 
 ---
 

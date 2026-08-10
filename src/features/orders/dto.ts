@@ -173,6 +173,53 @@ export interface OrdineCorrente {
   updatedAt: string;
 }
 
+/**
+ * Il riepilogo prima di confermare.
+ *
+ * Non è una vista più bella dell'ordine: è **l'ultima occasione di
+ * accorgersi di qualcosa** prima che diventi un documento. Per questo le
+ * segnalazioni stanno qui e non altrove, e nessuna di esse blocca — chi
+ * ordina sa cose che l'app non sa, e un blocco su un minimo d'ordine
+ * impedirebbe l'ordine urgente da tre bottiglie che si fa comunque.
+ */
+export interface RiepilogoOrdine {
+  ordine: OrdineCorrente;
+  /** Un fornitore sotto il suo minimo: quanto manca. */
+  minimiNonRaggiunti: {
+    supplierId: string;
+    supplierName: string;
+    minimo: string;
+    netto: string;
+    manca: string;
+  }[];
+  /** Righe il cui prezzo è cambiato da quando sono state aggiunte. */
+  prezziCambiati: {
+    rigaId: string;
+    name: string;
+    supplierName: string;
+    prezzoAllora: string;
+    prezzoAdesso: string;
+    differenza: string;
+  }[];
+  /** Righe con un prezzo che non si aggiorna da troppo. */
+  prezziFermi: { rigaId: string; name: string; supplierName: string; valeDa: string }[];
+  /** Righe di prodotti che nessun altro fornitore vende: niente da confrontare. */
+  senzaConfronto: { rigaId: string; name: string; supplierName: string }[];
+  /** `false` quando l'ordine è vuoto: non c'è niente da confermare. */
+  confermabile: boolean;
+}
+
+export interface EsitoConferma {
+  orderId: string;
+  code: string;
+  confirmedAt: string;
+  righe: number;
+  netto: string;
+  lordo: string;
+  /** `true` quando l'ordine era già confermato: la seconda chiamata non fa nulla. */
+  giaConfermato: boolean;
+}
+
 export interface OrderApiErrorBody {
   ok: false;
   error: string;
