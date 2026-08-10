@@ -41,6 +41,9 @@ export default async function ProductsPage({
     suppliersRepository(user.organizationId).list({ q: '', status: 'active', sort: 'name-asc' }),
   ]);
   const fornitori = fornitoriElenco.items;
+  const fornitoreScelto = filtri.supplierId
+    ? (fornitori.find((f) => f.id === filtri.supplierId) ?? null)
+    : null;
   const conFiltri =
     filtri.q !== '' ||
     filtri.departmentId !== '' ||
@@ -171,6 +174,30 @@ export default async function ProductsPage({
         </div>
       </form>
       </details>
+
+      {/* Filtrare per un fornitore senza sconto e non vedere nessun pulsante
+          è un'assenza muta: sembra che la funzione non ci sia. Qui si dice
+          perché e dove si mette. */}
+      {fornitoreScelto && !fornitoreScelto.extraDiscountPct && (
+        <p className="rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm leading-6 text-neutral-600">
+          <strong className="text-neutral-900">{fornitoreScelto.name}</strong> non ha uno sconto
+          extra concordato, quindi accanto ai suoi prodotti non compare nessun pulsante.{' '}
+          <Link
+            href={`/fornitori/${fornitoreScelto.id}`}
+            className="text-brand-700 cursor-pointer font-semibold hover:underline"
+          >
+            Impostalo sulla sua scheda →
+          </Link>{' '}
+          e da qui potrai dire prodotto per prodotto se lo sconto si applica.
+        </p>
+      )}
+      {fornitoreScelto?.extraDiscountPct && (
+        <p className="rounded-xl border border-violet-200 bg-violet-50/60 px-4 py-3 text-sm leading-6 text-neutral-700">
+          <strong className="text-neutral-900">{fornitoreScelto.name}</strong> sconta il{' '}
+          <strong>{fornitoreScelto.extraDiscountPct}%</strong> su tutti questi articoli. Premi il
+          pulsante viola accanto a un prodotto per escluderlo dall’accordo.
+        </p>
+      )}
 
       <ProductList
         items={risultato.items}
