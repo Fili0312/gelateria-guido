@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { percentualeApplicata } from '@/server/domain/pricing/extra-discount';
+
 import type { SupplierOffer } from '@/features/products/dto';
 
 /**
@@ -24,6 +26,8 @@ export const OFFER_INCLUDE = {
     packagingType: true,
     packQuantity: true,
     packQuantityConfirmed: true,
+    extraDiscountExcluded: true,
+    extraDiscountPct: true,
     unitSize: true,
     unitOfMeasure: true,
     contentPerPack: true,
@@ -33,7 +37,7 @@ export const OFFER_INCLUDE = {
     active: true,
     matchStatus: true,
     productId: true,
-    supplier: { select: { id: true, name: true, active: true } },
+    supplier: { select: { id: true, name: true, active: true, extraDiscountPct: true } },
     currentPrice: {
       select: {
         priceList: true,
@@ -63,6 +67,8 @@ export interface OfferRecord {
   packagingType: string | null;
   packQuantity: number;
   packQuantityConfirmed: boolean;
+  extraDiscountExcluded: boolean;
+  extraDiscountPct: { toString(): string } | null;
   unitSize: DecimalLike;
   unitOfMeasure: string;
   contentPerPack: DecimalLike;
@@ -72,7 +78,7 @@ export interface OfferRecord {
   active: boolean;
   matchStatus: string;
   productId: string | null;
-  supplier: { id: string; name: string; active: boolean };
+  supplier: { id: string; name: string; active: boolean; extraDiscountPct: { toString(): string } | null };
   currentPrice: {
     priceList: DecimalLike;
     discounts: unknown;
@@ -105,6 +111,13 @@ export function mapOffer(record: OfferRecord): SupplierOffer {
     packagingType: record.packagingType,
     packQuantity: record.packQuantity,
     packQuantityConfirmed: record.packQuantityConfirmed,
+    extraDiscountExcluded: record.extraDiscountExcluded,
+    extraDiscountPct: record.extraDiscountPct?.toString() ?? null,
+    scontoExtraApplicato: percentualeApplicata({
+      percentualeFornitore: record.supplier.extraDiscountPct?.toString() ?? null,
+      esclusa: record.extraDiscountExcluded,
+      percentualeSua: record.extraDiscountPct?.toString() ?? null,
+    }).toString(),
     unitSize: record.unitSize.toString(),
     unitOfMeasure: record.unitOfMeasure as SupplierOffer['unitOfMeasure'],
     contentPerPack: record.contentPerPack.toString(),

@@ -20,6 +20,13 @@ export interface SupplierListItem {
   defaultVatRate: string | null;
   minOrderValue: string | null;
   deliveryDays: string | null;
+  /**
+   * Sconto extra concordato, in percentuale, su tutti gli articoli salvo
+   * eccezioni. È un **premio a posteriori**: non si paga meno alla consegna,
+   * i soldi tornano indietro dopo. Entra nel confronto, non nei totali.
+   */
+  extraDiscountPct: string | null;
+  extraDiscountNote: string | null;
   orderEmail: string | null;
   sendOrdersByEmail: boolean;
   active: boolean;

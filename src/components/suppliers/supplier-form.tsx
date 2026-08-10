@@ -21,6 +21,8 @@ const EMPTY_SUPPLIER: SupplierInput = {
   defaultVatRate: null,
   minOrderValue: null,
   deliveryDays: null,
+  extraDiscountPct: null,
+  extraDiscountNote: null,
   orderEmail: null,
   orderEmailCc: null,
   sendOrdersByEmail: false,
@@ -42,6 +44,8 @@ function detailAsInput(detail: SupplierDetail): SupplierInput {
     defaultVatRate: detail.defaultVatRate,
     minOrderValue: detail.minOrderValue,
     deliveryDays: detail.deliveryDays,
+    extraDiscountPct: detail.extraDiscountPct,
+    extraDiscountNote: detail.extraDiscountNote,
     orderEmail: detail.orderEmail,
     orderEmailCc: detail.orderEmailCc,
     sendOrdersByEmail: detail.sendOrdersByEmail,
@@ -284,6 +288,27 @@ export function SupplierForm({
             onChange={(event) => setText('minOrderValue', event.target.value)}
             error={firstError(fields, 'minOrderValue')}
             hint="Lascia vuoto se non esiste un minimo."
+          />
+          <Input
+            name="extraDiscountPct"
+            label="Sconto extra (%)"
+            inputMode="decimal"
+            maxLength={6}
+            placeholder="10"
+            value={textValue('extraDiscountPct')}
+            onChange={(event) => setText('extraDiscountPct', event.target.value)}
+            error={firstError(fields, 'extraDiscountPct')}
+            hint="Premio a posteriori su tutti gli articoli. Non abbassa il prezzo dell’ordine — entra nel confronto e si conta a parte."
+          />
+          <Input
+            name="extraDiscountNote"
+            label="Nota sullo sconto"
+            maxLength={300}
+            placeholder="Es. accordo annuale, escluse le birre"
+            value={textValue('extraDiscountNote')}
+            onChange={(event) => setText('extraDiscountNote', event.target.value)}
+            error={firstError(fields, 'extraDiscountNote')}
+            hint="Le eccezioni si segnano sulla singola offerta, nella scheda prodotto."
           />
           <Input
             name="deliveryDays"

@@ -172,6 +172,8 @@ export function supplierProductsRepository(organizationId: string) {
           packagingType: input.packagingType,
           packQuantity: input.packQuantity,
           packQuantityConfirmed: input.packQuantityConfirmed,
+          extraDiscountExcluded: input.extraDiscountExcluded,
+          extraDiscountPct: input.extraDiscountPct,
           unitSize: input.unitSize,
           unitOfMeasure: input.unitOfMeasure,
           vatRate: input.vatRate,
@@ -204,6 +206,11 @@ export function supplierProductsRepository(organizationId: string) {
           patch.packagingType !== undefined ? patch.packagingType : corrente.packagingType,
         packQuantity: patch.packQuantity ?? corrente.packQuantity,
         packQuantityConfirmed: patch.packQuantityConfirmed ?? corrente.packQuantityConfirmed,
+        extraDiscountExcluded: patch.extraDiscountExcluded ?? corrente.extraDiscountExcluded,
+        extraDiscountPct:
+          patch.extraDiscountPct !== undefined
+            ? patch.extraDiscountPct
+            : (corrente.extraDiscountPct?.toString() ?? null),
         unitSize: patch.unitSize ?? corrente.unitSize.toString(),
         unitOfMeasure: patch.unitOfMeasure ?? corrente.unitOfMeasure,
         vatRate:
@@ -250,6 +257,8 @@ export function supplierProductsRepository(organizationId: string) {
           packagingType: dati.packagingType,
           packQuantity: dati.packQuantity,
           packQuantityConfirmed: dati.packQuantityConfirmed,
+          extraDiscountExcluded: dati.extraDiscountExcluded,
+          extraDiscountPct: dati.extraDiscountPct,
           unitSize: dati.unitSize,
           unitOfMeasure: dati.unitOfMeasure,
           vatRate: dati.vatRate,

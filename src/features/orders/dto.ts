@@ -26,6 +26,10 @@ export interface OffertaOrdinabile {
   unitSize: string;
   unitOfMeasure: UnitOfMeasureValue;
   baseUnit: BaseUnitValue;
+  /** Sconto extra concordato col fornitore: torna indietro dopo, non ora. */
+  scontoExtraPct: string;
+  /** Quanto costa davvero dopo lo sconto extra. */
+  prezzoEffettivo: string;
   /** È la più conveniente fra quelle confrontate. */
   migliore: boolean;
   /** Il prezzo non si aggiorna da più dei mesi impostati. */
@@ -75,6 +79,13 @@ export interface RigaOrdine {
   quantityPacks: number;
   lineTotalNet: string;
   lineTotalGross: string;
+  /** Sconto extra del fornitore su questa riga: `0` quando non ce n'è. */
+  scontoExtraPct: string;
+  /**
+   * Quanto tornerà indietro su questa riga. **Non** è scontato dal totale:
+   * il totale dice quanto si paga adesso, questo dice quanto si riavrà.
+   */
+  ritornoAtteso: string;
   position: number;
   note: string | null;
   /**
@@ -143,6 +154,11 @@ export interface OrdineCorrente {
     risparmioPotenziale: string;
     /** Su quante righe c'è un avviso oltre soglia. */
     righeConAvviso: number;
+    /**
+     * Quanto tornerà indietro in tutto per gli sconti extra concordati.
+     * Sta accanto al totale, non dentro: il totale è quello che si paga.
+     */
+    ritornoAtteso: string;
   };
   /** Righe raggruppate per fornitore: è così che l'ordine verrà spedito. */
   perFornitore: {
@@ -151,6 +167,8 @@ export interface OrdineCorrente {
     righe: number;
     confezioni: number;
     netto: string;
+    /** Quanto tornerà indietro da questo fornitore. */
+    ritornoAtteso: string;
   }[];
   updatedAt: string;
 }

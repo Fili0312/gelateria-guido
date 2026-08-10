@@ -275,6 +275,20 @@ model Supplier {
   minOrderValue    Decimal? @map("min_order_value") @db.Decimal(12, 2)
   deliveryDays     String?  @map("delivery_days")
 
+  /// Sconto extra concordato col fornitore, in percentuale, valido su tutti i
+  /// suoi articoli salvo eccezioni.
+  ///
+  /// È un **premio a posteriori**: non sta sul listino e non si paga meno alla
+  /// consegna — i soldi tornano indietro dopo. Per questo NON entra nei totali
+  /// dell'ordine, che devono dire quanto si paga adesso, ma entra eccome nel
+  /// confronto fra fornitori, che deve dire quanto costa davvero.
+  ///
+  /// Tenerlo fuori dal confronto significherebbe scegliere il fornitore
+  /// sbagliato tutte le volte che il più caro a listino è il più economico
+  /// dopo lo sconto.
+  extraDiscountPct  Decimal? @map("extra_discount_pct") @db.Decimal(5, 2)
+  extraDiscountNote String?  @map("extra_discount_note")
+
   /// Indirizzo a cui parte il PDF dell'ordine. Separato da `email` di
   /// proposito: l'ufficio ordini di un fornitore quasi mai coincide con il
   /// commerciale che manda i listini.
@@ -612,6 +626,11 @@ model SupplierProduct {
   /// di un collo verrebbe calcolato su un numero inventato.
   packQuantity          Int     @default(1) @map("pack_quantity")
   packQuantityConfirmed Boolean @default(false) @map("pack_quantity_confirmed")
+
+  /// «Tutti tranne alcuni»: questa riga è fra gli alcuni.
+  extraDiscountExcluded Boolean  @default(false) @map("extra_discount_excluded")
+  /// Uno sconto diverso da quello generale, solo per questo articolo.
+  extraDiscountPct      Decimal? @map("extra_discount_pct") @db.Decimal(5, 2)
 
   unitSize      Decimal       @map("unit_size") @db.Decimal(12, 4)
   unitOfMeasure UnitOfMeasure @map("unit_of_measure")

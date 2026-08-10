@@ -13,6 +13,7 @@ import { prismaForOrganization } from '@/server/db';
 import { normalizzaTesto } from '@/server/domain/packaging/normalize';
 import type { BaseUnit } from '@/server/domain/packaging/units';
 import { confrontaProdotto, meritaAvviso } from '@/server/domain/pricing/comparison';
+import { nettoEffettivo, percentualeApplicata } from '@/server/domain/pricing/extra-discount';
 import { CATEGORY_REF_SELECT, mapCategoryRef } from './taxonomy';
 import { settingsRepository } from './settings';
 
@@ -46,6 +47,8 @@ const OFFERTE_SELECT = {
   supplierCode: true,
   rawName: true,
   vatRate: true,
+  extraDiscountExcluded: true,
+  extraDiscountPct: true,
   packQuantity: true,
   packQuantityConfirmed: true,
   packagingType: true,
@@ -54,7 +57,7 @@ const OFFERTE_SELECT = {
   contentPerPack: true,
   baseUnit: true,
   active: true,
-  supplier: { select: { name: true } },
+  supplier: { select: { name: true, extraDiscountPct: true } },
   currentPrice: {
     select: {
       priceNet: true,
@@ -71,6 +74,8 @@ type OffertaRecord = {
   supplierCode: string | null;
   rawName: string;
   vatRate: { toString(): string } | null;
+  extraDiscountExcluded: boolean;
+  extraDiscountPct: { toString(): string } | null;
   packQuantity: number;
   packQuantityConfirmed: boolean;
   packagingType: string | null;
@@ -79,7 +84,7 @@ type OffertaRecord = {
   contentPerPack: { toString(): string };
   baseUnit: string;
   active: boolean;
-  supplier: { name: string };
+  supplier: { name: string; extraDiscountPct: { toString(): string } | null };
   currentPrice: {
     priceNet: { toString(): string };
     unitPrice: { toString(): string };
@@ -88,14 +93,27 @@ type OffertaRecord = {
   } | null;
 };
 
+/** Lo sconto extra di un'offerta, nella forma che il dominio si aspetta. */
+function scontoDi(o: OffertaRecord) {
+  return {
+    percentualeFornitore: o.supplier.extraDiscountPct?.toString() ?? null,
+    esclusa: o.extraDiscountExcluded,
+    percentualeSua: o.extraDiscountPct?.toString() ?? null,
+  };
+}
+
 function mapOfferta(o: OffertaRecord, fermo: boolean): ComparedOffer {
+  const sconto = scontoDi(o);
+  const netto = o.currentPrice!.priceNet.toString();
   return {
     supplierProductId: o.id,
     supplierId: o.supplierId,
     supplierName: o.supplier.name,
     supplierCode: o.supplierCode,
     rawName: o.rawName,
-    priceNet: o.currentPrice!.priceNet.toString(),
+    priceNet: netto,
+    priceEffective: nettoEffettivo(netto, sconto).toString(),
+    extraDiscountPct: percentualeApplicata(sconto).toString(),
     unitPrice: o.currentPrice!.unitPrice.toString(),
     unitPriceBasis: o.currentPrice!.unitPriceBasis as ComparedOffer['unitPriceBasis'],
     packQuantity: o.packQuantity,
@@ -149,6 +167,10 @@ function costruisciRiga(
       id: o.id,
       attiva: o.active,
       prezzoNetto: o.currentPrice?.priceNet.toString() ?? null,
+      prezzoEffettivo: o.currentPrice
+        ? nettoEffettivo(o.currentPrice.priceNet.toString(), scontoDi(o)).toString()
+        : null,
+      scontoExtraPct: percentualeApplicata(scontoDi(o)).toString(),
       contenutoPerConfezione: o.contentPerPack.toString(),
       base: o.baseUnit as BaseUnit,
       confezioneCerta: o.packQuantityConfirmed,

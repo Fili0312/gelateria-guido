@@ -52,6 +52,8 @@ export function OfferAttach({
     packagingType: null,
     packQuantity: 1,
     packQuantityConfirmed: false,
+    extraDiscountExcluded: false,
+    extraDiscountPct: null,
     unitSize: '1',
     unitOfMeasure: 'PIECE',
     vatRate: null,

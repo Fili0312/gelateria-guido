@@ -26,6 +26,8 @@ describe('supplierInputSchema', () => {
       defaultVatRate: null,
       minOrderValue: null,
       deliveryDays: null,
+      extraDiscountPct: null,
+      extraDiscountNote: null,
       orderEmail: null,
       orderEmailCc: null,
       sendOrdersByEmail: false,

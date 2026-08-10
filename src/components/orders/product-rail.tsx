@@ -69,6 +69,14 @@ function Offerta({ offerta, compatta = false }: { offerta: OffertaOrdinabile; co
       <span className={compatta ? 'text-neutral-500' : 'text-neutral-500'}>
         {offerta.supplierName}
       </span>
+      {Number(offerta.scontoExtraPct) > 0 && (
+        <span
+          className="rounded bg-violet-100 px-1.5 py-0.5 text-[11px] font-semibold text-violet-800"
+          title={`Sconto extra concordato: paghi ${euro(offerta.priceNet)} e ti tornano indietro ${euro(Number(offerta.priceNet) - Number(offerta.prezzoEffettivo))}`}
+        >
+          −{offerta.scontoExtraPct}% → {euro(offerta.prezzoEffettivo)}
+        </span>
+      )}
       {offerta.migliore && (
         <span className="rounded bg-green-100 px-1.5 py-0.5 text-[11px] font-semibold text-green-800">
           migliore

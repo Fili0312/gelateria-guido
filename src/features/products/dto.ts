@@ -21,6 +21,12 @@ export interface SupplierOffer {
   packagingType: string | null;
   packQuantity: number;
   packQuantityConfirmed: boolean;
+  /** «Tutti tranne alcuni»: questa offerta è fra gli alcuni. */
+  extraDiscountExcluded: boolean;
+  /** Sconto extra solo per questa offerta, diverso da quello del fornitore. */
+  extraDiscountPct: string | null;
+  /** Lo sconto che si applica davvero, fornitore ed eccezioni comprese. */
+  scontoExtraApplicato: string;
   unitSize: string;
   unitOfMeasure: UnitOfMeasureValue;
   contentPerPack: string;

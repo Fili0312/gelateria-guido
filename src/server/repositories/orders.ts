@@ -11,6 +11,7 @@ import type { RicercaOrdinabile, RigaOrdineInput, RigaOrdinePatch } from '@/feat
 import { prismaForOrganization, transactionForOrganization, type OrganizationPrismaClient } from '@/server/db';
 import { calcolaCambio, confrontaPerAvviso, type OffertaPerAvviso } from '@/server/domain/orders/alert';
 import { totaliOrdine, totaliRiga } from '@/server/domain/orders/totals';
+import { nettoEffettivo, percentualeApplicata } from '@/server/domain/pricing/extra-discount';
 import { SETTINGS_ALL_KEYS, valoriDaRighe } from '@/features/settings/schema';
 import { settingsRepository } from './settings';
 import { comparisonRepository } from './comparison';
@@ -65,7 +66,15 @@ const RIGA_SELECT = {
   note: true,
   overrideReason: true,
   bestAlternativeSnapshot: true,
-  supplierProduct: { select: { packagingType: true, contentPerPack: true } },
+  supplierProduct: {
+    select: {
+      packagingType: true,
+      contentPerPack: true,
+      extraDiscountExcluded: true,
+      extraDiscountPct: true,
+      supplier: { select: { extraDiscountPct: true } },
+    },
+  },
 } as const;
 
 type RigaRecord = {
@@ -89,12 +98,34 @@ type RigaRecord = {
   note: string | null;
   overrideReason: string | null;
   bestAlternativeSnapshot: unknown;
-  supplierProduct: { packagingType: string | null; contentPerPack: { toString(): string } };
+  supplierProduct: {
+    packagingType: string | null;
+    contentPerPack: { toString(): string };
+    extraDiscountExcluded: boolean;
+    extraDiscountPct: { toString(): string } | null;
+    supplier: { extraDiscountPct: { toString(): string } | null };
+  };
 };
 
 function mapRiga(r: RigaRecord): RigaOrdine {
   const netto = new Decimal(r.unitPriceNetSnapshot.toString());
   const contenuto = new Decimal(r.supplierProduct.contentPerPack.toString());
+
+  // Lo sconto extra si legge **adesso** dal fornitore, non dallo snapshot:
+  // è un accordo commerciale che cambia con la trattativa, non un prezzo di
+  // listino. Un ordine di ieri deve dire quanto tornerà indietro alle
+  // condizioni di oggi, che sono quelle con cui verrà liquidato.
+  const sconto = {
+    percentualeFornitore: r.supplierProduct.supplier.extraDiscountPct?.toString() ?? null,
+    esclusa: r.supplierProduct.extraDiscountExcluded,
+    percentualeSua: r.supplierProduct.extraDiscountPct?.toString() ?? null,
+  };
+  const pct = percentualeApplicata(sconto);
+  const ritorno = netto
+    .minus(nettoEffettivo(netto, sconto))
+    .mul(r.quantityPacks)
+    .toDecimalPlaces(2);
+
   return {
     id: r.id,
     supplierProductId: r.supplierProductId,
@@ -117,6 +148,8 @@ function mapRiga(r: RigaRecord): RigaOrdine {
     quantityPacks: r.quantityPacks,
     lineTotalNet: r.lineTotalNet.toString(),
     lineTotalGross: r.lineTotalGross.toString(),
+    scontoExtraPct: pct.toString(),
+    ritornoAtteso: ritorno.toString(),
     position: r.position,
     note: r.note,
     migliorAlternativa: (r.bestAlternativeSnapshot as RigaOrdine['migliorAlternativa']) ?? null,
@@ -338,19 +371,25 @@ export function ordersRepository(organizationId: string) {
 
     // Raggruppate per fornitore perché è così che l'ordine partirà: un
     // totale unico non dice a nessuno quanto si sta ordinando da chi.
-    const gruppi = new Map<string, { supplierName: string; righe: number; confezioni: number; netto: Decimal }>();
+    const gruppi = new Map<
+      string,
+      { supplierName: string; righe: number; confezioni: number; netto: Decimal; ritorno: Decimal }
+    >();
     for (const riga of righe) {
       const g = gruppi.get(riga.supplierId) ?? {
         supplierName: riga.supplierName,
         righe: 0,
         confezioni: 0,
         netto: new Decimal(0),
+        ritorno: new Decimal(0),
       };
       g.righe += 1;
       g.confezioni += riga.quantityPacks;
       g.netto = g.netto.plus(riga.lineTotalNet);
+      g.ritorno = g.ritorno.plus(riga.ritornoAtteso);
       gruppi.set(riga.supplierId, g);
     }
+    const ritornoAtteso = righe.reduce((a, r) => a.plus(r.ritornoAtteso), new Decimal(0));
 
     return {
       id: ordine.id,
@@ -365,6 +404,7 @@ export function ordersRepository(organizationId: string) {
         lordo: t.lordo.toString(),
         risparmioPotenziale: risparmioPotenziale.toDecimalPlaces(2).toString(),
         righeConAvviso,
+        ritornoAtteso: ritornoAtteso.toDecimalPlaces(2).toString(),
       },
       perFornitore: [...gruppi.entries()]
         .map(([supplierId, g]) => ({
@@ -373,6 +413,7 @@ export function ordersRepository(organizationId: string) {
           righe: g.righe,
           confezioni: g.confezioni,
           netto: g.netto.toString(),
+          ritornoAtteso: g.ritorno.toDecimalPlaces(2).toString(),
         }))
         .sort((a, b) => a.supplierName.localeCompare(b.supplierName, 'it')),
       updatedAt: ordine.updatedAt.toISOString(),
@@ -463,6 +504,8 @@ export function ordersRepository(organizationId: string) {
           unitSize: o.unitSize,
           unitOfMeasure: o.unitOfMeasure,
           baseUnit: o.baseUnit,
+          scontoExtraPct: o.extraDiscountPct,
+          prezzoEffettivo: o.priceEffective,
           // «Il più conveniente» solo se un confronto c'è stato davvero: con
           // un fornitore solo non c'è stata nessuna scelta.
           migliore: indice === 0 && confronto.state === 'CONFRONTATO',

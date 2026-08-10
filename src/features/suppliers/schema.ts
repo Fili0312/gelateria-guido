@@ -16,6 +16,7 @@ const FIELD_LIMITS = {
   address: 500,
   notes: 3_000,
   deliveryDays: 160,
+  extraDiscountNote: 300,
   emailNote: 1_500,
 } as const;
 
@@ -24,6 +25,8 @@ const supplierSortSchema = z.enum(['name-asc', 'name-desc', 'updated-desc', 'upd
 
 const defaultVatRateSchema = nullableDecimal(10_000n, "L'aliquota IVA");
 const minOrderValueSchema = nullableDecimal(999_999_999_999n, "L'importo minimo");
+/** Percentuale: due decimali, mai oltre cento. */
+const extraDiscountSchema = nullableDecimal(10_000n, 'Lo sconto extra');
 
 const supplierFields = {
   name: z
@@ -42,6 +45,8 @@ const supplierFields = {
   defaultVatRate: defaultVatRateSchema,
   minOrderValue: minOrderValueSchema,
   deliveryDays: nullableTrimmedString(FIELD_LIMITS.deliveryDays, 'I giorni di consegna'),
+  extraDiscountPct: extraDiscountSchema,
+  extraDiscountNote: nullableTrimmedString(FIELD_LIMITS.extraDiscountNote, 'La nota sullo sconto'),
   orderEmail: nullableEmail("L'email ordini", FIELD_LIMITS.email),
   orderEmailCc: nullableEmail("L'email in copia", FIELD_LIMITS.email),
   sendOrdersByEmail: z.boolean(),
@@ -77,6 +82,8 @@ export const supplierInputSchema = z
     defaultVatRate: supplierFields.defaultVatRate.default(null),
     minOrderValue: supplierFields.minOrderValue.default(null),
     deliveryDays: supplierFields.deliveryDays.default(null),
+    extraDiscountPct: supplierFields.extraDiscountPct.default(null),
+    extraDiscountNote: supplierFields.extraDiscountNote.default(null),
     orderEmail: supplierFields.orderEmail.default(null),
     orderEmailCc: supplierFields.orderEmailCc.default(null),
     sendOrdersByEmail: supplierFields.sendOrdersByEmail.default(false),

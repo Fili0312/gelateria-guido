@@ -105,6 +105,11 @@ function Riga({
         <p className="tabellare text-xs text-neutral-500">
           {riga.quantityPacks} × {euro(riga.priceNet)}
           {riga.packQuantity > 1 && ` · collo da ${riga.packQuantity}`}
+          {Number(riga.scontoExtraPct) > 0 && (
+            <span className="ml-1 text-violet-700">
+              · −{riga.scontoExtraPct}%, ti tornano {euro(riga.ritornoAtteso)}
+            </span>
+          )}
         </p>
       </div>
 
@@ -201,6 +206,9 @@ export function OrderPanel({
                 <span className="truncate">{gruppo.supplierName}</span>
                 <span className="tabellare shrink-0 font-normal text-neutral-500">
                   {euro(gruppo.netto)}
+                  {Number(gruppo.ritornoAtteso) > 0 && (
+                    <span className="ml-1 text-violet-700">−{euro(gruppo.ritornoAtteso)}</span>
+                  )}
                 </span>
               </h3>
               <ul className="divide-y divide-neutral-50">
@@ -238,6 +246,15 @@ export function OrderPanel({
         {Number(t.iva) > 0 && (
           <p className="tabellare mt-0.5 text-right text-xs text-neutral-500">
             {euro(t.lordo)} con IVA
+          </p>
+        )}
+
+        {/* Lo sconto extra sta ACCANTO al totale, non dentro: il totale dice
+            quanto si paga adesso, questo quanto si riavrà. Scontarlo dal
+            totale darebbe un documento che non corrisponde alla fattura. */}
+        {Number(t.ritornoAtteso) > 0 && (
+          <p className="tabellare mt-1 rounded-lg bg-violet-50 px-2 py-1 text-right text-xs text-violet-800">
+            <strong>{euro(t.ritornoAtteso)}</strong> torneranno indietro per gli sconti concordati
           </p>
         )}
 

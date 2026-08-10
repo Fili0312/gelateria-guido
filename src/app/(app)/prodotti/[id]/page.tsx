@@ -60,7 +60,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         </div>
       </header>
 
-      <ProductOffers offers={prodotto.offers} confronto={confronto} />
+      <ProductOffers
+        offers={prodotto.offers}
+        confronto={confronto}
+        endpointOfferte={withBasePath('/api/supplier-products')}
+      />
 
       <section id="storico-prezzi" className="scroll-mt-6 space-y-3">
         <h2 className="text-lg font-black text-neutral-950">Storico prezzi</h2>

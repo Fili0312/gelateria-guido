@@ -17,7 +17,12 @@ export interface ComparedOffer {
   /** La descrizione **come la scrive il fornitore**: è quella che finisce
    *  sull'ordine, perché è quella che lui riconosce. */
   rawName: string;
+  /** Quello che si paga alla consegna. */
   priceNet: string;
+  /** Quanto costa davvero, dopo lo sconto extra concordato col fornitore. */
+  priceEffective: string;
+  /** La percentuale di sconto extra applicata. `0` quando non ce n'è. */
+  extraDiscountPct: string;
   unitPrice: string;
   unitPriceBasis: PriceBasisValue;
   packQuantity: number;

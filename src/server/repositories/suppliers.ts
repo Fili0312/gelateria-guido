@@ -28,6 +28,8 @@ const LIST_SELECT = {
   defaultVatRate: true,
   minOrderValue: true,
   deliveryDays: true,
+  extraDiscountPct: true,
+  extraDiscountNote: true,
   orderEmail: true,
   sendOrdersByEmail: true,
   active: true,
@@ -71,6 +73,8 @@ interface SupplierListRecord {
   defaultVatRate: DecimalLike | null;
   minOrderValue: DecimalLike | null;
   deliveryDays: string | null;
+  extraDiscountPct: DecimalLike | null;
+  extraDiscountNote: string | null;
   orderEmail: string | null;
   sendOrdersByEmail: boolean;
   active: boolean;
@@ -138,6 +142,8 @@ function mapListSupplier(row: SupplierListRecord): SupplierListItem {
     defaultVatRate: row.defaultVatRate?.toString() ?? null,
     minOrderValue: row.minOrderValue?.toString() ?? null,
     deliveryDays: row.deliveryDays,
+    extraDiscountPct: row.extraDiscountPct?.toString() ?? null,
+    extraDiscountNote: row.extraDiscountNote,
     orderEmail: row.orderEmail,
     sendOrdersByEmail: row.sendOrdersByEmail,
     active: row.active,
@@ -175,6 +181,8 @@ function detailAsInput(supplier: SupplierDetail): SupplierInput {
     defaultVatRate: supplier.defaultVatRate,
     minOrderValue: supplier.minOrderValue,
     deliveryDays: supplier.deliveryDays,
+    extraDiscountPct: supplier.extraDiscountPct,
+    extraDiscountNote: supplier.extraDiscountNote,
     orderEmail: supplier.orderEmail,
     orderEmailCc: supplier.orderEmailCc,
     sendOrdersByEmail: supplier.sendOrdersByEmail,

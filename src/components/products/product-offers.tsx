@@ -1,7 +1,12 @@
+'use client';
+
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import type { ComparisonRow } from '@/features/reports/dto';
 import {
   Badge,
+  useToast,
   Table,
   TableBody,
   TableCell,
@@ -36,6 +41,79 @@ import {
  * colonne. Quando invece un confronto non c'è, si dice **perché** — un vuoto
  * lascerebbe pensare a un errore.
  */
+/**
+ * Lo sconto extra su una singola offerta.
+ *
+ * L'accordo sta sul fornitore e vale per tutti i suoi articoli; qui si segnano
+ * le eccezioni. Un clic esclude, un altro rimette — e siccome l'esclusione
+ * cambia chi vince il confronto, si vede subito nella riga sopra.
+ */
+function ExtraDiscountToggle({
+  offerta,
+  endpoint,
+}: {
+  offerta: SupplierOffer;
+  endpoint: string;
+}) {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [attesa, setAttesa] = useState(false);
+  const applicato = Number(offerta.scontoExtraApplicato);
+
+  async function cambia(escludi: boolean) {
+    setAttesa(true);
+    try {
+      const risposta = await fetch(`${endpoint}/${offerta.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ extraDiscountExcluded: escludi }),
+      });
+      const corpo = (await risposta.json().catch(() => null)) as { ok: boolean; error?: string } | null;
+      if (!risposta.ok || !corpo?.ok) {
+        toast({ title: 'Non è stato possibile salvare', description: corpo?.error, tone: 'error' });
+        return;
+      }
+      toast({
+        title: escludi ? 'Escluso dallo sconto extra' : 'Rientra nello sconto extra',
+        tone: 'success',
+      });
+      router.refresh();
+    } catch {
+      toast({ title: 'Server non raggiungibile', tone: 'error' });
+    } finally {
+      setAttesa(false);
+    }
+  }
+
+  if (offerta.extraDiscountExcluded) {
+    return (
+      <button
+        type="button"
+        disabled={attesa}
+        onClick={() => void cambia(false)}
+        title="Questa offerta è esclusa dall’accordo col fornitore. Premi per rimetterla dentro."
+        className="cursor-pointer rounded border border-neutral-300 px-1.5 py-0.5 text-[11px] font-semibold text-neutral-600 hover:border-neutral-400"
+      >
+        escluso
+      </button>
+    );
+  }
+
+  if (applicato <= 0) return <span className="text-xs text-neutral-400">—</span>;
+
+  return (
+    <button
+      type="button"
+      disabled={attesa}
+      onClick={() => void cambia(true)}
+      title="Premi per escludere questa offerta dallo sconto concordato col fornitore."
+      className="cursor-pointer rounded bg-violet-100 px-1.5 py-0.5 text-[11px] font-semibold text-violet-800 hover:bg-violet-200"
+    >
+      −{applicato}%
+    </button>
+  );
+}
+
 function Riepilogo({ confronto }: { confronto: ComparisonRow }) {
   if (confronto.state !== 'CONFRONTATO') {
     return (
@@ -80,9 +158,11 @@ function ordina(offerte: readonly SupplierOffer[], classifica: readonly string[]
 export function ProductOffers({
   offers,
   confronto,
+  endpointOfferte,
 }: {
   offers: SupplierOffer[];
   confronto: ComparisonRow;
+  endpointOfferte: string;
 }) {
   if (offers.length === 0) {
     return (
@@ -109,6 +189,7 @@ export function ProductOffers({
             <TableHead>Listino</TableHead>
             <TableHead>Sconti</TableHead>
             <TableHead>Netto</TableHead>
+            <TableHead>Sconto extra</TableHead>
             <TableHead>Per unità</TableHead>
           </TableRow>
         </TableHeader>
@@ -169,6 +250,16 @@ export function ProductOffers({
                 </TableCell>
                 <TableCell className="tabellare font-semibold">
                   {offerta.price ? euro(offerta.price.priceNet) : '—'}
+                </TableCell>
+                {/* Lo sconto extra è un premio a posteriori: non abbassa il
+                    netto qui accanto, che è quello che si paga. Si mostra a
+                    parte e si può togliere per questa singola offerta — è il
+                    «tutti tranne alcuni» dell'accordo col fornitore. */}
+                <TableCell>
+                  <ExtraDiscountToggle
+                    offerta={offerta}
+                    endpoint={endpointOfferte}
+                  />
                 </TableCell>
                 <TableCell className="tabellare">{prezzoUnitario(offerta)}</TableCell>
               </TableRow>

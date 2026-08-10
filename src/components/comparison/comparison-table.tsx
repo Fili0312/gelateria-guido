@@ -37,6 +37,14 @@ function Offerta({ offerta, tono }: { offerta: ComparedOffer; tono: 'buono' | 'n
       </div>
       <div className="tabellare mt-0.5 text-sm text-neutral-900">
         {euro(offerta.priceNet)}
+        {/* Con lo sconto extra il numero che conta è il secondo: il primo è
+            quello che si paga, il secondo quanto costa davvero. Mostrarne uno
+            solo farebbe scegliere sul dato sbagliato in un verso o nell'altro. */}
+        {Number(offerta.extraDiscountPct) > 0 && (
+          <span className="ml-1.5 rounded bg-violet-100 px-1.5 py-0.5 text-[11px] font-semibold text-violet-800">
+            {euro(offerta.priceEffective)} con −{numero(offerta.extraDiscountPct, 2)}%
+          </span>
+        )}
         <span className="ml-2 text-xs text-neutral-500">
           {`${euro(offerta.unitPrice, 4)}${etichettaBasis(offerta.unitPriceBasis).slice(1)}`}
         </span>

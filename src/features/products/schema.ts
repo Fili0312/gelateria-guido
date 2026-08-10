@@ -142,6 +142,10 @@ const supplierProductFields = {
    * la stessa faccia di un dato vero.
    */
   packQuantityConfirmed: z.boolean(),
+  /** «Tutti tranne alcuni»: questa offerta è fra gli alcuni. */
+  extraDiscountExcluded: z.boolean(),
+  /** Una percentuale diversa da quella del fornitore, solo per questa. */
+  extraDiscountPct: nullableDecimal(10_000n, 'Lo sconto extra'),
   unitSize: unitSizeSchema,
   unitOfMeasure: unitOfMeasureSchema,
   vatRate: vatRateSchema,
@@ -159,6 +163,8 @@ export const supplierProductInputSchema = z
     packagingType: supplierProductFields.packagingType.default(null),
     packQuantity: supplierProductFields.packQuantity.default(1),
     packQuantityConfirmed: supplierProductFields.packQuantityConfirmed.default(false),
+    extraDiscountExcluded: supplierProductFields.extraDiscountExcluded.default(false),
+    extraDiscountPct: supplierProductFields.extraDiscountPct.default(null),
     vatRate: supplierProductFields.vatRate.default(null),
     gtin: supplierProductFields.gtin.default(null),
     productId: supplierProductFields.productId.default(null),

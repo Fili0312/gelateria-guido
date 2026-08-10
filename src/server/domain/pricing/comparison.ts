@@ -23,6 +23,15 @@ import { prezzoPerUnita } from './unit-price';
  * plausibile e falso, che è peggio di nessun numero: un numero falso non si
  * riconosce, un'assenza sì.
  *
+ * ── Lo sconto extra entra qui, non nell'ordine ──────────────────────────
+ * Il premio a posteriori concordato col fornitore non si paga alla consegna,
+ * ma **cambia quanto costa davvero**. Il confronto ragiona quindi sul netto
+ * effettivo: tenerlo fuori farebbe scegliere il fornitore sbagliato tutte le
+ * volte che il più caro a listino è il più economico dopo lo sconto — cioè
+ * esattamente il caso per cui lo sconto è stato concordato.
+ *
+ * Il netto di listino resta accanto, perché è quello che si pagherà.
+ *
  * ── I prezzi fermi ──────────────────────────────────────────────────────
  * Un prezzo di due anni fa non si esclude — sarebbe far sparire un fornitore
  * senza dirlo — ma si **dichiara fermo**. Chi guarda decide se fidarsi.
@@ -47,8 +56,15 @@ export type MotivoEsclusione =
 export interface OffertaDaConfrontare {
   id: string;
   attiva: boolean;
-  /** `null` quando non c'è un prezzo corrente. */
+  /** `null` quando non c'è un prezzo corrente. È quello che si paga. */
   prezzoNetto: string | null;
+  /**
+   * Il netto dopo lo sconto extra del fornitore: quanto costa **davvero**.
+   * Quando non c'è sconto coincide col netto, e allora si può omettere.
+   */
+  prezzoEffettivo?: string | null;
+  /** La percentuale applicata, per poterla mostrare. */
+  scontoExtraPct?: string | null;
   /** Quanto contiene una confezione, in unità base. */
   contenutoPerConfezione: string;
   base: BaseUnit;
@@ -60,9 +76,13 @@ export interface OffertaDaConfrontare {
 
 export interface RigaConfronto {
   id: string;
-  /** Prezzo della confezione. */
+  /** Prezzo della confezione, quello che si paga. */
   prezzoNetto: Decimal;
-  /** Prezzo per unità base: è il numero con cui si ordina. */
+  /** Quanto costa davvero, dopo lo sconto extra concordato. */
+  prezzoEffettivo: Decimal;
+  /** Lo sconto extra applicato, in percentuale. Zero quando non ce n'è. */
+  scontoExtraPct: Decimal;
+  /** Prezzo per unità base **sull'effettivo**: è il numero con cui si ordina. */
   prezzoUnitario: Decimal;
   basis: PriceBasis;
   contenutoPerConfezione: Decimal;
@@ -162,7 +182,15 @@ export function confrontaProdotto(
     .map<RigaConfronto>((o) => ({
       id: o.id,
       prezzoNetto: new Decimal(o.prezzoNetto!),
-      prezzoUnitario: prezzoPerUnita(o.prezzoNetto!, o.contenutoPerConfezione, o.base).valore,
+      prezzoEffettivo: new Decimal(o.prezzoEffettivo ?? o.prezzoNetto!),
+      scontoExtraPct: new Decimal(o.scontoExtraPct ?? 0),
+      // Sull'effettivo, non sul listino: è il confronto che deve dire dove
+      // conviene, e conviene dove si spende meno alla fine.
+      prezzoUnitario: prezzoPerUnita(
+        o.prezzoEffettivo ?? o.prezzoNetto!,
+        o.contenutoPerConfezione,
+        o.base,
+      ).valore,
       basis: basePerPrezzo(o.base),
       contenutoPerConfezione: new Decimal(o.contenutoPerConfezione),
       fermo: eFermo(o.valeDa, opzioni),
