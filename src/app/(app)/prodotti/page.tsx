@@ -7,6 +7,7 @@ import { productListQuerySchema } from '@/features/products/schema';
 import { getCurrentUser } from '@/server/auth';
 import { withBasePath } from '@/server/base-path';
 import { productsRepository } from '@/server/repositories/products';
+import { suppliersRepository } from '@/server/repositories/suppliers';
 import { taxonomyRepository } from '@/server/repositories/taxonomy';
 
 export const dynamic = 'force-dynamic';
@@ -30,18 +31,22 @@ export default async function ProductsPage({
     categoryId: primo(query.categoryId),
     classification: primo(query.classification),
     status: primo(query.status),
+    supplierId: primo(query.supplierId),
     sort: primo(query.sort),
   });
   const filtri = analizzato.success ? analizzato.data : productListQuerySchema.parse({});
-  const [risultato, tassonomia] = await Promise.all([
+  const [risultato, tassonomia, fornitoriElenco] = await Promise.all([
     productsRepository(user.organizationId).list(filtri),
     taxonomyRepository(user.organizationId).tree({ includiInattivi: false }),
+    suppliersRepository(user.organizationId).list({ q: '', status: 'active', sort: 'name-asc' }),
   ]);
+  const fornitori = fornitoriElenco.items;
   const conFiltri =
     filtri.q !== '' ||
     filtri.departmentId !== '' ||
     filtri.categoryId !== '' ||
     filtri.classification !== 'all' ||
+    filtri.supplierId !== '' ||
     filtri.status !== 'all';
 
   return (
@@ -136,15 +141,19 @@ export default async function ProductsPage({
             </optgroup>
           ))}
         </Select>
-        <Select name="classification" label="Classificazione" defaultValue={filtri.classification}>
-          <option value="all">Tutti</option>
-          <option value="classified">Con categoria</option>
-          <option value="unclassified">Da classificare</option>
-        </Select>
-        <Select name="status" label="Offerte" defaultValue={filtri.status}>
-          <option value="all">Tutti</option>
-          <option value="linked">Con offerte</option>
-          <option value="orphan">Senza offerte</option>
+        {/* «Classificazione» e «Offerte» erano due filtri che nessuno usava:
+            il primo perché i prodotti sono tutti classificati, il secondo
+            perché un prodotto senza offerte è un caso raro e si vede
+            dall'elenco. Al loro posto il fornitore, che è il modo in cui si
+            guarda il catalogo quando si sistema un accordo. */}
+        <Select name="supplierId" label="Fornitore" defaultValue={filtri.supplierId}>
+          <option value="">Tutti</option>
+          {fornitori.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.name}
+              {f.extraDiscountPct ? ` · −${f.extraDiscountPct}%` : ''}
+            </option>
+          ))}
         </Select>
         <Select name="sort" label="Ordina" defaultValue={filtri.sort}>
           <option value="name-asc">Nome (A→Z)</option>

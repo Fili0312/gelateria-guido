@@ -105,6 +105,23 @@ export interface ProductListItem {
   comparableOffersCount: number;
   /** `null` quando nessuna offerta attiva ha un prezzo corrente. */
   price: CatalogPrice | null;
+  /**
+   * Le offerte di questo prodotto che vengono da un fornitore con uno sconto
+   * extra concordato — cioè le uniche su cui ha senso dire «sì» o «no».
+   *
+   * Vuoto per la stragrande maggioranza dei prodotti: chi non ha accordi non
+   * deve vedere un comando che non gli serve.
+   */
+  scontabili: OffertaScontabile[];
+}
+
+export interface OffertaScontabile {
+  supplierProductId: string;
+  supplierName: string;
+  /** La percentuale del fornitore, quella che si applicherebbe. */
+  pct: string;
+  /** `true` quando questa offerta è stata messa fra le eccezioni. */
+  esclusa: boolean;
 }
 
 export interface ProductDetail extends ProductListItem {

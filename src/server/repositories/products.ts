@@ -140,6 +140,17 @@ function mapList(record: ProductRecord, offers: SupplierOffer[]): ProductListIte
     offersCount: offers.length,
     comparableOffersCount: countComparableOffers(offers),
     price: mapPrice(offers),
+    // Solo le offerte di fornitori con uno sconto concordato: sulle altre non
+    // c'è niente da dire, e un comando che non serve è un comando che si
+    // impara a saltare con l'occhio — anche quando invece serve.
+    scontabili: offers
+      .filter((o) => o.active && (Number(o.extraDiscountPct ?? 0) > 0 || o.scontoExtraApplicato !== '0' || o.extraDiscountExcluded))
+      .map((o) => ({
+        supplierProductId: o.id,
+        supplierName: o.supplierName,
+        pct: o.extraDiscountPct ?? o.scontoExtraApplicato,
+        esclusa: o.extraDiscountExcluded,
+      })),
   };
 }
 
@@ -203,6 +214,9 @@ export function productsRepository(organizationId: string) {
         ...filtroTassonomia,
         ...(query.status === 'linked' ? { supplierProducts: { some: {} } } : {}),
         ...(query.status === 'orphan' ? { supplierProducts: { none: {} } } : {}),
+        ...(query.supplierId
+          ? { supplierProducts: { some: { supplierId: query.supplierId, active: true } } }
+          : {}),
       };
 
       const ordine =

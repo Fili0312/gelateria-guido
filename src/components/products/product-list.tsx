@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { AppIcon } from '@/components/app-icon';
 import { CategoryBadge } from '@/components/taxonomy/category-badge';
+import { DiscountToggle } from './discount-toggle';
 import { PackagingQuickSet } from './packaging-quick-set';
 import { useToast } from '@/components/ui';
 import type { ProductListItem } from '@/features/products/dto';
@@ -172,6 +173,21 @@ function Riga({
           <Prezzo prodotto={prodotto} endpointOfferte={endpointOfferte} />
         </p>
       </div>
+
+      {/* Solo dove c'è un accordo: il comando compare accanto al prodotto e
+          si preme scorrendo, senza aprire niente. */}
+      {prodotto.scontabili.length > 0 && (
+        <span className="flex shrink-0 flex-wrap items-center gap-1">
+          {prodotto.scontabili.map((o) => (
+            <DiscountToggle
+              key={o.supplierProductId}
+              offerta={o}
+              endpoint={endpointOfferte}
+              mostraFornitore={prodotto.scontabili.length > 1}
+            />
+          ))}
+        </span>
+      )}
 
       <span className="hidden w-24 shrink-0 text-right text-xs text-neutral-500 sm:block">
         {prodotto.offersCount === 0 ? (

@@ -97,6 +97,8 @@ export const productListQuerySchema = z
     categoryId: z.string().trim().max(64).default(''),
     classification: productClassificationSchema.default('all'),
     status: productStatusSchema.default('all'),
+    /** Solo i prodotti che questo fornitore vende. */
+    supplierId: z.string().trim().max(64).default(''),
     sort: productSortSchema.default('name-asc'),
   })
   .strict();
