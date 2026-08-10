@@ -124,12 +124,19 @@ export default async function ProductsPage({
           {/* Quanti se ne stanno vedendo, non solo quanti ce ne sono: prima
               diceva «313 prodotti» mostrandone 200, e i 113 mancanti non li
               segnalava nessuno. */}
-          <strong className="text-neutral-950">
-            {mostrati.da}–{mostrati.a}
-          </strong>{' '}
-          di {risultato.filtrati}
-          {risultato.filtrati !== risultato.total && <> filtrati su {risultato.total}</>} prodotti ·{' '}
-          {risultato.orphan > 0 && <>{risultato.orphan} senza offerte · </>}
+          {risultato.filtrati === 0 ? (
+            <strong className="text-neutral-950">Nessuno dei {risultato.total} prodotti</strong>
+          ) : (
+            <>
+              <strong className="text-neutral-950">
+                {mostrati.da}–{mostrati.a}
+              </strong>{' '}
+              di {risultato.filtrati}
+              {risultato.filtrati !== risultato.total && <> filtrati su {risultato.total}</>}{' '}
+              prodotti
+            </>
+          )}{' '}
+          · {risultato.orphan > 0 && <>{risultato.orphan} senza offerte · </>}
           {risultato.unclassified > 0 ? (
             <span className="text-amber-700">{risultato.unclassified} senza categoria</span>
           ) : (
