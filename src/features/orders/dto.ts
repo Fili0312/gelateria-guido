@@ -23,6 +23,8 @@ export interface OffertaOrdinabile {
   vatRate: string | null;
   packQuantity: number;
   packagingType: string | null;
+  /** `false` quando i pezzi per confezione non sono stati letti dal listino. */
+  packQuantityConfirmed: boolean;
   unitSize: string;
   unitOfMeasure: UnitOfMeasureValue;
   baseUnit: BaseUnitValue;

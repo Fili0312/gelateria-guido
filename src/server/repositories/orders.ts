@@ -744,6 +744,7 @@ export function ordersRepository(organizationId: string) {
           vatRate: o.vatRate,
           packQuantity: o.packQuantity,
           packagingType: o.packagingType,
+          packQuantityConfirmed: o.packQuantityConfirmed,
           unitSize: o.unitSize,
           unitOfMeasure: o.unitOfMeasure,
           baseUnit: o.baseUnit,

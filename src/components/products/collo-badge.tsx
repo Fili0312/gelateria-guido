@@ -49,7 +49,12 @@ export function ColloBadge({
   );
 }
 
-/** «al collo» / «alla confezione» / «alla bottiglia»: a cosa si riferisce il prezzo. */
+/** «alla» davanti a vocale si elide: «all'unità», non «alla unità». */
+function alla(nome: string): string {
+  return /^[aeiou]/i.test(nome) ? `all’${nome}` : `alla ${nome}`;
+}
+
+/** «al collo» / «all'unità» / «alla bottiglia»: a cosa si riferisce il prezzo. */
 export function aCosaSiRiferisce(confezione: ConfezioneDaDescrivere): string {
   const collo = descriviCollo(confezione);
   if (collo.daDefinire) return 'alla confezione';
@@ -57,7 +62,7 @@ export function aCosaSiRiferisce(confezione: ConfezioneDaDescrivere): string {
     // «1 bottiglia» → «alla bottiglia». Se il listino non dà un nome, resta
     // il generico: inventarne uno sarebbe peggio di non dirlo.
     const nome = collo.titolo.replace(/^1 /, '');
-    return nome === 'Confezione singola' ? 'alla confezione' : `alla ${nome}`;
+    return nome === 'Confezione singola' ? 'alla confezione' : alla(nome);
   }
   return `al ${collo.titolo.split(' ')[0]!.toLowerCase()}`;
 }

@@ -127,6 +127,7 @@ function mapOfferta(o: OffertaRecord, fermo: boolean, defaultVat: number): Compa
     unitPriceBasis: o.currentPrice!.unitPriceBasis as ComparedOffer['unitPriceBasis'],
     packQuantity: o.packQuantity,
     packagingType: o.packagingType,
+    packQuantityConfirmed: o.packQuantityConfirmed,
     unitSize: o.unitSize.toString(),
     unitOfMeasure: o.unitOfMeasure as ComparedOffer['unitOfMeasure'],
     contentPerPack: o.contentPerPack.toString(),

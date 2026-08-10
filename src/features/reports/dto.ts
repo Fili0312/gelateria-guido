@@ -24,6 +24,8 @@ export interface ComparedOffer {
   unitPriceBasis: PriceBasisValue;
   packQuantity: number;
   packagingType: string | null;
+  /** `false` quando i pezzi per confezione non sono stati letti dal listino. */
+  packQuantityConfirmed: boolean;
   unitSize: string;
   unitOfMeasure: UnitOfMeasureValue;
   contentPerPack: string;

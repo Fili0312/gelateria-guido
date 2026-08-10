@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { AppIcon } from '@/components/app-icon';
 import type { OffertaOrdinabile, RisultatoOrdinabile } from '@/features/orders/dto';
 import { CONFEZIONI_MAX, CONFEZIONI_MIN } from '@/features/orders/schema';
-import { etichettaBasis, euro, formatoConfezione } from '@/features/products/format';
+import { euro, formatoConfezione } from '@/features/products/format';
+import { ColloBadge } from '@/components/products/collo-badge';
 
 /**
  * Il catalogo da cui si ordina: una riga per prodotto, minimale.
@@ -67,11 +68,11 @@ function Offerta({
   return (
     <>
       <span className="tabellare font-semibold text-neutral-950">{euro(offerta.priceNet)}</span>
-      {offerta.unitPrice && offerta.unitPriceBasis && (
-        <span className="tabellare text-neutral-400">
-          {`${euro(offerta.unitPrice, 4)}${etichettaBasis(offerta.unitPriceBasis).slice(1)}`}
-        </span>
-      )}
+      {/* A cosa si riferisce la cifra: un collo da ventiquattro o una
+          bottiglia. Il prezzo al litro è sparito da qui — serve al confronto,
+          non a chi sta scegliendo quante casse ordinare, e su ogni riga
+          rubava lo spazio all'unica cosa che qui conta davvero. */}
+      <ColloBadge confezione={offerta} />
       <span className={compatta ? 'text-neutral-500' : 'text-neutral-500'}>
         {offerta.supplierName}
       </span>
@@ -142,22 +143,20 @@ function Riga({
       <div className="flex items-center gap-3 py-1.5 pr-2 pl-3">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-neutral-950">{risultato.name}</p>
+          {/* Il formato del pezzo sta dentro l'etichetta del collo, non anche
+              qui accanto: scriverlo due volte non lo rende più chiaro. E il
+              «collo da N» in coda era una terza ripetizione della stessa
+              cosa, con un colore tutto suo. */}
           <p className="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-xs">
-            <span className="text-neutral-500">
-              {formatoConfezione(risultato.unitSize, risultato.unitOfMeasure, 1)}
-            </span>
             {prima ? (
-              <>
-                <span className="text-neutral-300">·</span>
-                <Offerta offerta={prima} />
-                {prima.packQuantity > 1 && (
-                  <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] font-semibold text-neutral-600">
-                    collo da {prima.packQuantity}
-                  </span>
-                )}
-              </>
+              <Offerta offerta={prima} />
             ) : (
-              <span className="text-amber-700">{risultato.nonOrdinabile}</span>
+              <>
+                <span className="text-neutral-500">
+                  {formatoConfezione(risultato.unitSize, risultato.unitOfMeasure, 1)}
+                </span>
+                <span className="text-amber-700">{risultato.nonOrdinabile}</span>
+              </>
             )}
           </p>
         </div>
