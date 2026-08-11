@@ -39,7 +39,9 @@ async function main() {
   for (const [cosa, quante] of Object.entries(prima)) {
     console.log(`  ${String(quante).padStart(5)} ${cosa}`);
   }
-  console.log(`\n  restano: ${await systemPrisma.user.count()} utenti, ${await systemPrisma.setting.count()} impostazioni\n`);
+  console.log(
+    `\n  restano: ${await systemPrisma.user.count()} utenti, ${await systemPrisma.setting.count()} impostazioni\n`,
+  );
 
   if (!scrivi) {
     console.log('(prova a vuoto: rilancia con --scrivi per azzerare davvero)\n');

@@ -5,6 +5,7 @@ import { chiediAlModello, leggiRisposta, type ProviderAi } from '@/server/ai';
 import { SISTEMA_CLASSIFICA, utenteClassifica, VERSIONE_PROMPT } from '@/server/ai/prompts';
 import { prismaForOrganization } from '@/server/db';
 import { categoriaSuggerita } from '@/server/domain/catalog/categorie';
+import { normalizzaTesto } from '@/server/domain/packaging/normalize';
 
 /**
  * Dare una categoria ai prodotti, in due passi disuguali.
@@ -68,6 +69,15 @@ export interface EsitoClassificazione {
   /** Restano senza categoria: né la regola né il modello se la sono sentita. */
   indecisi: number;
   chiamate: number;
+  /**
+   * `true` quando non c'è nessuna categoria in cui mettere i prodotti.
+   *
+   * Non è un errore ed è una situazione normale su un'organizzazione nuova,
+   * ma va detta: senza categorie la regola non può agganciare niente e al
+   * modello si chiederebbe di scegliere da un elenco vuoto — trecento
+   * chiamate pagate per farsi rispondere «non so».
+   */
+  senzaCategorie: boolean;
 }
 
 export interface OpzioniClassificazione {
@@ -92,7 +102,15 @@ export async function classificaProdotti(
     select: { id: true, name: true },
     orderBy: { name: 'asc' },
   });
-  const perNome = new Map(categorie.map((c) => [c.name.toLowerCase(), c.id] as const));
+  /**
+   * L'indice passa dalla stessa normalizzazione dei nomi prodotto, non da un
+   * semplice `toLowerCase`: così «Amari e liquori», «AMARI E LIQUORI» e
+   * «Amari e Liquori » sono lo stesso nome. La regola propone un nome
+   * scritto in un modo solo, e una differenza di maiuscole nella tassonomia
+   * la faceva mancare in silenzio — con l'effetto che il prodotto finiva al
+   * modello, che costa, per una cosa che la regola sapeva già.
+   */
+  const perNome = new Map(categorie.map((c) => [normalizzaTesto(c.name), c.id] as const));
 
   const daFare = await db.product.findMany({
     where: { categoryId: null },
@@ -112,8 +130,19 @@ export async function classificaProdotti(
     dalModello: 0,
     indecisi: 0,
     chiamate: 0,
+    senzaCategorie: categorie.length === 0,
   };
   if (daFare.length === 0) return esito;
+
+  // Senza categorie non si classifica: **le categorie le decide chi usa
+  // l'app**, non il programma. Un'app che se le inventa produce trenta nomi
+  // diversi per la stessa cosa, ed è esattamente ciò che la tassonomia
+  // esiste per impedire. Qui ci si ferma e lo si dice, invece di chiamare il
+  // modello trecento volte per farsi rispondere «non so».
+  if (categorie.length === 0) {
+    esito.indecisi = daFare.length;
+    return esito;
+  }
 
   const restano: { id: string; descrizione: string }[] = [];
 
@@ -123,7 +152,7 @@ export async function classificaProdotti(
     // un'informazione di prima mano, poi col nome del prodotto.
     const testoFornitore = prodotto.supplierProducts.find((o) => o.category)?.category ?? null;
     const nome = categoriaSuggerita(testoFornitore) ?? categoriaSuggerita(prodotto.name);
-    const categoryId = nome ? perNome.get(nome.toLowerCase()) : undefined;
+    const categoryId = nome ? perNome.get(normalizzaTesto(nome)) : undefined;
 
     if (categoryId) {
       await db.product.update({ where: { id: prodotto.id }, data: { categoryId } });

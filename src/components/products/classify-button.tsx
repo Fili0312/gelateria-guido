@@ -24,6 +24,7 @@ interface Esito {
   dallaRegola: number;
   dalModello: number;
   indecisi: number;
+  senzaCategorie: boolean;
   chiamate: number;
 }
 
@@ -67,6 +68,19 @@ export function ClassifyButton({
       }
       setUltimo(corpo.data);
       const d = corpo.data;
+
+      // Le categorie le decide chi usa l'app: senza, non c'è dove mettere i
+      // prodotti, e dirlo è più utile di «0 classificati».
+      if (d.senzaCategorie) {
+        toast({
+          title: 'Non ci sono categorie',
+          description:
+            'I prodotti si classificano dentro le categorie che crei tu: aprine qualcuna in «Reparti e categorie» e riprova.',
+          tone: 'error',
+        });
+        return;
+      }
+
       toast({
         title: usaModello
           ? `${d.dalModello} classificati dal modello`

@@ -513,14 +513,18 @@ export async function applicaImport(
         where: { active: true },
         select: { id: true, name: true },
       });
-      const categoriaPerNome = new Map(categorie.map((c) => [c.name.toLowerCase(), c.id] as const));
+      // Indice normalizzato come nel classificatore: una maiuscola o un
+      // accento diversi nella tassonomia non devono far mancare l'aggancio.
+      const categoriaPerNome = new Map(
+        categorie.map((c) => [normalizzaTesto(c.name), c.id] as const),
+      );
       const categoriaDi = (testoFornitore: string | null, descrizione: string): string | null => {
         // La descrizione è l'unico testo disponibile qui: i listini di Cecconi e
         // Barzelli non hanno una colonna categoria, e le intestazioni di sezione
         // sono una sola in tutto il documento. `testoFornitore` resta nella firma
         // perché il giorno che un listino la porta, si aggancia in un punto solo.
         const nome = categoriaSuggerita(testoFornitore) ?? categoriaSuggerita(descrizione);
-        return nome ? (categoriaPerNome.get(nome.toLowerCase()) ?? null) : null;
+        return nome ? (categoriaPerNome.get(normalizzaTesto(nome)) ?? null) : null;
       };
 
       // Il revert non può dedurre questi valori da lastSeenPriceListId: un
