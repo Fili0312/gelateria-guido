@@ -22,6 +22,7 @@ function aCatalogo(dati: Partial<OffertaACatalogo> = {}): OffertaACatalogo {
     unitOfMeasure: 'CL',
     prezzoNetto: new Decimal('4.72'),
     active: true,
+    nellaCopertura: true,
     ...dati,
   };
 }
@@ -335,6 +336,44 @@ describe('aggiornamento parziale: non fa sparire niente', () => {
     assert.deepEqual(
       parziale.map((c) => c.esito),
       ['CONFEZIONE_CAMBIATA'],
+    );
+  });
+});
+
+describe('un listino unico con dentro tutto', () => {
+  // Il caso vero: bazzelli manda un PDF solo con bibite, liquori e vini. Il
+  // catalogo però li ha sotto tre coperture diverse, perché sono arrivati con
+  // tre file distinti. Il riconoscimento deve trovarli lo stesso: il codice
+  // articolo è del fornitore, non del reparto.
+  const catalogo = [
+    aCatalogo({ supplierProductId: 'sp-liq', supplierCode: 'L-1', nellaCopertura: true }),
+    aCatalogo({ supplierProductId: 'sp-bib', supplierCode: 'B-1', nellaCopertura: false }),
+    aCatalogo({ supplierProductId: 'sp-vin', supplierCode: 'V-1', nellaCopertura: false }),
+  ];
+
+  it('aggiorna i prezzi di tutte e tre, non solo di quelle della copertura', () => {
+    const confronti = riconcilia(catalogo, [
+      nelFile({ supplierCode: 'L-1', prezzoNetto: new Decimal('5') }),
+      nelFile({ supplierCode: 'B-1', prezzoNetto: new Decimal('6') }),
+      nelFile({ supplierCode: 'V-1', prezzoNetto: new Decimal('7') }),
+    ]);
+    assert.deepEqual(
+      confronti.map((c) => c.esito),
+      ['PREZZO_AGGIORNATO', 'PREZZO_AGGIORNATO', 'PREZZO_AGGIORNATO'],
+    );
+    // Prima di questa correzione erano tutte «NUOVO», e l'applicazione si
+    // fermava sul primo codice già esistente: (fornitore, codice) è unico.
+    assert.equal(confronti.filter((c) => c.esito === 'NUOVO').length, 0);
+  });
+
+  it('ma può far sparire solo ciò che apparteneva alla copertura caricata', () => {
+    // Il file non contiene nessuno dei tre. Sparisce quello della copertura;
+    // gli altri due no — quel file non prometteva di parlare di loro.
+    const confronti = riconcilia(catalogo, [nelFile({ supplierCode: 'ALTRO' })]);
+    const spariti = confronti.filter((c) => c.esito === 'SPARITO');
+    assert.deepEqual(
+      spariti.map((c) => c.supplierProductId),
+      ['sp-liq'],
     );
   });
 });

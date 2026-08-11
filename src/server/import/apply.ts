@@ -196,15 +196,17 @@ async function caricaPerimetro(
   supplierId: string,
   scopeLabel: string,
 ): Promise<OffertaACatalogo[]> {
+  // Si caricano **tutte** le offerte del fornitore, non solo quelle della
+  // copertura. Il riconoscimento non ha ragione di restringersi: un codice
+  // articolo appartiene al fornitore, e il vincolo `(fornitore, codice)` lo
+  // rende unico — cercarlo dentro una sola copertura non lo rendeva più
+  // preciso, impediva soltanto di trovarlo. Un fornitore che manda un listino
+  // unico con bibite, liquori e vini insieme — che è come i listini arrivano
+  // davvero — trovava tutto «nuovo» e si fermava sul primo codice esistente.
+  //
+  // La copertura resta dov'è indispensabile: nel decidere chi può sparire.
   const offerte = await db.supplierProduct.findMany({
-    where: {
-      supplierId,
-      OR: [
-        { lastSeenPriceList: { scopeLabel } },
-        // Le offerte mai viste da un listino di questa copertura non
-        // appartengono al perimetro e non devono poter «sparire».
-      ],
-    },
+    where: { supplierId },
     select: {
       id: true,
       supplierCode: true,
@@ -214,6 +216,7 @@ async function caricaPerimetro(
       unitSize: true,
       unitOfMeasure: true,
       active: true,
+      lastSeenPriceList: { select: { scopeLabel: true } },
       currentPrice: { select: { priceNet: true } },
     },
   });
@@ -228,6 +231,7 @@ async function caricaPerimetro(
     unitOfMeasure: o.unitOfMeasure,
     prezzoNetto: o.currentPrice ? new Decimal(o.currentPrice.priceNet.toString()) : null,
     active: o.active,
+    nellaCopertura: o.lastSeenPriceList?.scopeLabel === scopeLabel,
   }));
 }
 

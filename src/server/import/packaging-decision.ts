@@ -144,6 +144,7 @@ export async function decidiConfezione(input: {
         ? new Decimal(offerta.currentPrice.priceNet.toString())
         : null,
       active: offerta.active,
+      nellaCopertura: true,
     };
     const file: RigaDelFile = {
       chiave: riga.id,

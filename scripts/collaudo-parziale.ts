@@ -30,11 +30,7 @@ async function main() {
   });
 
   const offerte = await systemPrisma.supplierProduct.findMany({
-    where: {
-      supplierId: listino.supplierId,
-      lastSeenPriceList: { scopeLabel: listino.scopeLabel },
-      active: true,
-    },
+    where: { supplierId: listino.supplierId, active: true },
     select: {
       id: true,
       supplierCode: true,
@@ -44,6 +40,7 @@ async function main() {
       unitSize: true,
       unitOfMeasure: true,
       active: true,
+      lastSeenPriceList: { select: { scopeLabel: true } },
       currentPrice: { select: { priceNet: true } },
     },
   });
@@ -58,6 +55,7 @@ async function main() {
     unitOfMeasure: o.unitOfMeasure,
     prezzoNetto: o.currentPrice ? new Decimal(o.currentPrice.priceNet.toString()) : null,
     active: true,
+    nellaCopertura: o.lastSeenPriceList?.scopeLabel === listino.scopeLabel,
   }));
 
   console.log(

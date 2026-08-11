@@ -197,17 +197,16 @@ export function UploadDialog({
               ))}
             </datalist>
 
-            {/* Il nome nuovo su un fornitore che ne ha già è quasi sempre un
-                refuso, e le conseguenze non sono ovvie: il confronto avviene
-                **solo** dentro la stessa copertura, quindi un nome diverso non
-                aggiorna niente — prova a creare tutto da capo e si ferma sul
-                primo codice che esiste già. Meglio dirlo qui che lasciarlo
-                scoprire da un errore in fondo all'import. */}
+            {/* Un nome nuovo non è più un errore: i prezzi si riconoscono su
+                tutto il catalogo del fornitore. Cambia solo cosa può sparire,
+                ed è l'unica cosa che vale la pena spiegare. */}
             {coperture.length > 0 && !sostituisce && normalizzata.length > 0 && (
-              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+              <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs leading-5 text-sky-900">
                 <strong className="font-semibold">«{normalizzata}» è una copertura nuova</strong>{' '}
-                per {fornitore?.name}. I prezzi si aggiornano solo dentro la stessa copertura: se
-                questo file aggiorna un listino che hai già, usa il suo nome esatto —{' '}
+                per {fornitore?.name}. I prezzi si aggiornano lo stesso su tutti i suoi articoli,
+                ovunque siano finiti. Cambia solo una cosa: questa volta non verrà disattivato
+                niente, perché non c’era ancora niente sotto questo nome. Se stai ricaricando un
+                listino che hai già, usa il suo nome —{' '}
                 {coperture.map((c, i) => (
                   <button
                     key={c.scopeLabel}
@@ -219,7 +218,7 @@ export function UploadDialog({
                     {c.scopeLabel}
                   </button>
                 ))}
-                . Se invece è merce che non hai mai caricato, il nome nuovo va bene.
+                .
               </p>
             )}
 

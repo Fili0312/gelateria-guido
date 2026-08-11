@@ -51,6 +51,24 @@ export interface OffertaACatalogo extends Identita {
   /** Il prezzo netto attualmente in vigore, se c'è. */
   prezzoNetto: Decimal | null;
   active: boolean;
+  /**
+   * Se questa offerta appartiene alla **copertura** che si sta caricando.
+   *
+   * Distingue le due cose che la copertura serviva a fare insieme, e che
+   * insieme non dovevano stare:
+   *
+   *  - **riconoscere** un articolo già a catalogo: qui la copertura non
+   *    c'entra. Un codice appartiene a un fornitore, non a un reparto, e il
+   *    vincolo `(fornitore, codice)` lo rende unico: cercarlo dentro una sola
+   *    copertura non lo rendeva più preciso, impediva soltanto di trovarlo.
+   *    È il caso di un fornitore che manda un listino unico con dentro
+   *    bibite, liquori e vini — che è come i listini arrivano davvero;
+   *
+   *  - **dichiarare sparito** ciò che non c'è più: qui invece la copertura è
+   *    tutto. «Non è in questo file» vuol dire «non lo vende più» soltanto se
+   *    il file copriva quella parte del suo catalogo.
+   */
+  nellaCopertura: boolean;
 }
 
 export interface RigaDelFile extends Identita {
@@ -267,6 +285,9 @@ export function riconcilia(
 
   for (const offerta of aCatalogo) {
     if (visti.has(offerta.supplierProductId) || !offerta.active) continue;
+    // Fuori dalla copertura la sua assenza non dice niente: il file non
+    // prometteva di parlare di quella parte del catalogo.
+    if (!offerta.nellaCopertura) continue;
     confronti.push({
       esito: 'SPARITO',
       chiaveRiga: null,
