@@ -7,11 +7,17 @@ import type {
   SupplierProductListQuery,
 } from '@/features/products/schema';
 import { supplierProductInputSchema } from '@/features/products/schema';
-import { prismaForOrganization } from '@/server/db';
+import { prismaForOrganization, transactionForOrganization } from '@/server/db';
 import { impronta } from '@/server/domain/packaging/fingerprint';
 import { normalizzaTesto } from '@/server/domain/packaging/normalize';
 import { nucleoDescrizione } from '@/server/domain/packaging/parse';
-import { baseDi, inUnitaBase, type UnitOfMeasure } from '@/server/domain/packaging/units';
+import {
+  baseDi,
+  inUnitaBase,
+  type BaseUnit,
+  type UnitOfMeasure,
+} from '@/server/domain/packaging/units';
+import { prezzoPerUnita } from '@/server/domain/pricing/unit-price';
 import { mapOffer, OFFER_INCLUDE, type OfferRecord } from './offers';
 
 export class SupplierProductNotFoundError extends Error {
@@ -73,6 +79,17 @@ function campiZod(issues: { path: PropertyKey[]; message: string }[]): Record<st
   return fields;
 }
 
+export interface GruppoDaDefinire {
+  supplierId: string;
+  supplierName: string;
+  packagingType: string | null;
+  unitSize: string;
+  unitOfMeasure: string;
+  quante: number;
+  /** Qualche nome, per capire di cosa si sta parlando senza aprire niente. */
+  esempi: string[];
+}
+
 export function supplierProductsRepository(organizationId: string) {
   const db = prismaForOrganization(organizationId);
 
@@ -86,6 +103,149 @@ export function supplierProductsRepository(organizationId: string) {
   }
 
   return {
+    /**
+     * Le confezioni ancora da dichiarare, raggruppate.
+     *
+     * Non una per una: i fornitori usano una convenzione, non un capriccio
+     * per articolo. «Il collo di bottiglie da 20 cl di cecconi» è una
+     * decisione sola che ne sblocca dodici, e chiederla dodici volte fa
+     * abbandonare a metà.
+     */
+    async gruppiDaDefinire(): Promise<GruppoDaDefinire[]> {
+      const offerte = await db.supplierProduct.findMany({
+        where: { active: true, packQuantityConfirmed: false },
+        select: {
+          rawName: true,
+          packagingType: true,
+          unitSize: true,
+          unitOfMeasure: true,
+          supplierId: true,
+          supplier: { select: { name: true } },
+        },
+        orderBy: { rawName: 'asc' },
+      });
+
+      const gruppi = new Map<string, GruppoDaDefinire>();
+      for (const o of offerte) {
+        const chiave = `${o.supplierId}|${o.packagingType ?? ''}|${o.unitSize.toString()}|${o.unitOfMeasure}`;
+        const gruppo = gruppi.get(chiave) ?? {
+          supplierId: o.supplierId,
+          supplierName: o.supplier.name,
+          packagingType: o.packagingType,
+          unitSize: o.unitSize.toString(),
+          unitOfMeasure: o.unitOfMeasure,
+          quante: 0,
+          esempi: [],
+        };
+        gruppo.quante += 1;
+        if (gruppo.esempi.length < 3) gruppo.esempi.push(o.rawName);
+        gruppi.set(chiave, gruppo);
+      }
+      return [...gruppi.values()].sort((a, b) => b.quante - a.quante);
+    },
+
+    /**
+     * Dichiara quanti pezzi contiene la confezione, per un gruppo intero.
+     *
+     * ── Perché qui si può toccare il contenuto e altrove no ────────────
+     * L'aggiornamento normale rifiuta di cambiare il contenuto di
+     * un'offerta che ha uno storico prezzi, e fa bene: il prezzo unitario di
+     * ogni riga è una fotografia calcolata col contenuto di allora, e
+     * cambiare il denominatore dopo farebbe apparire quel valore accanto a un
+     * formato che non lo ha prodotto.
+     *
+     * Qui è il caso opposto, ed è l'unico. `packQuantityConfirmed = false`
+     * vuol dire che **quel contenuto non lo sapevamo**: il pezzo per
+     * confezione era un ripiego a 1, e ogni unitario calcolato sopra era un
+     * segnaposto, non una misura. Correggerlo non riscrive la storia, la
+     * completa — ed è la ragione per cui l'app quegli unitari non li mostrava
+     * nemmeno, scrivendo «confezione da definire».
+     *
+     * Per questo si ricalcolano **tutte** le righe di storico e non solo
+     * l'ultima: condividevano tutte la stessa ipotesi sbagliata.
+     */
+    async definisciConfezione(
+      chiave: {
+        supplierId: string;
+        packagingType: string | null;
+        unitSize: string;
+        unitOfMeasure: string;
+      },
+      pezzi: number,
+    ): Promise<{ offerte: number; prezziRicalcolati: number }> {
+      if (!Number.isInteger(pezzi) || pezzi < 1 || pezzi > 10_000) {
+        throw new SupplierProductValidationError('I pezzi per confezione non sono validi.', {
+          pezzi: ['Indica un numero intero fra 1 e 10.000.'],
+        });
+      }
+
+      return transactionForOrganization(organizationId, async (tx) => {
+        const offerte = await tx.supplierProduct.findMany({
+          where: {
+            supplierId: chiave.supplierId,
+            packagingType: chiave.packagingType,
+            unitSize: chiave.unitSize,
+            unitOfMeasure: chiave.unitOfMeasure as UnitOfMeasure,
+            active: true,
+            // Solo quelle mai dichiarate: un'offerta già confermata è una
+            // misura, e va cambiata dalla strada stretta.
+            packQuantityConfirmed: false,
+          },
+          select: {
+            id: true,
+            rawName: true,
+            unitSize: true,
+            unitOfMeasure: true,
+            prices: { select: { id: true, priceNet: true } },
+          },
+        });
+
+        let prezziRicalcolati = 0;
+        for (const offerta of offerte) {
+          const derivati = derivatiOfferta({
+            rawName: offerta.rawName,
+            unitSize: offerta.unitSize.toString(),
+            unitOfMeasure: offerta.unitOfMeasure,
+            packQuantity: pezzi,
+          });
+
+          // I prezzi si aggiornano **annidati** dall'offerta: il client
+          // scoped nasconde `supplierProductPrice`, che non ha
+          // l'organizzazione addosso. È scomodo e voluto — una query sui
+          // prezzi che si dimentica di filtrare non compila.
+          const ricalcolati = offerta.prices.map((prezzo) => {
+            const unitario = prezzoPerUnita(
+              prezzo.priceNet.toString(),
+              derivati.contentPerPack,
+              derivati.baseUnit as BaseUnit,
+            );
+            return {
+              where: { id: prezzo.id },
+              data: {
+                unitPrice: unitario.valore.toString(),
+                unitPriceBasis: unitario.basis,
+              },
+            };
+          });
+
+          await tx.supplierProduct.update({
+            where: { id: offerta.id },
+            data: {
+              packQuantity: pezzi,
+              packQuantityConfirmed: true,
+              contentPerPack: derivati.contentPerPack,
+              baseUnit: derivati.baseUnit as 'PIECE' | 'KG' | 'L',
+              fingerprint: derivati.fingerprint,
+              prices: { update: ricalcolati },
+            },
+          });
+          prezziRicalcolati += ricalcolati.length;
+        }
+
+        return { offerte: offerte.length, prezziRicalcolati };
+      });
+    },
+
     async list(query: SupplierProductListQuery): Promise<SupplierProductListResult> {
       const termine = normalizzaTesto(query.q);
       const where = {

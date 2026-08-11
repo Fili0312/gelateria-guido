@@ -74,7 +74,7 @@ function DaFareList({ daFare }: { daFare: DaFare }) {
         testo: 'prodotti senza categoria',
       },
       {
-        href: '/prodotti',
+        href: '/prodotti/confezioni',
         icona: 'warning',
         quante: daFare.confezioniDaDefinire,
         testo: 'offerte senza i pezzi per confezione: non entrano nei confronti',
