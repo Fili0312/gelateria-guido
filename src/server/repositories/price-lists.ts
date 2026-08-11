@@ -89,6 +89,7 @@ const LIST_SELECT = {
   supplierId: true,
   scopeLabel: true,
   documentType: true,
+  mode: true,
   originalFilename: true,
   pageCount: true,
   status: true,
@@ -117,6 +118,7 @@ interface ListRecord {
   supplierId: string;
   scopeLabel: string;
   documentType: string;
+  mode: string;
   originalFilename: string;
   pageCount: number | null;
   status: string;
@@ -159,6 +161,7 @@ function mapList(record: ListRecord): PriceListItem {
     supplierName: record.supplier.name,
     scopeLabel: record.scopeLabel,
     documentType: record.documentType,
+    mode: record.mode,
     originalFilename: record.originalFilename,
     pageCount: record.pageCount,
     status: record.status as StatoListino,
@@ -316,6 +319,7 @@ export function priceListsRepository(organizationId: string) {
           supplierId: fornitore.id,
           scopeLabel: input.dati.scopeLabel,
           documentType: input.dati.documentType,
+          mode: input.dati.mode,
           originalFilename: input.originalFilename,
           storagePath: input.storagePath,
           fileHash: input.fileHash,

@@ -151,6 +151,17 @@ export default async function PriceListPage({ params }: { params: Promise<{ id: 
           <span className="max-w-md truncate">{listino.originalFilename}</span>
           <span>· caricato il {DATA.format(new Date(listino.uploadedAt))}</span>
           {listino.pageCount && <Badge variant="neutral">{listino.pageCount} pagine</Badge>}
+          {/* Resta anche dopo l'applicazione: fra sei mesi, guardando cosa è
+              successo al catalogo quel giorno, la modalità è la prima cosa da
+              sapere. */}
+          {listino.mode === 'PARTIAL' && (
+            <Badge
+              variant="brand"
+              title="Aggiorna solo le righe presenti nel file: niente viene disattivato"
+            >
+              aggiornamento parziale
+            </Badge>
+          )}
         </p>
       </header>
 
@@ -162,6 +173,7 @@ export default async function PriceListPage({ params }: { params: Promise<{ id: 
 
       {revisione && listino.prodotti > 0 && (
         <ReviewPanel
+          parziale={listino.mode === 'PARTIAL'}
           anteprima={{
             riepilogo: revisione.riepilogo,
             daDecidere: revisione.confronti

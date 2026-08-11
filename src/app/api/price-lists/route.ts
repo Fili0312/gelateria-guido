@@ -65,6 +65,7 @@ export async function POST(request: Request) {
       supplierId: modulo.get('supplierId') ?? '',
       scopeLabel: modulo.get('scopeLabel') ?? '',
       ...(modulo.get('documentType') ? { documentType: modulo.get('documentType') } : {}),
+      ...(modulo.get('mode') ? { mode: modulo.get('mode') } : {}),
     });
 
     const file = modulo.get('file');

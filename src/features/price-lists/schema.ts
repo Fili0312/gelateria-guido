@@ -49,6 +49,13 @@ export const priceListUploadSchema = z
     documentType: z
       .enum(['LISTINO', 'PREVENTIVO', 'ORDINE_VENDITA', 'CATALOGO'])
       .default('LISTINO'),
+    /**
+     * Listino completo o aggiornamento parziale. Si dichiara, non si
+     * indovina: un file di venti righe può essere il listino intero di un
+     * fornitore piccolo, e sbagliare la supposizione fa danno in entrambi i
+     * versi.
+     */
+    mode: z.enum(['FULL', 'PARTIAL']).default('FULL'),
   })
   .strict();
 

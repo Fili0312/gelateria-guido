@@ -74,6 +74,23 @@ enum DocumentType {
   CATALOGO
 }
 
+/// Se il file è il listino completo del fornitore o solo un aggiornamento.
+///
+/// La differenza tocca una cosa sola, ma pesante: in un listino completo ciò
+/// che non c'è **non lo vende più**, e va disattivato; in un aggiornamento
+/// parziale ciò che non c'è semplicemente non è stato rimandato, e toccarlo
+/// cancellerebbe mezzo catalogo per un foglio da due pagine.
+///
+/// Si dichiara al caricamento e non si indovina: un file di venti righe può
+/// benissimo essere il listino completo di un fornitore piccolo, e sbagliare
+/// la supposizione è un danno silenzioso in entrambe le direzioni.
+enum PriceListMode {
+  /// Il listino intero: ciò che manca è sparito dal catalogo del fornitore.
+  FULL
+  /// Solo alcune righe: si aggiornano quelle e non si tocca nient'altro.
+  PARTIAL
+}
+
 enum PriceListStatus {
   UPLOADED
   EXTRACTING
@@ -331,6 +348,13 @@ model PriceList {
   pageCount        Int?   @map("page_count")
 
   documentType DocumentType @default(LISTINO) @map("document_type")
+
+  /// Listino completo o aggiornamento parziale. Il valore predefinito è
+  /// `FULL` perché è quello che un fornitore manda di norma, e perché
+  /// sbagliando in quel verso l'errore si vede subito — le offerte
+  /// disattivate sono in bella vista nella revisione e l'import si annulla.
+  /// Al contrario un parziale scambiato per completo non fa rumore.
+  mode PriceListMode @default(FULL)
 
   /// Che cosa copre questo listino ("liquori", "vini e spumanti", "gelato").
   /// Non è un'etichetta cosmetica: è il perimetro entro cui si calcolano i

@@ -314,6 +314,7 @@ async function calcolaAnteprima(
       id: true,
       supplierId: true,
       scopeLabel: true,
+      mode: true,
       supplier: { select: { pricesIncludeVat: true, defaultVatRate: true } },
       rows: {
         select: {
@@ -375,7 +376,11 @@ async function calcolaAnteprima(
   }
 
   const aCatalogo = await caricaPerimetro(db, listino.supplierId, listino.scopeLabel);
-  const confronti = riconcilia(aCatalogo, nelFile);
+  // In un aggiornamento parziale l'assenza di una riga non dice niente: il
+  // file porta solo quello che il fornitore ha rimandato.
+  const confronti = riconcilia(aCatalogo, nelFile, {
+    segnalaSpariti: listino.mode !== 'PARTIAL',
+  });
   for (const confronto of confronti) {
     if (confronto.esito !== 'CONFEZIONE_CAMBIATA' || !confronto.chiaveRiga) continue;
     const riga = righe.get(confronto.chiaveRiga);

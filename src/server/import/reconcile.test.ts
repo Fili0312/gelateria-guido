@@ -284,3 +284,57 @@ describe('la stessa riga senza codice due volte nello stesso file', () => {
     assert.match(confronti[1]!.differenze[0]!, /senza codice/);
   });
 });
+
+describe('aggiornamento parziale: non fa sparire niente', () => {
+  // Il caso vero: il fornitore manda due pagine coi soli rincari. Le altre
+  // trecento offerte non sono sparite — non sono state rimandate, che è una
+  // cosa diversa, e trattarle come sparite disattiverebbe mezzo catalogo.
+  const catalogo = [
+    aCatalogo({ supplierProductId: 'sp-1', supplierCode: 'A1' }),
+    aCatalogo({ supplierProductId: 'sp-2', supplierCode: 'A2' }),
+    aCatalogo({ supplierProductId: 'sp-3', supplierCode: 'A3' }),
+  ];
+  const file = [nelFile({ supplierCode: 'A2', prezzoNetto: new Decimal('5.10') })];
+
+  it('come listino completo le altre due spariscono', () => {
+    const completo = riconcilia(catalogo, file);
+    assert.equal(completo.filter((c) => c.esito === 'SPARITO').length, 2);
+  });
+
+  it('come parziale non ne sparisce nessuna', () => {
+    const parziale = riconcilia(catalogo, file, { segnalaSpariti: false });
+    assert.equal(parziale.filter((c) => c.esito === 'SPARITO').length, 0);
+  });
+
+  it('e per il resto si comporta esattamente come prima', () => {
+    const parziale = riconcilia(catalogo, file, { segnalaSpariti: false });
+    assert.equal(parziale.length, 1);
+    assert.equal(parziale[0]!.esito, 'PREZZO_AGGIORNATO');
+    assert.equal(parziale[0]!.prezzoDopo?.toString(), '5.1');
+  });
+
+  it('un articolo mai visto resta «nuovo»', () => {
+    const parziale = riconcilia(catalogo, [nelFile({ supplierCode: 'MAI-VISTO' })], {
+      segnalaSpariti: false,
+    });
+    assert.deepEqual(
+      parziale.map((c) => c.esito),
+      ['NUOVO'],
+    );
+  });
+
+  it('una confezione cambiata si ferma e chiede, come sempre', () => {
+    // La protezione che conta di più non dipende dalla modalità: stesso
+    // codice con confezione diversa può essere lo stesso articolo reimballato
+    // oppure un articolo diverso, e sbagliare falsa ogni confronto.
+    const parziale = riconcilia(
+      [aCatalogo({ supplierCode: 'A1', packQuantity: 6 })],
+      [nelFile({ supplierCode: 'A1', packQuantity: 12 })],
+      { segnalaSpariti: false },
+    );
+    assert.deepEqual(
+      parziale.map((c) => c.esito),
+      ['CONFEZIONE_CAMBIATA'],
+    );
+  });
+});

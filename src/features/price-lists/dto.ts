@@ -48,6 +48,8 @@ export interface PriceListItem {
   supplierName: string;
   scopeLabel: string;
   documentType: string;
+  /** `FULL` listino completo, `PARTIAL` solo alcune righe. */
+  mode: string;
   originalFilename: string;
   pageCount: number | null;
   status: StatoListino;

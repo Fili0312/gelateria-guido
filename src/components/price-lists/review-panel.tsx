@@ -69,6 +69,7 @@ function Numero({
 export function ReviewPanel({
   anteprima,
   stato,
+  parziale,
   endpointApply,
   endpointRevert,
   endpointRematch,
@@ -82,6 +83,8 @@ export function ReviewPanel({
 }: {
   anteprima: Anteprima;
   stato: string;
+  /** Aggiornamento parziale: niente sparisce, e va detto qui. */
+  parziale: boolean;
   endpointApply: string;
   endpointRevert: string;
   endpointRematch: string;
@@ -349,7 +352,17 @@ export function ReviewPanel({
         </p>
       )}
 
-      {r.spariti > 0 && !applicato && (
+      {/* La modalità si sceglie al caricamento e si applica anche mezz'ora
+          dopo: ricordarla qui evita di premere «Applica» convinti dell'altra. */}
+      {parziale && !applicato && (
+        <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm leading-6 text-sky-900">
+          <strong className="font-semibold">Aggiornamento parziale.</strong> Si aggiornano solo le
+          righe di questo file e si aggiungono quelle nuove: nessun articolo verrà disattivato,
+          anche se non compare qui.
+        </p>
+      )}
+
+      {!parziale && r.spariti > 0 && !applicato && (
         <p className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm leading-6 text-neutral-600">
           {r.spariti} {r.spariti === 1 ? 'prodotto non compare' : 'prodotti non compaiono'} più in
           questo listino: {r.spariti === 1 ? 'verrà disattivato' : 'verranno disattivati'}, mai

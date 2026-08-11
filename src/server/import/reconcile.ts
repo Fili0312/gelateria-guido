@@ -134,9 +134,25 @@ function chiaveIdentita(identita: Identita): ChiaveIdentita | null {
  * catalogo che nel file non compare più. Nessuna riga sparisce dal risultato:
  * anche «invariato» è un esito, e va contato nel riepilogo.
  */
+export interface OpzioniRiconciliazione {
+  /**
+   * `false` per un **aggiornamento parziale**: il file porta solo alcune
+   * righe, e ciò che non c'è non è sparito — semplicemente non è stato
+   * rimandato.
+   *
+   * È l'unica differenza fra le due modalità, e non è una sfumatura: su un
+   * foglio da due pagine con i soli rincari, trattarlo come listino completo
+   * disattiverebbe le altre trecento offerte del fornitore. Tutto il resto —
+   * riconoscimento, aggiornamento del prezzo, creazione dei nuovi — è
+   * identico, perché non c'è ragione perché sia diverso.
+   */
+  segnalaSpariti: boolean;
+}
+
 export function riconcilia(
   aCatalogo: readonly OffertaACatalogo[],
   nelFile: readonly RigaDelFile[],
+  opzioni: OpzioniRiconciliazione = { segnalaSpariti: true },
 ): Confronto[] {
   const perIdentita = new Map<string, OffertaACatalogo>();
   for (const offerta of aCatalogo) {
@@ -244,6 +260,11 @@ export function riconcilia(
   // **Solo** dentro il perimetro (fornitore + copertura), e solo fra le
   // offerte ancora attive: `aCatalogo` arriva già filtrato da chi chiama, ed è
   // lì che il perimetro viene imposto.
+  //
+  // In un aggiornamento parziale questo giro non si fa proprio: l'assenza di
+  // una riga non è un'informazione, e dedurne qualcosa sarebbe inventare.
+  if (!opzioni.segnalaSpariti) return confronti;
+
   for (const offerta of aCatalogo) {
     if (visti.has(offerta.supplierProductId) || !offerta.active) continue;
     confronti.push({

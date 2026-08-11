@@ -53,6 +53,7 @@ export function UploadDialog({
   const [open, setOpen] = useState(false);
   const [supplierId, setSupplierId] = useState('');
   const [scopeLabel, setScopeLabel] = useState('');
+  const [modalita, setModalita] = useState<'FULL' | 'PARTIAL'>('FULL');
   const [file, setFile] = useState<File | null>(null);
   /** Le coperture arrivano dal server e sono legate al fornitore scelto:
    *  si tengono insieme, cosi' non puo' capitare di mostrare quelle di un
@@ -113,6 +114,7 @@ export function UploadDialog({
       const modulo = new FormData();
       modulo.set('supplierId', supplierId);
       modulo.set('scopeLabel', scopeLabel);
+      modulo.set('mode', modalita);
       modulo.set('file', file);
 
       const risposta = await fetch(endpoint, { method: 'POST', body: modulo });
@@ -220,10 +222,58 @@ export function UploadDialog({
                 ({quandoFermo(sostituisce.giorniFermo)})
                 {sostituisce.prodotti > 0 ? `, ${sostituisce.prodotti} righe prodotto` : ''}.
                 <br />
-                Questo caricamento lo sostituirà.
+                {modalita === 'FULL'
+                  ? 'Questo caricamento lo sostituirà.'
+                  : 'Essendo un aggiornamento, questo caricamento non lo sostituisce: aggiunge e corregge soltanto.'}
               </p>
             )}
           </div>
+
+          {/* La domanda che evita il danno peggiore dell'import.
+              Si dichiara e non si indovina: un file di venti righe può essere
+              il listino intero di un fornitore piccolo, e supporlo parziale
+              lascerebbe a catalogo articoli che non si vendono più. */}
+          <fieldset className="grid gap-2">
+            <legend className="mb-1 text-sm font-semibold text-neutral-800">
+              Cosa contiene questo file
+            </legend>
+            {(
+              [
+                [
+                  'FULL',
+                  'Il listino completo',
+                  'Tutto quello che il fornitore vende per questa copertura. Gli articoli che non ci sono verranno disattivati: non li vende più.',
+                ],
+                [
+                  'PARTIAL',
+                  'Solo un aggiornamento',
+                  'Poche righe, per esempio i soli rincari. Si aggiornano quelle e i nuovi articoli si aggiungono; tutto il resto resta com’è.',
+                ],
+              ] as const
+            ).map(([valore, titolo, spiegazione]) => (
+              <label
+                key={valore}
+                className={`flex cursor-pointer gap-3 rounded-xl border p-3 transition-colors ${
+                  modalita === valore
+                    ? 'border-brand-500 bg-brand-50/60'
+                    : 'border-neutral-200 hover:border-neutral-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="mode"
+                  value={valore}
+                  checked={modalita === valore}
+                  onChange={() => setModalita(valore)}
+                  className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-neutral-950">{titolo}</span>
+                  <span className="block text-xs leading-5 text-neutral-600">{spiegazione}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
 
           <div className="grid gap-1.5">
             <label htmlFor="file-listino" className="text-sm font-semibold text-neutral-800">
