@@ -5,16 +5,21 @@ import { useState } from 'react';
 import { useToast } from '@/components/ui';
 
 /**
- * Dire quanti pezzi ci sono nella confezione, sul posto.
+ * Dire quanti pezzi ci sono nella confezione, senza uscire dall'elenco.
  *
  * Finché non si sa, quell'offerta **non entra in nessun confronto**: il
  * prezzo al litro di un collo di cui non si sa quante bottiglie contenga non
- * è un dato, è un'ipotesi. Sono due clic, e ognuno sblocca un prodotto.
+ * è un dato, è un'ipotesi — e sbagliata di ventiquattro volte.
  *
- * Le due risposte non sono simmetriche: «è un pezzo solo» è un clic secco
- * perché è il caso più frequente e più certo; «è un collo» chiede il numero,
- * perché senza numero non si è risolto niente.
+ * ── Perché i numeri sono già lì ─────────────────────────────────────────
+ * La versione di prima chiedeva prima «è un pezzo o un collo?» e poi, in un
+ * secondo passaggio, il numero. Due decisioni per una cosa sola: chi scorre
+ * cento prodotti si ferma alla quinta. Ora le pezzature che ricorrono
+ * davvero — 6, 12, 24 — sono un clic, e «altro» resta per il resto.
  */
+
+const COMUNI = [6, 12, 24];
+
 export function PackagingQuickSet({
   supplierProductId,
   supplierName,
@@ -22,33 +27,32 @@ export function PackagingQuickSet({
 }: {
   supplierProductId: string;
   supplierName: string;
+  /** L'endpoint delle confezioni, non quello dell'offerta. */
   endpoint: string;
 }) {
   const router = useRouter();
   const { toast } = useToast();
   const [aperto, setAperto] = useState(false);
-  const [pezzi, setPezzi] = useState('');
+  const [altro, setAltro] = useState('');
   const [attesa, setAttesa] = useState(false);
 
-  async function salva(quantita: number) {
+  async function salva(pezzi: number) {
+    if (!Number.isInteger(pezzi) || pezzi < 1) return;
     setAttesa(true);
     try {
-      const risposta = await fetch(`${endpoint}/${supplierProductId}`, {
-        method: 'PATCH',
+      const risposta = await fetch(endpoint, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ packQuantity: quantita, packQuantityConfirmed: true }),
+        body: JSON.stringify({ supplierProductId, pezzi }),
       });
-      const corpo = (await risposta.json().catch(() => null)) as {
-        ok: boolean;
-        error?: string;
-      } | null;
-      if (!risposta.ok || !corpo?.ok) {
-        toast({ title: 'Non è stato possibile salvare', description: corpo?.error, tone: 'error' });
+      const corpo = (await risposta.json()) as { ok: boolean; error?: string };
+      if (!corpo.ok) {
+        toast({ title: 'Non è stato possibile salvare', description: corpo.error, tone: 'error' });
         return;
       }
       toast({
-        title: quantita === 1 ? 'Segnato come pezzo singolo' : `Collo da ${quantita}`,
-        description: 'Ora questa offerta entra nei confronti.',
+        title: pezzi === 1 ? 'Segnata come pezzo singolo' : `Confezione da ${pezzi}`,
+        description: 'Ora entra nei confronti, col prezzo al litro giusto.',
         tone: 'success',
       });
       setAperto(false);
@@ -65,54 +69,62 @@ export function PackagingQuickSet({
       <button
         type="button"
         onClick={() => setAperto(true)}
-        title={`Il prezzo di ${supplierName} non entra nei confronti finché non si sa quanti pezzi ha la confezione`}
-        className="cursor-pointer rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800 transition-colors hover:border-amber-400 hover:bg-amber-100"
+        className="cursor-pointer rounded-md border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[11px] leading-4 font-semibold text-amber-800 transition-colors hover:bg-amber-100"
+        title={`${supplierName} non dichiara quanti pezzi contiene: finché manca, questo articolo resta fuori dai confronti`}
       >
-        confezione da definire →
+        quanti pezzi? →
       </button>
     );
   }
 
   return (
-    <span className="inline-flex flex-wrap items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2 py-1">
-      <span className="text-[11px] text-amber-900">Quanti pezzi?</span>
+    <span className="inline-flex flex-wrap items-center gap-1">
+      {COMUNI.map((n) => (
+        <button
+          key={n}
+          type="button"
+          disabled={attesa}
+          onClick={() => void salva(n)}
+          className="hover:border-brand-400 hover:bg-brand-50 min-h-7 min-w-8 cursor-pointer rounded-md border border-neutral-300 bg-white px-1.5 text-xs font-bold text-neutral-800 transition-colors disabled:opacity-60"
+        >
+          {n}
+        </button>
+      ))}
+      <input
+        type="number"
+        inputMode="numeric"
+        min={1}
+        max={10_000}
+        value={altro}
+        onChange={(e) => setAltro(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            void salva(Number(altro));
+          }
+        }}
+        placeholder="altro"
+        aria-label="Pezzi per confezione"
+        disabled={attesa}
+        className="focus:border-brand-500 min-h-7 w-16 rounded-md border border-neutral-300 px-1.5 text-xs outline-none"
+      />
+      {/* Il fornitore scrive «collo» anche quando vende il pezzo: capita, e
+          senza questa via d'uscita l'unico modo sarebbe scrivere «1». */}
       <button
         type="button"
         disabled={attesa}
         onClick={() => void salva(1)}
-        className="min-h-8 cursor-pointer rounded border border-neutral-300 bg-white px-2 text-xs font-semibold text-neutral-800 hover:border-neutral-400 disabled:opacity-50"
+        className="min-h-7 cursor-pointer px-1 text-xs text-neutral-500 underline hover:text-neutral-800 disabled:opacity-60"
       >
-        1, è singolo
-      </button>
-      <input
-        type="number"
-        min={2}
-        max={9999}
-        value={pezzi}
-        onChange={(e) => setPezzi(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && Number(pezzi) >= 2) void salva(Number(pezzi));
-          if (e.key === 'Escape') setAperto(false);
-        }}
-        placeholder="24"
-        aria-label="Pezzi per confezione"
-        className="tabellare h-8 w-16 rounded border border-neutral-300 px-2 text-xs outline-none focus:border-amber-500"
-      />
-      <button
-        type="button"
-        disabled={attesa || Number(pezzi) < 2}
-        onClick={() => void salva(Number(pezzi))}
-        className="min-h-8 cursor-pointer rounded bg-amber-600 px-2 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-40"
-      >
-        È un collo
+        è singolo
       </button>
       <button
         type="button"
         onClick={() => setAperto(false)}
+        className="min-h-7 cursor-pointer px-1 text-xs text-neutral-400 hover:text-neutral-700"
         aria-label="Annulla"
-        className="cursor-pointer px-1 text-xs text-neutral-500 hover:text-neutral-800"
       >
-        ×
+        ✕
       </button>
     </span>
   );

@@ -99,6 +99,12 @@ export const productListQuerySchema = z
     status: productStatusSchema.default('all'),
     /** Solo i prodotti che questo fornitore vende. */
     supplierId: z.string().trim().max(64).default(''),
+    /**
+     * `da-definire`: solo i prodotti la cui offerta non dichiara quanti pezzi
+     * contiene la confezione. Sono quelli che restano fuori dai confronti, e
+     * senza un filtro si trovano solo scorrendo trecento righe.
+     */
+    packaging: z.enum(['all', 'da-definire']).default('all'),
     sort: productSortSchema.default('name-asc'),
     /**
      * La paginazione. Prima non c'era e il catalogo si fermava ai primi 200

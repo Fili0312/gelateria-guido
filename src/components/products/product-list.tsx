@@ -98,10 +98,12 @@ function Riga({
   prodotto,
   endpoint,
   endpointOfferte,
+  endpointConfezioni,
 }: {
   prodotto: ProductListItem;
   endpoint: string;
   endpointOfferte: string;
+  endpointConfezioni: string;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -167,7 +169,7 @@ function Riga({
                 <PackagingQuickSet
                   supplierProductId={prodotto.price.supplierProductId}
                   supplierName={prodotto.price.supplierName}
-                  endpoint={endpointOfferte}
+                  endpoint={endpointConfezioni}
                 />
               }
             />
@@ -271,11 +273,13 @@ export function ProductList({
   conFiltri,
   endpoint,
   endpointOfferte,
+  endpointConfezioni,
 }: {
   items: ProductListItem[];
   conFiltri: boolean;
   endpoint: string;
   endpointOfferte: string;
+  endpointConfezioni: string;
 }) {
   if (items.length === 0) return <Vuoto conFiltri={conFiltri} />;
 
@@ -290,6 +294,7 @@ export function ProductList({
           prodotto={prodotto}
           endpoint={endpoint}
           endpointOfferte={endpointOfferte}
+          endpointConfezioni={endpointConfezioni}
         />
       ))}
     </ul>

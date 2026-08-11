@@ -35,6 +35,7 @@ export default async function ProductsPage({
     classification: primo(query.classification),
     status: primo(query.status),
     supplierId: primo(query.supplierId),
+    packaging: primo(query.packaging),
     sort: primo(query.sort),
     pagina: primo(query.pagina),
     perPagina: primo(query.perPagina),
@@ -80,6 +81,7 @@ export default async function ProductsPage({
     filtri.categoryId !== '' ||
     filtri.classification !== 'all' ||
     filtri.supplierId !== '' ||
+    filtri.packaging !== 'all' ||
     filtri.status !== 'all';
 
   return (
@@ -204,6 +206,12 @@ export default async function ProductsPage({
               </option>
             ))}
           </Select>
+          {/* La coda che tiene i prodotti fuori dai confronti: senza un
+              filtro la si trova solo scorrendo trecento righe. */}
+          <Select name="packaging" label="Confezione" defaultValue={filtri.packaging}>
+            <option value="all">Tutte</option>
+            <option value="da-definire">Manca il numero di pezzi</option>
+          </Select>
           <Select name="sort" label="Ordina" defaultValue={filtri.sort}>
             <option value="name-asc">Nome (A→Z)</option>
             <option value="name-desc">Nome (Z→A)</option>
@@ -250,6 +258,7 @@ export default async function ProductsPage({
         conFiltri={conFiltri}
         endpoint={withBasePath('/api/products')}
         endpointOfferte={withBasePath('/api/supplier-products')}
+        endpointConfezioni={withBasePath('/api/supplier-products/confezioni')}
       />
 
       {pagine > 1 && (

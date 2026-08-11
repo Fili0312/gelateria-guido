@@ -223,6 +223,11 @@ export function productsRepository(organizationId: string) {
         ...(query.supplierId
           ? { supplierProducts: { some: { supplierId: query.supplierId, active: true } } }
           : {}),
+        // Basta un'offerta senza pezzi dichiarati: è quella che tiene il
+        // prodotto fuori dai confronti, anche se le altre sono a posto.
+        ...(query.packaging === 'da-definire'
+          ? { supplierProducts: { some: { active: true, packQuantityConfirmed: false } } }
+          : {}),
       };
 
       // L'ordinamento per numero di offerte si fa **in SQL**. Prima si

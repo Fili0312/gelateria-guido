@@ -20,13 +20,23 @@ export const dynamic = 'force-dynamic';
  * una fotografia presa quando la pagina è stata aperta, e nel frattempo un
  * import può averne aggiunte.
  */
-const corpo = z.object({
-  supplierId: z.string().trim().min(1).max(64),
-  packagingType: z.string().trim().max(20).nullable(),
-  unitSize: z.string().trim().min(1).max(20),
-  unitOfMeasure: z.string().trim().min(1).max(10),
-  pezzi: z.coerce.number().int().min(1).max(10_000),
-});
+const pezziSchema = z.coerce.number().int().min(1).max(10_000);
+
+const corpo = z.union([
+  // Un gruppo intero: fornitore, imballo e formato.
+  z.object({
+    supplierId: z.string().trim().min(1).max(64),
+    packagingType: z.string().trim().max(20).nullable(),
+    unitSize: z.string().trim().min(1).max(20),
+    unitOfMeasure: z.string().trim().min(1).max(10),
+    pezzi: pezziSchema,
+  }),
+  // Oppure una sola offerta, per sistemarla scorrendo il catalogo.
+  z.object({
+    supplierProductId: z.string().trim().min(1).max(64),
+    pezzi: pezziSchema,
+  }),
+]);
 
 export async function GET() {
   try {
@@ -51,9 +61,9 @@ export async function POST(request: Request) {
     }
 
     const dati = corpo.parse(await readJsonRequest(request, DEFAULT_MAX_JSON_BODY_BYTES));
-    const { pezzi, ...chiave } = dati;
+    const { pezzi, ...bersaglio } = dati;
     return jsonSuccess(
-      await supplierProductsRepository(user.organizationId).definisciConfezione(chiave, pezzi),
+      await supplierProductsRepository(user.organizationId).definisciConfezione(bersaglio, pezzi),
     );
   } catch (error) {
     return mappedErrorResponse(

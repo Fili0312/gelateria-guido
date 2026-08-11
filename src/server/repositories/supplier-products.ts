@@ -165,12 +165,16 @@ export function supplierProductsRepository(organizationId: string) {
      * l'ultima: condividevano tutte la stessa ipotesi sbagliata.
      */
     async definisciConfezione(
-      chiave: {
-        supplierId: string;
-        packagingType: string | null;
-        unitSize: string;
-        unitOfMeasure: string;
-      },
+      bersaglio:
+        | {
+            supplierId: string;
+            packagingType: string | null;
+            unitSize: string;
+            unitOfMeasure: string;
+          }
+        /** Una sola offerta: è il caso del catalogo, dove si sistema
+         *  scorrendo senza aprire una schermata a parte. */
+        | { supplierProductId: string },
       pezzi: number,
     ): Promise<{ offerte: number; prezziRicalcolati: number }> {
       if (!Number.isInteger(pezzi) || pezzi < 1 || pezzi > 10_000) {
@@ -182,10 +186,14 @@ export function supplierProductsRepository(organizationId: string) {
       return transactionForOrganization(organizationId, async (tx) => {
         const offerte = await tx.supplierProduct.findMany({
           where: {
-            supplierId: chiave.supplierId,
-            packagingType: chiave.packagingType,
-            unitSize: chiave.unitSize,
-            unitOfMeasure: chiave.unitOfMeasure as UnitOfMeasure,
+            ...('supplierProductId' in bersaglio
+              ? { id: bersaglio.supplierProductId }
+              : {
+                  supplierId: bersaglio.supplierId,
+                  packagingType: bersaglio.packagingType,
+                  unitSize: bersaglio.unitSize,
+                  unitOfMeasure: bersaglio.unitOfMeasure as UnitOfMeasure,
+                }),
             active: true,
             // Solo quelle mai dichiarate: un'offerta già confermata è una
             // misura, e va cambiata dalla strada stretta.
