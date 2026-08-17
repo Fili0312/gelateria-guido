@@ -125,19 +125,11 @@ export default async function OrdineStoricoPage({ params }: { params: Promise<{ 
 
       <section className="rounded-2xl border border-neutral-200 bg-white p-5">
         <dl className="space-y-1 text-sm">
-          <div className="flex justify-between text-neutral-600">
-            <dt>Netto</dt>
-            <dd className="tabellare">{euro(ordine.netto)}</dd>
-          </div>
-          {Number(ordine.iva) > 0 && (
-            <div className="flex justify-between text-neutral-600">
-              <dt>IVA</dt>
-              <dd className="tabellare">{euro(ordine.iva)}</dd>
-            </div>
-          )}
-          <div className="flex items-baseline justify-between border-t border-neutral-100 pt-2">
-            <dt className="font-semibold text-neutral-900">Totale</dt>
-            <dd className="tabellare text-2xl font-black text-neutral-950">{euro(ordine.lordo)}</dd>
+          <div className="flex items-baseline justify-between">
+            <dt className="font-semibold text-neutral-900">
+              Totale <span className="font-normal text-neutral-500">+ IVA</span>
+            </dt>
+            <dd className="tabellare text-2xl font-black text-neutral-950">{euro(ordine.netto)}</dd>
           </div>
         </dl>
       </section>

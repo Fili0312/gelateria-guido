@@ -25,9 +25,12 @@ import type { DatiDocumento, DocumentTemplate } from '../template';
  *     da uno. Lasciandolo vuoto in quel caso resta un «2» solitario che si
  *     legge benissimo come due casse, e arrivano dodici volte troppe
  *     bottiglie: l'errore costa un rientro merce e una telefonata.
- *  3. **Il totale in fondo è il suo.** I gruppi che arrivano qui sono già
- *     solo i suoi, e i totali descrivono i gruppi presenti: non c'è modo che
- *     in fondo compaia la cifra dell'ordine complessivo.
+ *  3. **Il totale in fondo è il suo, e è imponibile.** I gruppi che arrivano
+ *     qui sono già solo i suoi, e i totali descrivono i gruppi presenti: non
+ *     c'è modo che in fondo compaia la cifra dell'ordine complessivo. L'IVA
+ *     non si calcola e si scrive «+ IVA»: l'aliquota di ogni articolo quasi
+ *     mai arriva dal listino, e sommarne una predefinita darebbe un totale
+ *     dall'aria esatta che il fornitore poi smentisce in fattura.
  */
 
 function scampa(testo: string): string {
@@ -171,10 +174,12 @@ ${righe}
     <table>
       <tr>
         <td style="color:#525252">${t.righe} ${t.righe === 1 ? 'articolo' : 'articoli'} · ${t.confezioni} ${t.confezioni === 1 ? 'confezione' : 'confezioni'}</td>
+        <td></td>
+      </tr>
+      <tr class="grande">
+        <td>Totale <span style="font-size:9pt;font-weight:400">+ IVA</span></td>
         <td class="num">${scampa(euro(t.netto))}</td>
       </tr>
-      ${Number(t.iva) > 0 ? `<tr><td style="color:#525252">IVA</td><td class="num">${scampa(euro(t.iva))}</td></tr>` : ''}
-      <tr class="grande"><td>Totale</td><td class="num">${scampa(euro(t.lordo))}</td></tr>
     </table>
   </div>
 
@@ -185,7 +190,8 @@ ${righe}
   }
 
   <p class="piede">
-    I prezzi sono quelli concordati a listino, IVA esclusa dove non diversamente indicato.
+    Tutti gli importi sono <strong>IVA esclusa</strong>: l'imposta la applica il fornitore in fattura.
+    I prezzi sono quelli concordati a listino.
     Per qualsiasi difformità fare riferimento al numero d’ordine ${scampa(dati.ordine.code ?? '')}.
   </p>
 </body></html>`;

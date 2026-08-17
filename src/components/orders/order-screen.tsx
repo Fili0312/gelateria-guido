@@ -417,7 +417,7 @@ export function OrderScreen({
                     ? 'Premi + su un prodotto per cominciare'
                     : Number(t.ritornoAtteso) > 0
                       ? `${euro(t.ritornoAtteso)} torneranno indietro per gli sconti concordati`
-                      : `${euro(t.lordo)} con IVA`}
+                      : 'più IVA'}
                 </span>
               </span>
               <span className="tabellare shrink-0 text-xl font-black text-neutral-950">

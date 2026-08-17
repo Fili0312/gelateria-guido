@@ -81,8 +81,29 @@ async function main() {
   console.log('\n── Criterio 1: tre fornitori, tre PDF, ciascuno coi suoi ───────\n');
 
   // Tre fornitori diversi: è il caso che questa fase esiste per risolvere.
+  //
+  // Si prendono solo articoli **esclusivi** di un fornitore. Da quando il
+  // catalogo ha più fornitori sullo stesso prodotto, la verifica «nel PDF di
+  // Barzetti non c'è nessuna riga degli altri» non si può fare sui nomi: la
+  // Red Bull la vendono in tre e il nome è identico in tutti e tre i
+  // documenti, giustamente. Con articoli esclusivi il controllo torna a
+  // dire quello che deve dire.
+  const esclusivi = (
+    await systemPrisma.product.findMany({
+      where: { supplierProducts: { some: { active: true, currentPriceId: { not: null } } } },
+      select: { id: true, _count: { select: { supplierProducts: true } } },
+    })
+  )
+    .filter((p) => p._count.supplierProducts === 1)
+    .map((p) => p.id);
+
   const offerte = await systemPrisma.supplierProduct.findMany({
-    where: { organizationId: org.id, active: true, currentPriceId: { not: null } },
+    where: {
+      organizationId: org.id,
+      active: true,
+      currentPriceId: { not: null },
+      productId: { in: esclusivi },
+    },
     select: {
       id: true,
       supplierId: true,
@@ -272,10 +293,19 @@ async function main() {
       if (testo.includes(riga.supplierCode)) codiciTrovati += 1;
     }
   }
-  esito(
-    codiciAttesi > 0 && codiciTrovati === codiciAttesi,
-    `i ${codiciAttesi} codici articolo del fornitore sono tutti sul PDF (${codiciTrovati})`,
-  );
+  if (codiciAttesi === 0) {
+    // Non è un rosso: è un listino che i codici non li ha. Dirlo è meglio di
+    // far fallire un criterio che su questi dati non si può provare — e
+    // meglio di farlo passare, che nasconderebbe una regressione vera.
+    console.log(
+      '  ~ nessun articolo di questo campione ha un codice fornitore: criterio non verificabile',
+    );
+  } else {
+    esito(
+      codiciTrovati === codiciAttesi,
+      `i ${codiciAttesi} codici articolo del fornitore sono tutti sul PDF (${codiciTrovati})`,
+    );
+  }
   // E il nostro id non c'è: stamparlo non serve a nessuno e confonde chi legge.
   const righeDb = await systemPrisma.orderLine.findMany({
     where: { orderId: confermato.orderId },
@@ -293,14 +323,17 @@ async function main() {
   for (const gruppo of dati.gruppi) {
     const testo = testi.get(gruppo.supplierId)!;
     const importi = importiNel(testo);
-    const suo = new Decimal(gruppo.lordo);
+    // Il totale sul PDF è l'**imponibile**: l'IVA non si calcola, si scrive
+    // «+ IVA». L'aliquota di ogni articolo quasi mai arriva dal listino, e
+    // sommarne una predefinita darebbe un numero che la fattura smentisce.
+    const suo = new Decimal(gruppo.netto);
     esito(
       importi.includes(suo.toFixed(2)),
-      `${gruppo.supplierName}: il totale ${suo.toFixed(2)} € è sul PDF`,
+      `${gruppo.supplierName}: il totale ${suo.toFixed(2)} € (+ IVA) è sul PDF`,
     );
     // E il totale dell'ordine intero **non** c'è: sarebbe il numero più
     // grande in fondo alla pagina, e chi riceve legge quello.
-    const intero = new Decimal(dati.totali.lordo);
+    const intero = new Decimal(dati.totali.netto);
     esito(
       intero.equals(suo) || !importi.includes(intero.toFixed(2)),
       `…e il totale dell'ordine intero (${intero.toFixed(2)} €) non compare`,

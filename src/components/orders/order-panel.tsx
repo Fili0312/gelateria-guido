@@ -258,11 +258,14 @@ export function OrderPanel({
             {euro(t.netto)}
           </span>
         </div>
-        {Number(t.iva) > 0 && (
-          <p className="tabellare mt-0.5 text-right text-xs text-neutral-500">
-            {euro(t.lordo)} con IVA
-          </p>
-        )}
+        {/* «+ IVA», non l'IVA calcolata.
+            L'aliquota di ogni articolo quasi mai arriva dal listino, quindi
+            si userebbe il 22% predefinito su tutto: un totale con IVA
+            costruito così ha la faccia di un numero esatto e non lo è, e
+            nessuno saprebbe che non lo è. Il netto invece è il prezzo vero,
+            ed è quello su cui si decide. L'IVA la fa il fornitore in
+            fattura. */}
+        <p className="mt-0.5 text-right text-xs text-neutral-500">più IVA</p>
 
         {/* Lo sconto extra sta ACCANTO al totale, non dentro: il totale dice
             quanto si paga adesso, questo quanto si riavrà. Scontarlo dal

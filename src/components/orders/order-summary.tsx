@@ -256,15 +256,15 @@ export function OrderSummary({
             </dt>
             <dd className="tabellare font-semibold text-neutral-950">{euro(t.netto)}</dd>
           </div>
-          {Number(t.iva) > 0 && (
-            <div className="flex justify-between text-neutral-600">
-              <dt>IVA</dt>
-              <dd className="tabellare">{euro(t.iva)}</dd>
-            </div>
-          )}
+          {/* Il totale è il **netto**, e accanto c'è scritto «+ IVA».
+              Sommare un'IVA calcolata sull'aliquota predefinita darebbe un
+              numero dall'aria esatta e sbagliato ogni volta che un articolo
+              non sta al 22% — e chi lo legge non ha modo di accorgersene. */}
           <div className="flex items-baseline justify-between border-t border-neutral-100 pt-2">
-            <dt className="font-semibold text-neutral-900">Totale</dt>
-            <dd className="tabellare text-2xl font-black text-neutral-950">{euro(t.lordo)}</dd>
+            <dt className="font-semibold text-neutral-900">
+              Totale <span className="font-normal text-neutral-500">+ IVA</span>
+            </dt>
+            <dd className="tabellare text-2xl font-black text-neutral-950">{euro(t.netto)}</dd>
           </div>
           {Number(t.ritornoAtteso) > 0 && (
             <div className="flex justify-between rounded-lg bg-violet-50 px-2 py-1 text-xs text-violet-800">

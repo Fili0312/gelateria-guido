@@ -114,7 +114,7 @@ async function costruisci(dati: DatiDocumento): Promise<Uint8Array> {
 
   const t = dati.totali;
   const totale = foglio.addRow([
-    'TOTALE ORDINE',
+    'TOTALE ORDINE (+ IVA)',
     '',
     '',
     '',
@@ -128,14 +128,6 @@ async function costruisci(dati: DatiDocumento): Promise<Uint8Array> {
   totale.eachCell((cella) => {
     cella.border = { top: { style: 'double', color: { argb: 'FF171717' } } };
   });
-  if (Number(t.iva) > 0) {
-    const iva = foglio.addRow(['IVA', '', '', '', '', '', '', Number(t.iva)]);
-    iva.getCell(8).numFmt = EURO;
-    const lordo = foglio.addRow(['TOTALE CON IVA', '', '', '', '', '', '', Number(t.lordo)]);
-    lordo.font = { bold: true, size: 12 };
-    lordo.getCell(8).numFmt = EURO;
-  }
-
   const buffer = await cartella.xlsx.writeBuffer();
   return new Uint8Array(buffer as ArrayBuffer);
 }
