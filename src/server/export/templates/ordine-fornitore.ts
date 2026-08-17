@@ -59,7 +59,7 @@ const STILE = `
   .numero h1 { font-size: 16pt; font-weight: 800; margin: 0; letter-spacing: -0.02em; white-space: nowrap; }
   .numero p { margin: 2px 0 0; font-size: 9pt; color: #525252; }
   .destinatario {
-    margin-top: 18px; padding: 10px 12px; border: 1px solid #e5e5e5;
+    margin-top: 12px; padding: 8px 11px; border: 1px solid #e5e5e5;
     border-radius: 6px; background: #fafafa;
   }
   .destinatario .etichetta {
@@ -67,10 +67,10 @@ const STILE = `
     color: #737373; margin: 0 0 3px;
   }
   .destinatario .nome { font-size: 12pt; font-weight: 800; margin: 0; }
-  .blocchi { display: flex; gap: 12px; margin-top: 12px; width: 100%; }
+  .blocchi { display: flex; gap: 10px; margin-top: 8px; width: 100%; }
   .blocco {
     flex: 1 1 0; min-width: 0; border: 1px solid #e5e5e5;
-    border-radius: 6px; padding: 9px 11px;
+    border-radius: 6px; padding: 7px 10px;
   }
   .blocco .etichetta {
     font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.08em;
@@ -79,8 +79,8 @@ const STILE = `
   .blocco p { margin: 0; font-size: 9pt; line-height: 1.4; }
   .blocco strong { font-weight: 700; }
   .condizioni {
-    margin-top: 12px; border: 1px solid #e5e5e5; border-radius: 6px;
-    padding: 9px 11px; font-size: 9pt; line-height: 1.5;
+    margin-top: 8px; border: 1px solid #e5e5e5; border-radius: 6px;
+    padding: 6px 10px; font-size: 8.5pt; line-height: 1.4;
   }
   .condizioni dt {
     display: inline; font-size: 7.5pt; text-transform: uppercase;
@@ -91,12 +91,12 @@ const STILE = `
     margin-top: 10px; border: 1px solid #171717; border-radius: 6px;
     padding: 8px 11px; font-size: 8.5pt; line-height: 1.45; page-break-inside: avoid;
   }
-  .firma { margin-top: 22px; display: flex; justify-content: flex-end; }
+  .firma { margin-top: 14px; display: flex; justify-content: flex-end; }
   .firma span {
     border-top: 1px solid #737373; padding-top: 4px; width: 220px;
     text-align: center; font-size: 8pt; color: #737373;
   }
-  table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
   thead { display: table-header-group; }
   th {
     text-align: left; font-size: 7.5pt; text-transform: uppercase;
