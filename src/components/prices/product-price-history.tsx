@@ -451,7 +451,20 @@ function HistoryCard({
               <TableHead numeric>Listino</TableHead>
               <TableHead>Sconti</TableHead>
               <TableHead numeric>Netto</TableHead>
-              <TableHead numeric>Per unità</TableHead>
+              {/* «a listino», e non è un dettaglio: nella tabella delle
+                  offerte qui sopra il €/L contiene il rimborso concordato,
+                  perché lì serve a confrontare i fornitori. Qui no — lo
+                  storico è il registro di cosa è stato pattuito quel giorno,
+                  e applicarci lo sconto di oggi riscriverebbe il passato con
+                  un accordo che allora poteva non esistere. Due numeri
+                  diversi vanno bene; due numeri diversi con la stessa
+                  etichetta no. */}
+              <TableHead
+                numeric
+                title="Sul prezzo di listino: lo storico registra il pattuito, non il rimborso di oggi"
+              >
+                Per unità a listino
+              </TableHead>
               <TableHead>Variazione</TableHead>
               <TableHead>Origine</TableHead>
             </TableRow>
