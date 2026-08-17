@@ -52,11 +52,11 @@ const STILE = `
     font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     font-size: 10pt; color: #171717; margin: 0; line-height: 1.45;
   }
-  .testa { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; }
+  .testa { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
   .chi { font-size: 13pt; font-weight: 800; margin: 0 0 2px; }
   .recapiti { font-size: 8.5pt; color: #525252; margin: 0; }
   .numero { text-align: right; }
-  .numero h1 { font-size: 19pt; font-weight: 800; margin: 0; letter-spacing: -0.02em; }
+  .numero h1 { font-size: 16pt; font-weight: 800; margin: 0; letter-spacing: -0.02em; white-space: nowrap; }
   .numero p { margin: 2px 0 0; font-size: 9pt; color: #525252; }
   .destinatario {
     margin-top: 18px; padding: 10px 12px; border: 1px solid #e5e5e5;
@@ -67,9 +67,10 @@ const STILE = `
     color: #737373; margin: 0 0 3px;
   }
   .destinatario .nome { font-size: 12pt; font-weight: 800; margin: 0; }
-  .blocchi { display: flex; gap: 12px; margin-top: 12px; }
+  .blocchi { display: flex; gap: 12px; margin-top: 12px; width: 100%; }
   .blocco {
-    flex: 1; border: 1px solid #e5e5e5; border-radius: 6px; padding: 9px 11px;
+    flex: 1 1 0; min-width: 0; border: 1px solid #e5e5e5;
+    border-radius: 6px; padding: 9px 11px;
   }
   .blocco .etichetta {
     font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.08em;
@@ -252,11 +253,21 @@ ${righe}
       : ''
   }
 
-  <p class="piede">
-    Tutti gli importi sono <strong>IVA esclusa</strong>: l'imposta la applica il fornitore in fattura.
-    I prezzi sono quelli concordati a listino.
-    Per qualsiasi difformità fare riferimento al numero d’ordine ${scampa(dati.ordine.code ?? '')}.
-  </p>
+  <div class="accettazione">
+    <p style="margin:0">
+      Tutti gli importi sono espressi al <strong>netto dell’IVA</strong>: l’imposta sarà
+      applicata in fattura dal fornitore secondo le aliquote di legge vigenti. I prezzi sono
+      quelli concordati a listino; per qualsiasi difformità fare riferimento al numero d’ordine
+      ${scampa(dati.ordine.code ?? '')}.
+    </p>
+    ${
+      i.clausolaAccettazione
+        ? `<p style="margin:8px 0 0"><strong>${scampa(i.clausolaAccettazione)}</strong></p>`
+        : ''
+    }
+  </div>
+
+  <div class="firma"><span>Timbro e firma per accettazione</span></div>
 </body></html>`;
 }
 
