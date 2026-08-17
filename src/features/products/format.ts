@@ -87,15 +87,40 @@ export function contenutoConfezione(contentPerPack: string, baseUnit: BaseUnitVa
 }
 
 /**
+ * Quanto costa davvero una confezione: il netto meno il rimborso concordato.
+ *
+ * Il rimborso non abbassa la fattura — quello si paga per intero — ma abbassa
+ * il costo, e il costo è quello su cui si sceglie il fornitore.
+ */
+export function costoRealeConfezione(offer: SupplierOffer): string | null {
+  if (!offer.price) return null;
+  const sconto = Number(offer.scontoExtraApplicato);
+  if (!Number.isFinite(sconto) || sconto <= 0) return null;
+  return ((Number(offer.price.priceNet) * (100 - sconto)) / 100).toFixed(4);
+}
+
+/**
  * Il prezzo per unità, oppure il motivo per cui non c'è.
  *
- * Restituire la stringa «—» quando la confezione è ignota è deliberato: un
- * numero calcolato su pezzi inventati sarebbe indistinguibile da uno vero.
+ * ── Sull'effettivo, non sul listino ─────────────────────────────────────
+ * È il numero con cui si confrontano due fornitori, quindi deve contenere il
+ * rimborso concordato: senza, la stessa schermata diceva due cose opposte —
+ * «AD Beverage più conveniente» accanto a un €/L che dava vincente Barzetti.
+ * Il succo Amita pesca costa 15,52 € contro 14,88 €, ma con il 5% che torna
+ * indietro viene a 14,74 €, e il €/L calcolato sul listino non lo sapeva.
+ *
+ * Restituire «—» quando la confezione è ignota è deliberato: un numero
+ * calcolato su pezzi inventati sarebbe indistinguibile da uno vero.
  */
 export function prezzoUnitario(offer: SupplierOffer): string {
   if (!offer.price) return '—';
   if (!offer.packQuantityConfirmed) return 'confezione da definire';
-  return importoPerUnita(offer.price.unitPrice, offer.price.unitPriceBasis);
+  const sconto = Number(offer.scontoExtraApplicato);
+  const unitario =
+    Number.isFinite(sconto) && sconto > 0
+      ? ((Number(offer.price.unitPrice) * (100 - sconto)) / 100).toFixed(6)
+      : offer.price.unitPrice;
+  return importoPerUnita(unitario, offer.price.unitPriceBasis);
 }
 
 /**

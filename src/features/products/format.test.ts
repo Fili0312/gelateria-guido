@@ -9,6 +9,7 @@ import {
   etichettaImballo,
   formatoConfezione,
   formatoUnitario,
+  costoRealeConfezione,
   prezzoUnitario,
   prezzoUnitarioDiCatalogo,
 } from './format';
@@ -177,5 +178,41 @@ describe('la confezione che accompagna il prezzo', () => {
       confezioneDelPrezzo(prezzoDiCatalogo({ packagingType: null, packQuantity: 1 })),
       '50 cl',
     );
+  });
+});
+
+describe('il prezzo per unità contiene il rimborso concordato', () => {
+  // Il caso vero: SUCCO AMITA PESCA CL.20X24, 4,8 L a confezione.
+  //
+  //   AD Beverage  15,52 € e rimborsa il 5% → 14,744 € → 3,0717 €/L
+  //   Barzetti     14,88 € senza rimborso   → 14,880 € → 3,1000 €/L
+  //
+  // Sul listino il €/L dava vincente Barzetti (3,1000 contro 3,2333), mentre
+  // il badge accanto diceva «AD Beverage più conveniente»: la stessa riga
+  // affermava due cose opposte, e nessuna delle due spiegava l'altra.
+  const conRimborso = offerta({
+    scontoExtraApplicato: '5',
+    price: {
+      priceList: '15.52',
+      discounts: [],
+      priceNet: '15.52',
+      unitPrice: '3.233333',
+      unitPriceBasis: 'PER_L',
+      validFrom: '2026-05-26',
+    },
+  });
+
+  it('il €/L scende del rimborso', () => {
+    assert.match(prezzoUnitario(conRimborso), /3,0717/);
+  });
+
+  it('e il costo reale della confezione si può mostrare accanto al netto', () => {
+    assert.equal(costoRealeConfezione(conRimborso), '14.7440');
+  });
+
+  it('senza rimborso non cambia niente', () => {
+    const senza = offerta({ scontoExtraApplicato: '0' });
+    assert.equal(costoRealeConfezione(senza), null);
+    assert.match(prezzoUnitario(senza), /0,4425/);
   });
 });

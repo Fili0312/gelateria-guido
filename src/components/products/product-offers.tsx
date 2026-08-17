@@ -18,6 +18,7 @@ import type { SupplierOffer } from '@/features/products/dto';
 import {
   catenaSconti,
   contenutoConfezione,
+  costoRealeConfezione,
   etichettaBasis,
   euro,
   formatoConfezione,
@@ -190,7 +191,9 @@ export function ProductOffers({
             <TableHead>Sconti</TableHead>
             <TableHead>Netto</TableHead>
             <TableHead>Sconto extra</TableHead>
-            <TableHead>Per unità</TableHead>
+            <TableHead title="Calcolato sul costo reale, rimborsi compresi: è il numero con cui si confrontano i fornitori">
+              Per unità
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -250,6 +253,16 @@ export function ProductOffers({
                 </TableCell>
                 <TableCell className="tabellare font-semibold">
                   {offerta.price ? euro(offerta.price.priceNet) : '—'}
+                  {/* Sotto, quanto costa **davvero**: il netto meno il
+                      rimborso. Senza questa riga il «per unità» accanto
+                      sembrerebbe sbagliato, perché nasce da un numero che nella
+                      tabella non compariva. Il netto sopra resta quello che si
+                      paga, ed è quello che fa la somma dell'ordine. */}
+                  {costoRealeConfezione(offerta) && (
+                    <span className="block text-xs font-normal text-violet-700">
+                      {euro(costoRealeConfezione(offerta)!)} reali
+                    </span>
+                  )}
                 </TableCell>
                 {/* Lo sconto extra è un premio a posteriori: non abbassa il
                     netto qui accanto, che è quello che si paga. Si mostra a
