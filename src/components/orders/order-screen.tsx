@@ -237,7 +237,16 @@ export function OrderScreen({
   // ciò che resta dopo il filtro: altrimenti scegliendo «Birre» sparirebbero
   // tutte le altre voci e non si potrebbe più tornare indietro.
   const { reparti, categoriePerReparto } = useMemo(() => raggruppa(risultati), [risultati]);
-  const categorie = reparto ? (categoriePerReparto.get(reparto) ?? []) : [];
+  // Con un reparto solo — «Bevande», che è il caso di questa gelateria — la
+  // riga dei reparti non compare, ed è giusto: un filtro con una voce sola
+  // non filtra niente. Ma le categorie sotto vanno mostrate lo stesso, o non
+  // resta nessun filtro. Prima bisognava scegliere un reparto per vederle, e
+  // quel reparto non c'era da scegliere.
+  const categorie = reparto
+    ? (categoriePerReparto.get(reparto) ?? [])
+    : reparti.length === 1
+      ? (categoriePerReparto.get(reparti[0]!.id) ?? [])
+      : [];
 
   const mostrati = useMemo(() => {
     if (!reparto && !categoria) return risultati;

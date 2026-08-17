@@ -117,11 +117,18 @@ function Riga({
 }) {
   const prima0 = risultato.offerte[0];
   const altre0 = risultato.offerte.slice(1);
-  // Quando due fornitori vendono lo stesso articolo si vedono **entrambi**,
-  // aperti. Nasconderne uno dietro una freccia significa che nove volte su
-  // dieci non lo si guarda — e quel confronto è la ragione per cui il
-  // prodotto è stato collegato.
-  const [aperto, setAperto] = useState(altre0.length > 0);
+  // Le righe con più fornitori nascono **chiuse**.
+  //
+  // Prima nascevano aperte, per non far perdere il confronto. Con due
+  // fornitori e trecento prodotti funzionava; con nove fornitori e
+  // cinquecento no — un elenco in cui un terzo delle righe è alto il triplo
+  // delle altre non si scorre, e per arrivare alla lettera S si passa sopra
+  // duecento offerte che non si stavano cercando.
+  //
+  // Il confronto non si perde: sulla riga chiusa c'è già il fornitore
+  // migliore col suo prezzo, e accanto quanti altri ce l'hanno. Chi vuole
+  // vederli preme, e chi sta cercando la vodka scorre.
+  const [aperto, setAperto] = useState(false);
   const elemento = useRef<HTMLLIElement>(null);
 
   useEffect(() => {
@@ -172,11 +179,16 @@ function Riga({
                 : `Mostra gli altri ${altre.length} fornitori di ${risultato.name}`
             }
             title={aperto ? 'Nascondi gli altri fornitori' : `Altri ${altre.length} fornitori`}
-            className="grid h-11 w-8 shrink-0 cursor-pointer place-items-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
+            className={`flex h-11 shrink-0 cursor-pointer items-center gap-1 rounded-lg px-2 text-xs font-semibold transition-colors ${
+              aperto ? 'bg-neutral-100 text-neutral-700' : 'text-brand-700 hover:bg-brand-50'
+            }`}
           >
+            {/* Il numero, non una freccia muta: da chiusa la riga deve dire
+                che sotto c'è un confronto, o nessuno la apre. */}
+            <span aria-hidden>+{altre.length}</span>
             <AppIcon
               name="chevron"
-              className={`h-4 w-4 transition-transform ${aperto ? 'rotate-90' : ''}`}
+              className={`h-3.5 w-3.5 transition-transform ${aperto ? 'rotate-90' : ''}`}
             />
           </button>
         )}
