@@ -88,11 +88,12 @@ const STILE = `
   }
   .condizioni dd { display: inline; margin: 0 14px 0 4px; }
   .accettazione {
-    margin-top: 18px; border: 1px solid #171717; border-radius: 6px;
-    padding: 10px 12px; font-size: 9pt; line-height: 1.5; page-break-inside: avoid;
+    margin-top: 10px; border: 1px solid #171717; border-radius: 6px;
+    padding: 8px 11px; font-size: 8.5pt; line-height: 1.45; page-break-inside: avoid;
   }
   .firma {
-    margin-top: 26px; display: flex; justify-content: flex-end;
+    margin-top: 16px; display: flex; justify-content: flex-end;
+    page-break-inside: avoid;
   }
   .firma span {
     border-top: 1px solid #737373; padding-top: 4px; width: 220px;
@@ -105,7 +106,7 @@ const STILE = `
     letter-spacing: 0.06em; color: #525252; border-bottom: 1.5px solid #171717;
     padding: 0 6px 5px; font-weight: 700;
   }
-  td { padding: 6px; border-bottom: 1px solid #ededed; vertical-align: top; }
+  td { padding: 5px 6px; border-bottom: 1px solid #ededed; vertical-align: top; }
   tbody tr { page-break-inside: avoid; }
   .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .codice { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
@@ -113,7 +114,7 @@ const STILE = `
   .confezione { color: #737373; font-size: 8.5pt; }
   .nota-riga { color: #525252; font-size: 8.5pt; font-style: italic; }
   .quantita { font-weight: 800; white-space: nowrap; }
-  .totali { margin-top: 14px; display: flex; justify-content: flex-end; page-break-inside: avoid; }
+  .totali { margin-top: 10px; display: flex; justify-content: flex-end; page-break-inside: avoid; }
   .totali table { width: auto; min-width: 240px; margin: 0; }
   .totali td { border: 0; padding: 3px 0 3px 20px; }
   .totali .grande td {
