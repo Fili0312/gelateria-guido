@@ -117,18 +117,25 @@ function nomeCategoria(grezzo: string): string {
 }
 
 /**
- * Uno zero non è un prezzo: vuol dire che quel fornitore l'articolo non lo
- * tiene.
+ * Uno zero non è un prezzo — ma non è nemmeno un motivo per buttare la riga.
  *
- * Il foglio elenca ogni articolo per ogni fornitore, e dove uno non lo vende
- * lascia le celle a zero — a volte scrivendolo anche a parole, «NON LO VENDE
- * BARZETTI». Prendendo quello zero per un prezzo, quel fornitore risultava
- * il più conveniente di tutti con uno sconto del 100%: il confronto più
- * sbagliato che l'app possa mostrare, e pure il più credibile a colpo
- * d'occhio, perché una riga verde con «vale il cambio» sembra una buona
+ * Il foglio elenca ogni articolo per ogni fornitore, e dove il prezzo non c'è
+ * lascia le celle vuote o a zero: a volte perché quel fornitore non lo tiene
+ * («NON LO VENDE BARZETTI», scritto a mano di fianco), a volte perché il
+ * prezzo non è ancora stato chiesto.
+ *
+ * Prendere quello zero per un prezzo era il primo errore: quel fornitore
+ * risultava il più conveniente di tutti con uno sconto del 100%, che è il
+ * confronto più sbagliato che l'app possa mostrare e pure il più credibile a
+ * colpo d'occhio — una riga verde con «vale il cambio» sembra una buona
  * notizia.
+ *
+ * Ma scartare la riga era il secondo errore, opposto: l'articolo **esiste**
+ * nel listino di quel fornitore, e toglierlo dal catalogo vuol dire non
+ * trovarlo più nemmeno cercandolo. Resta, senza prezzo: l'app lo mostra come
+ * «senza prezzo» e lo tiene fuori dai confronti, che è la verità.
  */
-function prezzoDiListino(riga: RigaExcel): { lordo: Decimal; ricostruito: boolean } | null {
+export function prezzoDiListino(riga: RigaExcel): { lordo: Decimal; ricostruito: boolean } | null {
   const positivo = (n: number | null): number | null => (n != null && n > 0 ? n : null);
 
   // Il listino è il lordo, sempre e per tutti: lo sconto del fornitore è un
@@ -147,7 +154,10 @@ function prezzoDiListino(riga: RigaExcel): { lordo: Decimal; ricostruito: boolea
   if (scontato == null) return null;
   const percentuale = meno5 != null ? 5 : sconto;
   return {
-    lordo: new Decimal(scontato).mul(100).div(100 - percentuale).toDecimalPlaces(4),
+    lordo: new Decimal(scontato)
+      .mul(100)
+      .div(100 - percentuale)
+      .toDecimalPlaces(4),
     ricostruito: true,
   };
 }
@@ -157,15 +167,21 @@ async function main() {
   const scrivi = process.argv.includes('--scrivi');
   if (!percorso) throw new Error('Indica il percorso del file .xls');
 
-  const tutte = leggiFoglio(percorso);
-  const righe = tutte.filter((r) => prezzoDiListino(r) !== null);
-  const senzaPrezzo = tutte.length - righe.length;
+  const righe = leggiFoglio(percorso);
+  const senzaPrezzo = righe.filter((r) => prezzoDiListino(r) === null).length;
   const org = await systemPrisma.organization.findFirstOrThrow({ select: { id: true } });
   const utente = await systemPrisma.user.findFirstOrThrow({ select: { id: true } });
 
   // ── Cosa c'è nel file ───────────────────────────────────────────────
   const fornitori = [...new Set(righe.map((r) => r.fornitore))].sort();
-  const categorie = [...new Set(righe.map((r) => r.categoria).filter(Boolean).map(nomeCategoria))].sort();
+  const categorie = [
+    ...new Set(
+      righe
+        .map((r) => r.categoria)
+        .filter(Boolean)
+        .map(nomeCategoria),
+    ),
+  ].sort();
 
   interface Preparata {
     riga: RigaExcel;
@@ -176,7 +192,7 @@ async function main() {
     packQuantity: number;
     confermata: boolean;
     contentPerPack: Decimal;
-    lordo: Decimal;
+    lordo: Decimal | null;
     ricostruito: boolean;
   }
 
@@ -186,10 +202,10 @@ async function main() {
     const contenitore = CONTENITORI.has(riga.imballo.toLocaleLowerCase('it'));
     // Un contenitore senza un numero nel nome è il caso classico: il
     // fornitore dà per scontato che una cassa d'acqua sia da dodici. Noi no.
-    const confermata =
-      formato.packQuantityConfirmed && !(contenitore && formato.packQuantity <= 1);
-    const prezzo = prezzoDiListino(riga)!;
-    const contentPerPack = formato.contentPerPack ?? new Decimal(formato.unitSize).mul(formato.packQuantity);
+    const confermata = formato.packQuantityConfirmed && !(contenitore && formato.packQuantity <= 1);
+    const prezzo = prezzoDiListino(riga) ?? { lordo: null, ricostruito: false };
+    const contentPerPack =
+      formato.contentPerPack ?? new Decimal(formato.unitSize).mul(formato.packQuantity);
     preparate.push({
       riga,
       nucleo: nucleo || normalizzaTesto(riga.articolo),
@@ -236,8 +252,8 @@ async function main() {
   ).length;
 
   console.log(`\n── ${percorso.split('/').pop()} ──\n`);
-  console.log(`  righe con prezzo   ${righe.length}`);
-  console.log(`  righe scartate     ${senzaPrezzo}  (prezzo a zero: il fornitore non lo tiene)`);
+  console.log(`  righe              ${righe.length}`);
+  console.log(`  di cui senza prezzo ${senzaPrezzo}  (entrano lo stesso, fuori dai confronti)`);
   console.log(`  prodotti distinti  ${perProdotto.size}`);
   console.log(`  confrontabili      ${confrontabili}  (venduti da due o più fornitori)`);
   console.log(`  confezione certa   ${preparate.filter((p) => p.confermata).length}`);
@@ -275,7 +291,12 @@ async function main() {
   const categoriaId = new Map<string, string>();
   for (const [i, nome] of categorie.entries()) {
     const c = await systemPrisma.category.create({
-      data: { organizationId: org.id, departmentId: reparto.id, name: nome, sortOrder: (i + 1) * 10 },
+      data: {
+        organizationId: org.id,
+        departmentId: reparto.id,
+        name: nome,
+        sortOrder: (i + 1) * 10,
+      },
       select: { id: true },
     });
     categoriaId.set(nome, c.id);
@@ -323,6 +344,7 @@ async function main() {
 
   let prodottiCreati = 0;
   let offerteCreate = 0;
+  let prezziCreati = 0;
   const oggi = new Date();
 
   for (const [, gruppo] of perProdotto) {
@@ -377,7 +399,11 @@ async function main() {
       });
       offerteCreate += 1;
 
-        const unitario = prezzoPerUnita(p.lordo, p.contentPerPack, p.baseUnit);
+      // Senza prezzo l'offerta esiste comunque: l'articolo è nel listino di
+      // quel fornitore, e il catalogo deve poterlo trovare.
+      if (p.lordo === null) continue;
+
+      const unitario = prezzoPerUnita(p.lordo, p.contentPerPack, p.baseUnit);
       const prezzo = await systemPrisma.supplierProductPrice.create({
         data: {
           supplierProductId: offerta.id,
@@ -399,11 +425,14 @@ async function main() {
         where: { id: offerta.id },
         data: { currentPriceId: prezzo.id },
       });
+      prezziCreati += 1;
     }
   }
 
   console.log(`✓ ${fornitori.length} fornitori · ${categorie.length} categorie sotto «Bevande»`);
-  console.log(`✓ ${prodottiCreati} prodotti · ${offerteCreate} offerte con prezzo\n`);
+  console.log(
+    `✓ ${prodottiCreati} prodotti · ${offerteCreate} offerte, di cui ${offerteCreate - prezziCreati} senza prezzo\n`,
+  );
   await systemPrisma.$disconnect();
 }
 
