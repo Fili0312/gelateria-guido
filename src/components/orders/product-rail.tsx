@@ -20,14 +20,35 @@ import { ColloBadge } from '@/components/products/collo-badge';
  */
 
 function Quantita({
+  nome,
   quantita,
   onCambia,
   onTogli,
 }: {
+  nome: string;
   quantita: number;
   onCambia: (q: number) => void;
   onTogli: () => void;
 }) {
+  // `null` mentre non si sta scrivendo: così il campo segue le modifiche che
+  // arrivano da altrove (il «+», o l'ordine ricaricato) invece di restare
+  // fermo su quello che c'era quando si è aperta la pagina.
+  const [bozza, setBozza] = useState<string | null>(null);
+
+  function conferma() {
+    if (bozza === null) return;
+    const richiesta = Number(bozza);
+    setBozza(null);
+    // Un campo svuotato non vuol dire zero: vuol dire che ci si è ripensati.
+    if (!bozza.trim() || !Number.isFinite(richiesta)) return;
+    if (richiesta < CONFEZIONI_MIN) {
+      onTogli();
+      return;
+    }
+    const limitata = Math.min(richiesta, CONFEZIONI_MAX);
+    if (limitata !== quantita) onCambia(limitata);
+  }
+
   return (
     <span className="border-brand-200 bg-brand-50 flex items-center gap-0.5 rounded-lg border">
       <button
@@ -41,9 +62,30 @@ function Quantita({
           {quantita <= CONFEZIONI_MIN ? '×' : '−'}
         </span>
       </button>
-      <span className="tabellare w-7 text-center text-sm font-black text-neutral-950">
-        {quantita}
-      </span>
+      {/* Il numero si scrive.
+          Cinquanta casse d'acqua a colpi di «+» sono cinquanta clic, e chi
+          ordina lo fa una volta e poi torna a contare a mano su un foglio.
+          Si scrive e si conferma: Invio, o uscendo dal campo. */}
+      <input
+        type="text"
+        inputMode="numeric"
+        value={bozza ?? String(quantita)}
+        onChange={(e) => setBozza(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+        onFocus={(e) => e.currentTarget.select()}
+        onBlur={() => conferma()}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            e.currentTarget.blur();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            setBozza(null);
+            e.currentTarget.blur();
+          }
+        }}
+        aria-label={`Confezioni di ${nome}`}
+        className="tabellare focus:bg-brand-100 w-10 cursor-text bg-transparent text-center text-sm font-black text-neutral-950 outline-none"
+      />
       <button
         type="button"
         onClick={() => onCambia(Math.min(quantita + 1, CONFEZIONI_MAX))}
@@ -147,9 +189,11 @@ function Riga({
         attiva ? 'border-brand-500 bg-brand-50/40' : 'border-transparent hover:bg-neutral-50'
       }`}
     >
-      <div className="flex items-center gap-3 py-1.5 pr-2 pl-3">
+      <div className="flex items-center gap-3 py-3 pr-3 pl-4">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-neutral-950">{risultato.name}</p>
+          <p className="truncate text-[15px] leading-5 font-semibold text-neutral-950">
+            {risultato.name}
+          </p>
           {/* Il formato del pezzo sta dentro l'etichetta del collo, non anche
               qui accanto: scriverlo due volte non lo rende più chiaro. E il
               «collo da N» in coda era una terza ripetizione della stessa
@@ -196,6 +240,7 @@ function Riga({
         {prima &&
           (gia ? (
             <Quantita
+              nome={risultato.name}
               quantita={gia.quantita}
               onCambia={(q) => onCambiaQuantita(gia.rigaId, q)}
               onTogli={() => onRimuovi(gia.rigaId)}
@@ -242,6 +287,7 @@ function Riga({
                   </span>
                   {suo ? (
                     <Quantita
+                      nome={`${risultato.name} da ${offerta.supplierName}`}
                       quantita={suo.quantita}
                       onCambia={(q) => onCambiaQuantita(suo.rigaId, q)}
                       onTogli={() => onRimuovi(suo.rigaId)}
@@ -357,7 +403,7 @@ export function ProductRail({
               altezza variabile — ricerca, reparti, categorie — e qualunque
               scostamento fisso finisce per coprire una riga. Una riga coperta
               è la riga che si stava per premere. */}
-          <h3 className="flex items-baseline justify-between gap-2 border-y border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs font-semibold tracking-wide text-neutral-600 uppercase">
+          <h3 className="flex items-baseline justify-between gap-2 border-y border-neutral-200 bg-neutral-100 px-4 py-2 text-xs font-bold tracking-wider text-neutral-600 uppercase">
             <span className="truncate">{gruppo.nome}</span>
             <span className="tabellare shrink-0 font-normal text-neutral-400">
               {gruppo.indici.length}

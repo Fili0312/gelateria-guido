@@ -6,6 +6,8 @@ import { useToast } from '@/components/ui';
 import type { OrderApiBody, OrdineCorrente, RisultatoOrdinabile } from '@/features/orders/dto';
 import { CONFEZIONI_MAX } from '@/features/orders/schema';
 import { CatalogFilters, raggruppa } from './catalog-filters';
+import Link from 'next/link';
+import { euro } from '@/features/products/format';
 import { OrderPanel } from './order-panel';
 import { ProductRail } from './product-rail';
 
@@ -288,9 +290,14 @@ export function OrderScreen({
   const t = ordine.totali;
 
   return (
-    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-5 xl:grid-cols-[minmax(0,1fr)_25rem]">
-      {/* ── Colonna sinistra: il catalogo ─────────────────────────────── */}
-      <div className={schedaOrdine ? 'hidden lg:block' : ''}>
+    <div>
+      {/* Il catalogo prende tutta la pagina.
+          L'ordine stava in una colonna fissa a destra: venticinque
+          centimetri sempre occupati da una cosa che si guarda alla fine,
+          mentre l'elenco da cui si sceglie — quello su cui si passa tutto il
+          tempo — stava stretto. Ora l'ordine è una barra in basso che si
+          apre quando serve, e il resto è catalogo. */}
+      <div>
         <div className="bg-neutral-50/95 sticky top-0 z-20 -mx-4 space-y-2.5 px-4 pt-1 pb-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-2 lg:px-2">
           <div className="relative">
             <AppIcon
@@ -364,43 +371,76 @@ export function OrderScreen({
         />
       </div>
 
-      {/* ── Colonna destra: l'ordine ──────────────────────────────────── */}
-      <aside
-        className={`${schedaOrdine ? '' : 'hidden lg:block'} lg:sticky lg:top-4 lg:self-start`}
-      >
-        <OrderPanel
-          ordine={ordine}
-          onCambiaQuantita={cambiaQuantita}
-          onRimuovi={rimuovi}
-          onSvuota={svuota}
-          onCambiaFornitore={cambiaFornitore}
-          onIgnoraAvviso={ignoraAvviso}
-          inCorso={mutazioniInCorso > 0}
-        />
-      </aside>
+      {/* ── Il carrello, in basso ─────────────────────────────────────── */}
+      {/* Chiuso dice quanto stai spendendo, aperto mostra cosa. La stima
+          serve mentre si ordina — è il momento in cui si decide se togliere
+          una cassa — e per averla non si deve smettere di scegliere. */}
+      <div className="fixed inset-x-0 bottom-0 z-30 px-3 pb-3 sm:px-6">
+        <div className="mx-auto max-w-5xl">
+          {schedaOrdine && (
+            <div className="mb-2 max-h-[65vh] overflow-y-auto overscroll-contain rounded-2xl border border-neutral-200 bg-white shadow-2xl shadow-neutral-900/20">
+              <OrderPanel
+                ordine={ordine}
+                onCambiaQuantita={cambiaQuantita}
+                onRimuovi={rimuovi}
+                onSvuota={svuota}
+                onCambiaFornitore={cambiaFornitore}
+                onIgnoraAvviso={ignoraAvviso}
+                inCorso={mutazioniInCorso > 0}
+              />
+            </div>
+          )}
 
-      {/* Su schermo stretto si passa da una scheda all'altra: due colonne
-          sotto i mille pixel non sono due colonne, sono due colonne strette. */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-200 bg-white px-4 py-2 lg:hidden">
-        <button
-          type="button"
-          onClick={() => setSchedaOrdine((v) => !v)}
-          className="focus-visible:ring-brand-600 flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg px-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
-        >
-          <span className="font-semibold text-neutral-700">
-            {schedaOrdine ? '← Torna al catalogo' : 'Vedi l’ordine'}
-          </span>
-          <span className="tabellare flex items-baseline gap-2">
-            <span className="text-neutral-500">{t.confezioni} conf.</span>
-            <span className="text-lg font-black text-neutral-950">
-              {new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(
-                Number(t.netto),
-              )}
-            </span>
-          </span>
-        </button>
+          <div className="flex items-stretch gap-2 rounded-2xl border border-neutral-200 bg-white/95 p-2 shadow-xl shadow-neutral-900/15 backdrop-blur">
+            <button
+              type="button"
+              onClick={() => setSchedaOrdine((v) => !v)}
+              aria-expanded={schedaOrdine}
+              className="focus-visible:ring-brand-600 flex min-h-12 flex-1 cursor-pointer items-center gap-3 rounded-xl px-3 text-left transition-colors hover:bg-neutral-50 focus-visible:ring-2 focus-visible:outline-none"
+            >
+              <AppIcon
+                name="chevron"
+                className={`h-4 w-4 shrink-0 text-neutral-400 transition-transform ${
+                  schedaOrdine ? 'rotate-90' : '-rotate-90'
+                }`}
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-neutral-900">
+                  {t.righe === 0
+                    ? 'Ordine vuoto'
+                    : `${t.righe} ${t.righe === 1 ? 'prodotto' : 'prodotti'} · ${t.confezioni} conf.`}
+                </span>
+                <span className="block truncate text-xs text-neutral-500">
+                  {t.righe === 0
+                    ? 'Premi + su un prodotto per cominciare'
+                    : Number(t.ritornoAtteso) > 0
+                      ? `${euro(t.ritornoAtteso)} torneranno indietro per gli sconti concordati`
+                      : `${euro(t.lordo)} con IVA`}
+                </span>
+              </span>
+              <span className="tabellare shrink-0 text-xl font-black text-neutral-950">
+                {euro(t.netto)}
+              </span>
+            </button>
+
+            <Link
+              href="/ordini/riepilogo"
+              aria-disabled={t.righe === 0}
+              tabIndex={t.righe === 0 ? -1 : undefined}
+              className={`inline-flex min-h-12 shrink-0 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
+                t.righe === 0
+                  ? 'pointer-events-none bg-neutral-100 text-neutral-400'
+                  : 'bg-brand-600 hover:bg-brand-700 cursor-pointer text-white'
+              }`}
+            >
+              Riepilogo
+            </Link>
+          </div>
+        </div>
       </div>
-      <div className="h-16 lg:hidden" />
+
+      {/* Lo spazio sotto l'elenco, o le ultime righe finiscono dietro la barra. */}
+      <div className="h-24" />
     </div>
   );
 }
