@@ -33,6 +33,13 @@ function intestazioneDefault(nomeOrganizzazione: string) {
   };
 }
 
+/** La data di consegna richiesta, contata dall'ordine. */
+function giorniDopo(data: Date, giorni: number): Date {
+  const quando = new Date(data);
+  quando.setDate(quando.getDate() + giorni);
+  return quando;
+}
+
 /** `''` è «non compilato», e nel documento vale come assente, non come vuoto. */
 function oppureNull(testo: string | null | undefined): string | null {
   const t = testo?.trim();
@@ -120,7 +127,14 @@ export async function datiOrdine(
     }),
     db.supplier.findMany({
       where: { id: { in: [...new Set(ordine.lines.map((l) => l.supplierId))] } },
-      select: { id: true, address: true, vatNumber: true, email: true, orderEmail: true },
+      select: {
+        id: true,
+        address: true,
+        vatNumber: true,
+        email: true,
+        orderEmail: true,
+        phone: true,
+      },
     }),
   ]);
 
@@ -141,6 +155,7 @@ export async function datiOrdine(
         // L'indirizzo per gli ordini vince su quello generico: il commerciale
         // che manda i listini quasi mai è chi prende gli ordini.
         email: oppureNull(recapito?.orderEmail) ?? oppureNull(recapito?.email),
+        telefono: oppureNull(recapito?.phone),
         righe: [],
         netto: '0',
         iva: '0',
@@ -192,6 +207,18 @@ export async function datiOrdine(
       partitaIva: oppureNull(impostazioni.intestazionePiva),
       telefono: oppureNull(impostazioni.intestazioneTelefono),
       email: oppureNull(impostazioni.intestazioneEmail),
+      // Se il magazzino non è dichiarato, si consegna alla sede: è la cosa
+      // che succede comunque, e scriverla evita che il camion chieda.
+      consegnaPresso:
+        oppureNull(impostazioni.consegnaIndirizzo) ??
+        oppureNull(impostazioni.intestazioneIndirizzo),
+      consegnaEntro: giorniDopo(
+        ordine.confirmedAt ?? ordine.createdAt,
+        impostazioni.consegnaGiorni,
+      ),
+      condizioniPagamento: oppureNull(impostazioni.condizioniPagamento),
+      bancaAppoggio: oppureNull(impostazioni.bancaAppoggio),
+      clausolaAccettazione: oppureNull(impostazioni.clausolaAccettazione),
     },
     gruppi: elenco,
     totali: totaliDi(elenco),

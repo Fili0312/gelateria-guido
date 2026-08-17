@@ -33,6 +33,21 @@ export interface SettingsValues {
   intestazionePiva: string;
   intestazioneTelefono: string;
   intestazioneEmail: string;
+
+  // ── Il resto dell'ordine di acquisto ────────────────────────────────────
+  /** Dove va consegnata la merce, se non è la sede scritta sopra. */
+  consegnaIndirizzo: string;
+  /**
+   * Fra quanti giorni si chiede la consegna, contati dalla data dell'ordine.
+   * `1` vuol dire «il giorno dopo».
+   */
+  consegnaGiorni: number;
+  /** «Bonifico bancario 30 gg data fattura», o com'è l'accordo. */
+  condizioniPagamento: string;
+  /** Banca d'appoggio e IBAN: è dove il fornitore si aspetta il bonifico. */
+  bancaAppoggio: string;
+  /** La clausola di accettazione in fondo. Modificabile: è testo legale. */
+  clausolaAccettazione: string;
 }
 
 export const SETTINGS_DEFAULTS: SettingsValues = {
@@ -46,6 +61,13 @@ export const SETTINGS_DEFAULTS: SettingsValues = {
   intestazionePiva: '',
   intestazioneTelefono: '',
   intestazioneEmail: '',
+  consegnaIndirizzo: '',
+  consegnaGiorni: 1,
+  condizioniPagamento: '',
+  bancaAppoggio: '',
+  clausolaAccettazione:
+    'Vogliate restituirci copia della presente debitamente sottoscritta per accettazione. ' +
+    'Non ricevendo comunicazione contraria, il suddetto ordine si intende accettato.',
 };
 
 export const SETTINGS_KEYS: Record<keyof SettingsValues, string> = {
@@ -59,6 +81,11 @@ export const SETTINGS_KEYS: Record<keyof SettingsValues, string> = {
   intestazionePiva: 'documenti.intestazione.partitaIva',
   intestazioneTelefono: 'documenti.intestazione.telefono',
   intestazioneEmail: 'documenti.intestazione.email',
+  consegnaIndirizzo: 'documenti.consegna.indirizzo',
+  consegnaGiorni: 'documenti.consegna.giorni',
+  condizioniPagamento: 'documenti.condizioniPagamento',
+  bancaAppoggio: 'documenti.bancaAppoggio',
+  clausolaAccettazione: 'documenti.clausolaAccettazione',
 };
 
 /** Dalla chiave salvata al campo: l'inverso di `SETTINGS_KEYS`. */
@@ -129,6 +156,11 @@ export const settingsFormSchema = z.object({
   intestazionePiva: testoIntestazione(40),
   intestazioneTelefono: testoIntestazione(40),
   intestazioneEmail: testoIntestazione(120),
+  consegnaIndirizzo: testoIntestazione(200),
+  consegnaGiorni: z.coerce.number().int().min(0).max(60),
+  condizioniPagamento: testoIntestazione(200),
+  bancaAppoggio: testoIntestazione(200),
+  clausolaAccettazione: testoIntestazione(500),
 });
 
 /**

@@ -37,6 +37,13 @@ export interface Intestazione {
   partitaIva: string | null;
   telefono: string | null;
   email: string | null;
+  /** Dove va consegnata la merce: il magazzino non è sempre la sede. */
+  consegnaPresso: string | null;
+  /** Quando la si vuole. Calcolata dalla data dell'ordine. */
+  consegnaEntro: Date | null;
+  condizioniPagamento: string | null;
+  bancaAppoggio: string | null;
+  clausolaAccettazione: string | null;
 }
 
 export interface RigaDocumento {
@@ -68,6 +75,8 @@ export interface GruppoFornitore {
   indirizzo: string | null;
   partitaIva: string | null;
   email: string | null;
+  /** Il recapito del fornitore: chi riceve l'ordine spesso richiama. */
+  telefono: string | null;
   righe: RigaDocumento[];
   netto: string;
   iva: string;

@@ -208,6 +208,90 @@ export function SettingsForm({ initialValues }: { initialValues: SettingsValues 
         </div>
       </section>
 
+      <section className="mt-6 rounded-2xl border border-neutral-200 bg-white shadow-sm shadow-neutral-900/[0.025]">
+        <div className="border-b border-neutral-100 px-5 py-5 sm:px-6">
+          <h2 className="text-lg font-black tracking-tight text-neutral-950">
+            Condizioni dell’ordine di acquisto
+          </h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            Consegna, pagamento e banca finiscono su ogni ordine che mandi. Sono le cose che il
+            fornitore cerca sul documento prima di evaderlo.
+          </p>
+        </div>
+        <div className="px-5 sm:px-6">
+          <label className="grid gap-2 border-b border-neutral-100 py-4 sm:grid-cols-[13rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+            <span className="text-sm font-bold text-neutral-900">Consegnare presso</span>
+            <span>
+              <input
+                name="consegnaIndirizzo"
+                value={values.consegnaIndirizzo}
+                maxLength={200}
+                placeholder="Lascia vuoto se coincide con la sede"
+                disabled={pending}
+                onChange={(e) =>
+                  setValues((current) => ({ ...current, consegnaIndirizzo: e.target.value }))
+                }
+                className="focus:border-brand-500 focus:ring-brand-500/30 min-h-11 w-full rounded-lg border border-neutral-300 px-3 text-sm outline-none focus:ring-4 disabled:opacity-60"
+              />
+              <span className="mt-1 block text-xs text-neutral-500">
+                Il magazzino non è sempre la sede legale, e il camion va dove c’è scritto.
+              </span>
+            </span>
+          </label>
+
+          <SettingRow
+            title="Consegna richiesta"
+            description="Fra quanti giorni dalla data dell’ordine. «1» vuol dire il giorno dopo."
+          >
+            <div className="flex items-center gap-2">
+              <Stepper
+                name="consegnaGiorni"
+                label="Giorni per la consegna"
+                visuallyHideLabel
+                min={0}
+                max={60}
+                value={values.consegnaGiorni}
+                onValueChange={(consegnaGiorni) =>
+                  setValues((current) => ({ ...current, consegnaGiorni }))
+                }
+                disabled={pending}
+              />
+              <span className="w-12 text-sm font-medium text-neutral-500">giorni</span>
+            </div>
+          </SettingRow>
+
+          {(
+            [
+              [
+                'condizioniPagamento',
+                'Condizioni di pagamento',
+                'Es. bonifico bancario 30 gg data fattura',
+                200,
+              ],
+              ['bancaAppoggio', 'Banca d’appoggio', 'Banca … — IBAN IT…', 200],
+              ['clausolaAccettazione', 'Clausola di accettazione', '', 500],
+            ] as const
+          ).map(([campo, etichetta, esempio, max]) => (
+            <label
+              key={campo}
+              className="grid gap-2 border-b border-neutral-100 py-4 last:border-0 sm:grid-cols-[13rem_minmax(0,1fr)] sm:items-start sm:gap-4"
+            >
+              <span className="pt-2 text-sm font-bold text-neutral-900">{etichetta}</span>
+              <textarea
+                name={campo}
+                value={values[campo]}
+                maxLength={max}
+                placeholder={esempio}
+                rows={campo === 'clausolaAccettazione' ? 3 : 2}
+                disabled={pending}
+                onChange={(e) => setValues((current) => ({ ...current, [campo]: e.target.value }))}
+                className="focus:border-brand-500 focus:ring-brand-500/30 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm leading-6 outline-none focus:ring-4 disabled:opacity-60"
+              />
+            </label>
+          ))}
+        </div>
+      </section>
+
       <div className="sticky bottom-3 z-10 mt-6 flex items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-white/95 p-3 shadow-lg shadow-neutral-900/10 backdrop-blur sm:static sm:justify-end sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
         <p className="hidden items-center gap-2 text-xs text-neutral-500 sm:flex">
           <AppIcon name="check" className="text-brand-600 h-4 w-4" />I valori sono salvati per

@@ -67,6 +67,36 @@ const STILE = `
     color: #737373; margin: 0 0 3px;
   }
   .destinatario .nome { font-size: 12pt; font-weight: 800; margin: 0; }
+  .blocchi { display: flex; gap: 12px; margin-top: 12px; }
+  .blocco {
+    flex: 1; border: 1px solid #e5e5e5; border-radius: 6px; padding: 9px 11px;
+  }
+  .blocco .etichetta {
+    font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.08em;
+    color: #737373; margin: 0 0 3px;
+  }
+  .blocco p { margin: 0; font-size: 9pt; line-height: 1.4; }
+  .blocco strong { font-weight: 700; }
+  .condizioni {
+    margin-top: 12px; border: 1px solid #e5e5e5; border-radius: 6px;
+    padding: 9px 11px; font-size: 9pt; line-height: 1.5;
+  }
+  .condizioni dt {
+    display: inline; font-size: 7.5pt; text-transform: uppercase;
+    letter-spacing: 0.06em; color: #737373;
+  }
+  .condizioni dd { display: inline; margin: 0 14px 0 4px; }
+  .accettazione {
+    margin-top: 18px; border: 1px solid #171717; border-radius: 6px;
+    padding: 10px 12px; font-size: 9pt; line-height: 1.5; page-break-inside: avoid;
+  }
+  .firma {
+    margin-top: 26px; display: flex; justify-content: flex-end;
+  }
+  .firma span {
+    border-top: 1px solid #737373; padding-top: 4px; width: 220px;
+    text-align: center; font-size: 8pt; color: #737373;
+  }
   table { width: 100%; border-collapse: collapse; margin-top: 16px; }
   thead { display: table-header-group; }
   th {
@@ -108,7 +138,12 @@ function html(dati: DatiDocumento): string {
     .filter((x): x is string => Boolean(x))
     .map(scampa)
     .join(' · ');
-  const recapitiSuoi = [g.indirizzo, g.partitaIva && `P.IVA ${g.partitaIva}`, g.email]
+  const recapitiSuoi = [
+    g.indirizzo,
+    g.partitaIva && `P.IVA ${g.partitaIva}`,
+    g.telefono && `tel. ${g.telefono}`,
+    g.email,
+  ]
     .filter((x): x is string => Boolean(x))
     .map(scampa)
     .join(' · ');
@@ -143,8 +178,8 @@ function html(dati: DatiDocumento): string {
       ${recapitiNostri ? `<p class="recapiti">${recapitiNostri}</p>` : ''}
     </div>
     <div class="numero">
-      <h1>Ordine ${scampa(dati.ordine.code ?? 'in bozza')}</h1>
-      <p>${dataItaliana(dati.ordine.confermatoIl ?? dati.ordine.creatoIl)}</p>
+      <h1>Ordine di acquisto</h1>
+      <p>n. <strong>${scampa(dati.ordine.code ?? 'in bozza')}</strong> del ${dataItaliana(dati.ordine.confermatoIl ?? dati.ordine.creatoIl)}</p>
     </div>
   </div>
 
@@ -153,6 +188,34 @@ function html(dati: DatiDocumento): string {
     <p class="nome">${scampa(g.supplierName)}</p>
     ${recapitiSuoi ? `<p class="recapiti" style="margin-top:2px">${recapitiSuoi}</p>` : ''}
   </div>
+
+  <div class="blocchi">
+    <div class="blocco">
+      <p class="etichetta">Consegnare presso</p>
+      <p><strong>${scampa(i.nome)}</strong></p>
+      ${i.consegnaPresso ? `<p>${scampa(i.consegnaPresso)}</p>` : ''}
+      ${
+        i.consegnaEntro
+          ? `<p style="margin-top:4px">Consegna richiesta entro il <strong>${dataItaliana(i.consegnaEntro)}</strong></p>`
+          : ''
+      }
+    </div>
+    <div class="blocco">
+      <p class="etichetta">Ordine</p>
+      <p>Numero <strong>${scampa(dati.ordine.code ?? 'in bozza')}</strong></p>
+      <p>Data ${dataItaliana(dati.ordine.confermatoIl ?? dati.ordine.creatoIl)}</p>
+      ${i.telefono ? `<p style="margin-top:4px">Per informazioni: ${scampa(i.telefono)}</p>` : ''}
+    </div>
+  </div>
+
+  ${
+    i.condizioniPagamento || i.bancaAppoggio
+      ? `<dl class="condizioni">
+      ${i.condizioniPagamento ? `<dt>Pagamento</dt><dd>${scampa(i.condizioniPagamento)}</dd>` : ''}
+      ${i.bancaAppoggio ? `<dt>Banca d'appoggio</dt><dd>${scampa(i.bancaAppoggio)}</dd>` : ''}
+    </dl>`
+      : ''
+  }
 
   <table>
     <thead>
@@ -177,7 +240,7 @@ ${righe}
         <td></td>
       </tr>
       <tr class="grande">
-        <td>Totale <span style="font-size:9pt;font-weight:400">+ IVA</span></td>
+        <td>Totale imponibile</td>
         <td class="num">${scampa(euro(t.netto))}</td>
       </tr>
     </table>
