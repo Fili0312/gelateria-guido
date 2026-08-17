@@ -27,8 +27,20 @@ import { arrotondaImporto } from './totals';
 export interface OffertaPerAvviso {
   supplierProductId: string;
   supplierName: string;
-  /** Netto di una confezione. */
+  /**
+   * Netto di una confezione **al netto anche del rimborso concordato**: è il
+   * numero su cui si decide chi conviene, ed è lo stesso su cui l'elenco
+   * d'ordine ordina le offerte.
+   */
   prezzoConfezione: Decimal.Value;
+  /**
+   * Il prezzo di listino, quello che finirà in fattura.
+   *
+   * Serve solo a dire quanto si spenderà: il rimborso torna indietro dopo, e
+   * annunciare una spesa che lo sconta già darebbe un numero che non
+   * corrisponde né all'ordine né alla fattura. Assente, vale il precedente.
+   */
+  prezzoConfezioneListino?: Decimal.Value;
   /** Quanto contiene una confezione, in unità base. */
   contenutoPerConfezione: Decimal.Value;
   /** Pezzi per confezione: serve a dichiarare il cambio, non a confrontare. */
@@ -158,10 +170,13 @@ export function calcolaCambio(
   const pezziDopo = nuova.pezziPerConfezione * equivalenti.confezioni;
   const esatto = quantitaDopo.minus(quantitaPrima).abs().lte('0.0001');
 
-  const spesaPrima = arrotondaImporto(new Decimal(scelta.prezzoConfezione).mul(confezioniScelte));
-  const spesaDopo = arrotondaImporto(
-    new Decimal(nuova.prezzoConfezione).mul(equivalenti.confezioni),
-  );
+  // La spesa si annuncia sul **listino**: è la cifra che comparirà
+  // nell'ordine e poi in fattura. Il confronto invece è già stato fatto
+  // sull'effettivo, che è dove il rimborso conta.
+  const listino = (o: OffertaPerAvviso) =>
+    new Decimal(o.prezzoConfezioneListino ?? o.prezzoConfezione);
+  const spesaPrima = arrotondaImporto(listino(scelta).mul(confezioniScelte));
+  const spesaDopo = arrotondaImporto(listino(nuova).mul(equivalenti.confezioni));
 
   const conto = `${confezioniScelte} × ${scelta.pezziPerConfezione} = ${pezziPrima} pz → ${equivalenti.confezioni} × ${nuova.pezziPerConfezione} = ${pezziDopo} pz`;
 

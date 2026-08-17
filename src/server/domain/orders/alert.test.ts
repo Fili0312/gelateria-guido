@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { Decimal } from 'decimal.js';
 import { describe, it } from 'node:test';
 import {
   calcolaCambio,
@@ -196,5 +197,62 @@ describe('quando il cambio NON torna esatto', () => {
       pezziPerConfezione: 24,
     });
     assert.equal(calcolaCambio(piccola, grande, 1).confezioni, 1);
+  });
+});
+
+describe('lo sconto concordato conta anche nell’avviso', () => {
+  // Il caso vero, dal catalogo della gelateria: il succo Amita pesca.
+  //
+  //   AD Beverage  15,52 € a listino, ma rimborsa il 5% → 14,744 €
+  //   Barzetti     14,88 € a listino, nessun rimborso   → 14,880 €
+  //
+  // A listino conviene Barzetti; contando il rimborso conviene AD Beverage.
+  // L'elenco d'ordine ordinava già sull'effettivo e segnava AD Beverage
+  // «migliore»; l'avviso del riepilogo confrontava i listini e consigliava di
+  // passare a Barzetti «per risparmiare». Seguirlo faceva spendere di più.
+  const contenuto = new Decimal('4.8'); // 24 × 20 cl
+
+  const adBeverage = {
+    supplierProductId: 'ad',
+    supplierName: 'AD Beverage',
+    prezzoConfezione: new Decimal('14.744'),
+    contenutoPerConfezione: contenuto,
+    pezziPerConfezione: 24,
+  };
+  const barzetti = {
+    supplierProductId: 'bz',
+    supplierName: 'Barzetti',
+    prezzoConfezione: new Decimal('14.88'),
+    contenutoPerConfezione: contenuto,
+    pezziPerConfezione: 24,
+  };
+
+  it('scelto AD Beverage, non consiglia di cambiare', () => {
+    const avviso = confrontaPerAvviso(adBeverage, [adBeverage, barzetti], 1, {
+      percentuale: 3,
+      euro: 0.3,
+    });
+    assert.equal(avviso, null);
+  });
+
+  it('scelto Barzetti, il migliore è AD Beverage', () => {
+    const avviso = confrontaPerAvviso(barzetti, [adBeverage, barzetti], 1, {
+      percentuale: 0,
+      euro: 0,
+    });
+    assert.equal(avviso?.migliore.supplierName, 'AD Beverage');
+  });
+
+  it('sui listini invece direbbe il contrario: è l’errore che si sta evitando', () => {
+    const aListino = confrontaPerAvviso(
+      { ...adBeverage, prezzoConfezione: new Decimal('15.52') },
+      [
+        { ...adBeverage, prezzoConfezione: new Decimal('15.52') },
+        { ...barzetti, prezzoConfezione: new Decimal('14.88') },
+      ],
+      1,
+      { percentuale: 3, euro: 0.3 },
+    );
+    assert.equal(aListino?.migliore.supplierName, 'Barzetti');
   });
 });

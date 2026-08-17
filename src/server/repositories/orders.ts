@@ -544,7 +544,22 @@ export function ordersRepository(organizationId: string) {
       const perAvviso = (o: (typeof confronto.ranked)[number]): OffertaPerAvviso => ({
         supplierProductId: o.supplierProductId,
         supplierName: o.supplierName,
-        prezzoConfezione: o.priceNet,
+        // **L'effettivo, non il listino.**
+        //
+        // È lo stesso numero su cui la classifica dell'elenco decide chi è
+        // «migliore», e devono essere lo stesso o le due schermate si
+        // contraddicono. Succedeva: il succo Amita pesca costa 15,52 € da AD
+        // Beverage e 14,88 € da Barzetti, ma AD Beverage rimborsa il 5% e
+        // quindi viene a costare 14,74 €. L'elenco lo segnava migliore —
+        // giusto — e il riepilogo consigliava di passare a Barzetti «per
+        // risparmiare», che avrebbe fatto spendere 14 centesimi in più a
+        // confezione.
+        //
+        // Un avviso che spinge a cambiare fornitore è il posto peggiore dove
+        // sbagliare: è l'unico che chiede di rifare una scelta già fatta, e
+        // chi lo segue non ha modo di accorgersi che ci ha rimesso.
+        prezzoConfezione: o.priceEffective,
+        prezzoConfezioneListino: o.priceNet,
         contenutoPerConfezione: o.contentPerPack,
         pezziPerConfezione: o.packQuantity,
       });

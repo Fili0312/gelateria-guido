@@ -28,9 +28,13 @@ async function main() {
   await systemPrisma.orderLine.deleteMany({});
   await systemPrisma.order.deleteMany({});
 
-  // Un prodotto con due offerte confrontabili e prezzi diversi: è il caso in
-  // cui l'avviso deve comparire.
-  const conDue = await systemPrisma.product.findFirstOrThrow({
+  // Un prodotto con due offerte confrontabili e **prezzi diversi**: è il caso
+  // in cui l'avviso deve comparire.
+  //
+  // La differenza va cercata, non sperata: prendendo il primo prodotto con due
+  // fornitori si finiva su un'acqua che entrambi vendono a 3,90 €, dove
+  // l'avviso giustamente non c'è — e il collaudo lo leggeva come un difetto.
+  const candidati = await systemPrisma.product.findMany({
     where: {
       organizationId: org.id,
       bestOffer: { comparable: true },
@@ -44,16 +48,35 @@ async function main() {
           id: true,
           packQuantity: true,
           contentPerPack: true,
-          supplier: { select: { name: true } },
+          supplier: { select: { name: true, extraDiscountPct: true } },
           currentPrice: { select: { priceNet: true, unitPrice: true } },
         },
       },
     },
+    take: 500,
   });
 
-  const ordinate = [...conDue.supplierProducts].sort(
-    (a, b) =>
-      Number(b.currentPrice!.unitPrice.toString()) - Number(a.currentPrice!.unitPrice.toString()),
+  const unitarioEffettivo = (o: (typeof candidati)[number]['supplierProducts'][number]) =>
+    new Decimal(o.currentPrice!.unitPrice.toString())
+      .mul(new Decimal(100).minus(o.supplier.extraDiscountPct?.toString() ?? '0'))
+      .div(100);
+
+  // Serve uno scarto che superi le soglie, o l'avviso non merita di comparire
+  // e il criterio proverebbe il contrario di quello che dice.
+  const conDue = candidati.find((p) => {
+    const offerte = p.supplierProducts;
+    if (offerte.length < 2) return false;
+    const valori = offerte.map(unitarioEffettivo);
+    const min = Decimal.min(...valori);
+    const max = Decimal.max(...valori);
+    return min.gt(0) && max.minus(min).div(max).mul(100).gt(10);
+  });
+  if (!conDue) throw new Error('Nessun prodotto con due offerte e prezzi abbastanza diversi.');
+
+  // Ordinate sull'**effettivo**: è il numero su cui l'app decide chi è
+  // migliore, e il collaudo deve guardare lo stesso.
+  const ordinate = [...conDue.supplierProducts].sort((a, b) =>
+    unitarioEffettivo(b).comparedTo(unitarioEffettivo(a)),
   );
   const piuCara = ordinate[0]!;
   const migliore = ordinate.at(-1)!;
@@ -181,6 +204,93 @@ async function main() {
     rigaZittita.supplierProductId === piuCara.id,
     `l’ordine resta col fornitore più caro, che era la scelta di chi ordina`,
   );
+
+  // ── Lo sconto concordato conta anche nell'avviso ────────────────────
+  //
+  // È il difetto che ha fatto sbagliare un ordine vero: l'elenco ordinava
+  // sull'effettivo e segnava «migliore» un fornitore, il riepilogo
+  // confrontava i listini e consigliava di passare all'altro «per
+  // risparmiare». Seguirlo faceva spendere di più.
+  //
+  // Il collaudo lo prova qui e non fra i test perché il difetto non stava
+  // nella regola — quella era giusta — ma nel numero che le si passava.
+  console.log('\n── Lo sconto concordato conta anche nell’avviso ─────────────────\n');
+
+  const conSconto = await systemPrisma.supplier.findFirst({
+    where: { organizationId: org.id, extraDiscountPct: { gt: 0 } },
+    select: { id: true, name: true, extraDiscountPct: true },
+  });
+
+  if (!conSconto) {
+    console.log('  ~ nessun fornitore ha uno sconto concordato: criterio non verificabile');
+  } else {
+    // Un prodotto in cui quel fornitore è più caro a listino ma più
+    // conveniente col rimborso: è esattamente il caso che si sbagliava.
+    const candidati = await systemPrisma.product.findMany({
+      where: {
+        supplierProducts: {
+          some: { supplierId: conSconto.id, active: true, currentPriceId: { not: null } },
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        supplierProducts: {
+          where: { active: true, currentPriceId: { not: null } },
+          select: {
+            id: true,
+            supplierId: true,
+            supplier: { select: { name: true, extraDiscountPct: true } },
+            currentPrice: { select: { priceNet: true } },
+          },
+        },
+      },
+      take: 400,
+    });
+
+    const effettivo = (o: (typeof candidati)[number]['supplierProducts'][number]) =>
+      new Decimal(o.currentPrice!.priceNet.toString())
+        .mul(new Decimal(100).minus(o.supplier.extraDiscountPct?.toString() ?? '0'))
+        .div(100);
+
+    const caso = candidati.find((p) => {
+      if (p.supplierProducts.length < 2) return false;
+      const suo = p.supplierProducts.find((o) => o.supplierId === conSconto.id);
+      const altro = p.supplierProducts.find((o) => o.supplierId !== conSconto.id);
+      if (!suo || !altro) return false;
+      const listinoSuo = new Decimal(suo.currentPrice!.priceNet.toString());
+      const listinoAltro = new Decimal(altro.currentPrice!.priceNet.toString());
+      // Più caro a listino, più conveniente col rimborso: il ribaltamento.
+      return listinoSuo.gt(listinoAltro) && effettivo(suo).lt(effettivo(altro));
+    });
+
+    if (!caso) {
+      console.log('  ~ nessun prodotto in cui lo sconto ribalta la scelta: non verificabile');
+    } else {
+      const suo = caso.supplierProducts.find((o) => o.supplierId === conSconto.id)!;
+      const altro = caso.supplierProducts.find((o) => o.supplierId !== conSconto.id)!;
+      console.log(`     ${caso.name}`);
+      console.log(
+        `       ${suo.supplier.name}: ${suo.currentPrice!.priceNet} € a listino → ${effettivo(suo).toFixed(4)} € col rimborso`,
+      );
+      console.log(
+        `       ${altro.supplier.name}: ${altro.currentPrice!.priceNet} € a listino → ${effettivo(altro).toFixed(4)} €`,
+      );
+
+      await systemPrisma.orderLine.deleteMany({});
+      await ordini.aggiungiRiga(utente.id, { supplierProductId: suo.id, quantityPacks: 1 });
+      const corrente = await ordini.corrente(utente.id);
+      const rigaScelta = corrente.righe[0]!;
+
+      esito(
+        rigaScelta.avviso?.meritaAvviso !== true,
+        `scelto ${suo.supplier.name}, il riepilogo non consiglia di cambiare` +
+          (rigaScelta.avviso?.meritaAvviso
+            ? ` (invece dice: prendilo da ${rigaScelta.avviso.migliore.supplierName})`
+            : ''),
+      );
+    }
+  }
 
   await systemPrisma.orderLine.deleteMany({});
   await systemPrisma.order.deleteMany({});
