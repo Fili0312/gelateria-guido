@@ -1,5 +1,8 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { Decimal } from 'decimal.js';
 import { systemPrisma } from '../src/server/database/system-client.js';
+import { orderDocumentsRepository } from '../src/server/repositories/order-documents.js';
 import { ordersRepository } from '../src/server/repositories/orders.js';
 
 /**
@@ -69,10 +72,14 @@ async function main() {
     where: { id: { in: [a.id, b.id, c.id] } },
     data: { rawName: 'RINOMINATO DOPO' },
   });
-  await systemPrisma.supplier.updateMany({
-    where: { id: { in: [a.supplierId, b.supplierId] } },
-    data: { name: 'FORNITORE CAMBIATO' },
-  });
+  // Uno per uno: il nome del fornitore è unico per organizzazione, e da
+  // quando i fornitori sono nove `a` e `b` non sono più lo stesso.
+  for (const [indice, supplierId] of [...new Set([a.supplierId, b.supplierId])].entries()) {
+    await systemPrisma.supplier.update({
+      where: { id: supplierId },
+      data: { name: `FORNITORE CAMBIATO ${indice + 1}` },
+    });
+  }
   await systemPrisma.supplierProduct.update({ where: { id: c.id }, data: { active: false } });
 
   const dopo = (await ordini.storico(confermato.orderId))!;
@@ -243,6 +250,51 @@ async function main() {
     perPagina: 20,
   });
   esito(soloAnnullati.totale === 1, 'e si ritrova filtrando per «annullati»');
+
+  // ── «Mi sono sbagliato»: eliminare per davvero ──────────────────────
+  //
+  // Annullare lascia l'ordine nello storico col suo numero, ed è giusto per
+  // un ordine vero che non si fa più. Un ordine confermato per sbaglio
+  // trenta secondi fa invece non è mai esistito, e va via — documenti
+  // compresi, o resterebbero PDF che il database non conosce più.
+  console.log('\n── «Mi sono sbagliato»: l’ordine sparisce davvero ───────────────\n');
+
+  const daEliminare = await systemPrisma.order.findFirst({
+    where: { status: { not: 'DRAFT' } },
+    select: { id: true, code: true },
+  });
+  if (!daEliminare) {
+    console.log('  ~ nessun ordine confermato da eliminare');
+  } else {
+    const documenti = await orderDocumentsRepository(org.id).genera(utente.id, daEliminare.id);
+    const percorsi = (
+      await systemPrisma.orderDocument.findMany({
+        where: { orderId: daEliminare.id },
+        select: { filePath: true },
+      })
+    ).map((d) => d.filePath);
+    const radice = process.env.STORAGE_DIR ?? join(process.cwd(), 'storage');
+    const esistevano = percorsi.filter((f) => existsSync(join(radice, f))).length;
+
+    const esito2 = await ordini.elimina(daEliminare.id);
+    esito(esito2.code === daEliminare.code, `eliminato l'ordine ${esito2.code}`);
+    esito(
+      (await systemPrisma.order.count({ where: { id: daEliminare.id } })) === 0,
+      'sparito dallo storico',
+    );
+    esito(
+      (await systemPrisma.orderLine.count({ where: { orderId: daEliminare.id } })) === 0,
+      'con le sue righe',
+    );
+    esito(
+      (await systemPrisma.orderDocument.count({ where: { orderId: daEliminare.id } })) === 0,
+      `e i suoi ${documenti.length} documenti`,
+    );
+    esito(
+      esistevano > 0 && percorsi.every((f) => !existsSync(join(radice, f))),
+      `i ${esistevano} file sono spariti anche dal disco, non solo dal database`,
+    );
+  }
 
   await systemPrisma.orderLine.deleteMany({});
   await systemPrisma.order.deleteMany({});

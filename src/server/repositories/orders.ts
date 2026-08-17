@@ -20,6 +20,7 @@ import type {
   RigaOrdinePatch,
 } from '@/features/orders/schema';
 import { selezionaRigheSenzaConfronto } from '@/features/orders/summary';
+import { rimuoviDocumento } from '@/server/export/archivio';
 import {
   prismaForOrganization,
   transactionForOrganization,
@@ -1703,6 +1704,56 @@ export function ordersRepository(organizationId: string) {
      * sparito lascia un buco nella numerazione e nessun modo di sapere se è
      * stato mandato o no.
      */
+    /**
+     * Cancella un ordine per davvero: «mi sono sbagliato».
+     *
+     * ── Perché esiste, visto che c'è «annulla» ──────────────────────────
+     * Annullare è la cosa giusta per un ordine **vero** che non si fa più:
+     * resta nello storico col suo numero, e la contabilità sa cosa è
+     * successo. Ma un ordine confermato per sbaglio trenta secondi fa non è
+     * un ordine che non si fa più: è un ordine che non è mai esistito, e
+     * lasciarlo lì annullato sporca lo storico di roba che non racconta
+     * niente.
+     *
+     * ── Quello che porta via ────────────────────────────────────────────
+     * Righe e documenti, file compresi. I documenti non si possono lasciare
+     * orfani: sono PDF che il database non conoscerebbe più e che nessuno
+     * andrebbe a cercare a mano.
+     *
+     * ── Il prezzo, che va detto a chi preme ─────────────────────────────
+     * Il numero **torna disponibile**: il codice è «il massimo più uno», e
+     * il prossimo ordine si riprenderà il 2026-0003 appena liberato. Se
+     * quello vecchio era già stato mandato, il fornitore si troverebbe due
+     * documenti diversi con lo stesso numero sopra. Per questo la schermata
+     * lo scrive prima di far premere, e per questo «annulla» resta la strada
+     * normale.
+     */
+    async elimina(orderId: string): Promise<{ code: string | null; documenti: number }> {
+      const percorsi = await transactionForOrganization(organizationId, async (tx) => {
+        const ordine = await tx.order.findFirst({
+          where: { id: orderId },
+          select: { code: true, documents: { select: { filePath: true } } },
+        });
+        if (!ordine) throw new OrderNotFoundError('Ordine non trovato.');
+
+        // I figli prima: le cascate ci sarebbero, ma dirlo per esteso rende
+        // leggibile cosa sparisce senza aprire lo schema.
+        await tx.order.update({
+          where: { id: orderId },
+          data: { documents: { deleteMany: {} }, lines: { deleteMany: {} } },
+        });
+        await tx.order.delete({ where: { id: orderId } });
+        return { code: ordine.code, percorsi: ordine.documents.map((d) => d.filePath) };
+      });
+
+      // I file **dopo** la transazione: cancellarli dentro renderebbe
+      // irreversibile un'operazione che il database potrebbe ancora annullare.
+      for (const percorso of percorsi.percorsi) {
+        await rimuoviDocumento(percorso);
+      }
+      return { code: percorsi.code, documenti: percorsi.percorsi.length };
+    },
+
     async annulla(userId: string, orderId: string): Promise<OrdineStorico> {
       await transactionForOrganization(
         organizationId,

@@ -20,16 +20,19 @@ import { euro } from '@/features/products/format';
  */
 export function OrderActions({
   orderId,
+  codice,
   annullabile,
   endpointOrdini,
 }: {
   orderId: string;
+  /** Serve a scriverlo nella conferma: si elimina «il 2026-0003», non «questo». */
+  codice: string | null;
   annullabile: boolean;
   endpointOrdini: string;
 }) {
   const router = useRouter();
   const { toast } = useToast();
-  const [attesa, setAttesa] = useState<'riordina' | 'annulla' | null>(null);
+  const [attesa, setAttesa] = useState<'riordina' | 'annulla' | 'elimina' | null>(null);
   const [esito, setEsito] = useState<EsitoRiordino | null>(null);
 
   async function riordina() {
@@ -105,6 +108,49 @@ export function OrderActions({
     }
   }
 
+  async function elimina() {
+    if (
+      !confirm(
+        `Eliminare l’ordine ${codice ?? ''}?\n\n` +
+          'Sparisce dallo storico con tutti i suoi documenti: non è un annullamento, non resta ' +
+          'traccia.\n\n' +
+          `Il numero ${codice ?? ''} tornerà disponibile e il prossimo ordine se lo riprenderà. ` +
+          'Se questo l’hai già mandato a un fornitore, annullalo invece di eliminarlo: si ' +
+          'ritroverebbe due documenti diversi con lo stesso numero sopra.',
+      )
+    ) {
+      return;
+    }
+    setAttesa('elimina');
+    try {
+      const risposta = await fetch(`${endpointOrdini}/${orderId}`, {
+        method: 'DELETE',
+        headers: { Accept: 'application/json' },
+      });
+      const corpo = (await risposta.json()) as OrderApiBody<{ documenti: number }>;
+      if (!corpo.ok) {
+        toast({
+          title: 'Non è stato possibile eliminare',
+          description: corpo.error,
+          tone: 'error',
+        });
+        return;
+      }
+      toast({
+        title: 'Ordine eliminato',
+        description:
+          corpo.data.documenti > 0 ? `Con ${corpo.data.documenti} documenti.` : undefined,
+        tone: 'success',
+      });
+      router.push('/ordini/storico');
+      router.refresh();
+    } catch {
+      toast({ title: 'Server non raggiungibile', tone: 'error' });
+    } finally {
+      setAttesa(null);
+    }
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3">
@@ -121,6 +167,18 @@ export function OrderActions({
             {attesa === 'annulla' ? 'Annullo…' : 'Annulla l’ordine'}
           </button>
         )}
+        {/* Separato dall'annullamento e scritto come lo direbbe chi lo usa.
+            «Elimina» accanto ad «Annulla» sono due parole che si somigliano
+            troppo per due cose che finiscono in modi opposti: una lascia
+            l'ordine nello storico, l'altra lo porta via. */}
+        <button
+          type="button"
+          onClick={() => void elimina()}
+          disabled={attesa !== null}
+          className="ml-auto min-h-11 cursor-pointer rounded-lg px-3 text-sm font-semibold text-neutral-500 transition-colors hover:bg-red-50 hover:text-red-700 disabled:opacity-60"
+        >
+          {attesa === 'elimina' ? 'Elimino…' : 'Mi sono sbagliato: elimina'}
+        </button>
       </div>
 
       {esito && (

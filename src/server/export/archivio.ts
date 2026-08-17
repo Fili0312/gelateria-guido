@@ -60,6 +60,11 @@ export async function leggiDocumento(relativo: string): Promise<Buffer> {
   return readFile(percorsoAssoluto(relativo));
 }
 
+/** Cancella un singolo documento dal disco. */
+export async function rimuoviDocumento(relativo: string): Promise<void> {
+  await rm(percorsoAssoluto(relativo), { force: true }).catch(() => {});
+}
+
 /** Cancella una generazione intera. Usata quando le righe non si creano. */
 export async function rimuoviGenerazione(orderId: string, generazione: string): Promise<void> {
   await rm(percorsoAssoluto(join('exports', orderId, generazione)), {

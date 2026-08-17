@@ -143,6 +143,7 @@ export default async function OrdineStoricoPage({ params }: { params: Promise<{ 
 
       <OrderActions
         orderId={ordine.id}
+        codice={ordine.code}
         annullabile={!annullato}
         endpointOrdini={withBasePath('/api/orders')}
       />
