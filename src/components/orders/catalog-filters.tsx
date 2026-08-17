@@ -60,8 +60,15 @@ export function raggruppa(risultati: readonly RisultatoOrdinabile[]): {
     categorie.set(idReparto, dentro);
   }
 
-  const ordina = (g: Gruppo[]) =>
-    g.sort((a, b) => b.quanti - a.quanti || a.nome.localeCompare(b.nome, 'it'));
+  // Alfabetico, non per numerosità.
+  //
+  // Ordinare per quanti prodotti contiene metteva davanti il filtro più
+  // grosso, che è utile con quattro voci e inutile con ventotto: in una
+  // barra che scorre di lato, «Grappa» va cercata, e si cerca dove si sa che
+  // sta. L'ordine per numerosità cambia anche da solo a ogni import — la
+  // categoria che ieri era terza oggi è quinta — e un elenco che si sposta
+  // sotto le dita non si impara mai.
+  const ordina = (g: Gruppo[]) => g.sort((a, b) => a.nome.localeCompare(b.nome, 'it'));
 
   return {
     reparti: ordina([...reparti.values()]),
