@@ -91,10 +91,7 @@ const STILE = `
     margin-top: 10px; border: 1px solid #171717; border-radius: 6px;
     padding: 8px 11px; font-size: 8.5pt; line-height: 1.45; page-break-inside: avoid;
   }
-  .firma {
-    margin-top: 16px; display: flex; justify-content: flex-end;
-    page-break-inside: avoid;
-  }
+  .firma { margin-top: 22px; display: flex; justify-content: flex-end; }
   .firma span {
     border-top: 1px solid #737373; padding-top: 4px; width: 220px;
     text-align: center; font-size: 8pt; color: #737373;
@@ -266,9 +263,11 @@ ${righe}
         ? `<p style="margin:8px 0 0"><strong>${scampa(i.clausolaAccettazione)}</strong></p>`
         : ''
     }
+    <!-- La firma sta **dentro** il riquadro: separata, finiva da sola in una
+         pagina in più, e una firma senza il testo che accetta sopra non
+         significa niente. -->
+    <div class="firma"><span>Timbro e firma per accettazione</span></div>
   </div>
-
-  <div class="firma"><span>Timbro e firma per accettazione</span></div>
 </body></html>`;
 }
 
