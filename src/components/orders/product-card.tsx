@@ -62,12 +62,12 @@ function Quantita({
   const meno = quantita <= CONFEZIONI_MIN;
 
   return (
-    <span className="border-brand-600 bg-brand-50 flex items-center rounded-xl border-2">
+    <span className="border-brand-300 bg-brand-50 flex items-center rounded-xl border">
       <button
         type="button"
         onClick={() => (meno ? onTogli() : onCambia(quantita - 1))}
         aria-label={meno ? `Togli ${nome} dall’ordine` : 'Una confezione in meno'}
-        className="text-brand-800 hover:bg-brand-100 active:bg-brand-200 grid h-12 w-11 cursor-pointer place-items-center rounded-l-lg transition-colors"
+        className="text-brand-800 hover:bg-brand-100 active:bg-brand-200 grid h-12 w-9 cursor-pointer place-items-center rounded-l-xl transition-colors min-[380px]:w-10"
       >
         <span aria-hidden className="text-xl leading-none font-bold">
           {meno ? '×' : '−'}
@@ -94,13 +94,13 @@ function Quantita({
           }
         }}
         aria-label={`Confezioni di ${nome}`}
-        className="tabellare focus:bg-brand-100 w-11 cursor-text bg-transparent text-center font-black text-neutral-950 outline-none"
+        className="tabellare focus:bg-brand-100 w-8 cursor-text bg-transparent text-center font-bold text-neutral-950 outline-none min-[380px]:w-9"
       />
       <button
         type="button"
         onClick={() => onCambia(Math.min(quantita + 1, CONFEZIONI_MAX))}
         aria-label="Una confezione in più"
-        className="text-brand-800 hover:bg-brand-100 active:bg-brand-200 grid h-12 w-11 cursor-pointer place-items-center rounded-r-lg transition-colors"
+        className="text-brand-800 hover:bg-brand-100 active:bg-brand-200 grid h-12 w-9 cursor-pointer place-items-center rounded-r-xl transition-colors min-[380px]:w-10"
       >
         <span aria-hidden className="text-xl leading-none font-bold">
           +
@@ -206,15 +206,22 @@ export function ProductCard({
         gia ? 'border-brand-300 bg-brand-50/50' : 'border-neutral-200'
       }`}
     >
-      <div className="flex items-center gap-3 p-3 min-[380px]:gap-3.5 min-[380px]:p-3.5">
+      {/* `flex-wrap` con una larghezza minima al testo.
+          Quando un prodotto entra nell'ordine il «+» diventa il comando
+          quantità, che è largo il triplo: a trecentoventi pixel il nome si
+          riduceva a sessanta e si troncava. Così, quando i tre blocchi non
+          ci stanno, il comando scende da solo su una riga sua invece di
+          rubare spazio al nome — e il nome è l'unica cosa che non si può
+          troncare. */}
+      <div className="flex flex-wrap items-center gap-3 p-3 min-[380px]:gap-3.5 min-[380px]:p-3.5">
         <FotoProdotto
           src={risultato.imageUrl}
           nome={risultato.name}
           categoria={risultato.category?.name}
-          className="h-[5.5rem] w-16 min-[380px]:h-[6rem] min-[380px]:w-[4.5rem] sm:h-[6.5rem] sm:w-20"
+          className="h-[5.5rem] w-16 min-[380px]:h-[6rem] sm:h-[6.5rem] sm:w-[4.5rem]"
         />
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-[8rem] flex-1">
           {risultato.category && (
             <p className="truncate text-[11px] font-semibold tracking-wide text-neutral-400 uppercase">
               {risultato.category.name}
@@ -284,7 +291,7 @@ export function ProductCard({
         </div>
 
         {prima && (
-          <div className="flex shrink-0 flex-col items-end gap-2.5">
+          <div className="ml-auto flex shrink-0 flex-col items-end gap-2.5">
             <Prezzo offerta={prima} grande />
             {gia ? (
               <Quantita
