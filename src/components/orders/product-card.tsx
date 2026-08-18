@@ -67,7 +67,7 @@ function Quantita({
         type="button"
         onClick={() => (meno ? onTogli() : onCambia(quantita - 1))}
         aria-label={meno ? `Togli ${nome} dall’ordine` : 'Una confezione in meno'}
-        className="text-brand-800 hover:bg-brand-100 active:bg-brand-200 grid h-12 w-9 cursor-pointer place-items-center rounded-l-xl transition-colors min-[380px]:w-10"
+        className="text-brand-800 hover:bg-brand-100 active:bg-brand-200 grid h-12 w-10 cursor-pointer place-items-center rounded-l-xl transition-colors min-[400px]:w-11"
       >
         <span aria-hidden className="text-xl leading-none font-bold">
           {meno ? '×' : '−'}
@@ -94,13 +94,13 @@ function Quantita({
           }
         }}
         aria-label={`Confezioni di ${nome}`}
-        className="tabellare focus:bg-brand-100 w-8 cursor-text bg-transparent text-center font-bold text-neutral-950 outline-none min-[380px]:w-9"
+        className="tabellare focus:bg-brand-100 w-9 cursor-text bg-transparent text-center font-bold text-neutral-950 outline-none min-[400px]:w-10"
       />
       <button
         type="button"
         onClick={() => onCambia(Math.min(quantita + 1, CONFEZIONI_MAX))}
         aria-label="Una confezione in più"
-        className="text-brand-800 hover:bg-brand-100 active:bg-brand-200 grid h-12 w-9 cursor-pointer place-items-center rounded-r-xl transition-colors min-[380px]:w-10"
+        className="text-brand-800 hover:bg-brand-100 active:bg-brand-200 grid h-12 w-10 cursor-pointer place-items-center rounded-r-xl transition-colors min-[400px]:w-11"
       >
         <span aria-hidden className="text-xl leading-none font-bold">
           +
@@ -137,7 +137,9 @@ function Prezzo({ offerta, grande }: { offerta: OffertaOrdinabile; grande: boole
           // Un filo più piccolo sui telefoni stretti: a 320 pixel ogni
           // millimetro tolto qui è un millimetro dato al nome, che è
           // l'unica cosa che davvero non può essere troncata.
-          grande ? 'text-[1.4rem] min-[380px]:text-[1.6rem]' : 'text-base'
+          grande
+            ? 'text-[1.25rem] min-[360px]:text-[1.4rem] min-[400px]:text-[1.6rem]'
+            : 'text-base'
         }`}
       >
         {euro(offerta.priceNet)}
@@ -145,7 +147,7 @@ function Prezzo({ offerta, grande }: { offerta: OffertaOrdinabile; grande: boole
       {/* Il prezzo per unità solo se la confezione è dichiarata: altrimenti
           sarebbe diviso per un numero inventato e sembrerebbe un dato vero. */}
       {offerta.unitPrice && offerta.packQuantityConfirmed && (
-        <span className="tabellare text-[13px] font-normal text-neutral-400">
+        <span className="tabellare text-[12px] font-normal text-neutral-400 min-[360px]:text-[13px]">
           {euro(offerta.unitPrice)}/{offerta.unitPriceBasis === 'PER_KG' ? 'kg' : 'L'}
         </span>
       )}
@@ -213,15 +215,15 @@ export function ProductCard({
           ci stanno, il comando scende da solo su una riga sua invece di
           rubare spazio al nome — e il nome è l'unica cosa che non si può
           troncare. */}
-      <div className="flex flex-wrap items-center gap-3 p-3 min-[380px]:gap-3.5 min-[380px]:p-3.5">
+      <div className="flex flex-wrap items-center gap-3 p-3 min-[400px]:gap-3.5 min-[400px]:p-3.5">
         <FotoProdotto
           src={risultato.imageUrl}
           nome={risultato.name}
           categoria={risultato.category?.name}
-          className="h-[5.5rem] w-16 min-[380px]:h-[6rem] sm:h-[6.5rem] sm:w-[4.5rem]"
+          className="h-[4.75rem] w-12 min-[360px]:h-[5.5rem] min-[360px]:w-16 min-[400px]:h-[6rem] sm:h-[6.5rem] sm:w-[4.5rem]"
         />
 
-        <div className="min-w-[8rem] flex-1">
+        <div className="min-w-[7rem] flex-1">
           {risultato.category && (
             <p className="truncate text-[11px] font-semibold tracking-wide text-neutral-400 uppercase">
               {risultato.category.name}
@@ -263,7 +265,7 @@ export function ProductCard({
                         ? `Nascondi gli altri fornitori di ${risultato.name}`
                         : `Mostra gli altri ${altre.length} fornitori di ${risultato.name}`
                     }
-                    className="-mx-1 -my-1 inline-flex min-h-8 cursor-pointer items-center gap-0.5 rounded-lg px-1 text-[11px] font-medium whitespace-nowrap text-neutral-500 transition-colors hover:text-neutral-800"
+                    className="-mx-1.5 -my-1.5 inline-flex min-h-10 cursor-pointer items-center gap-0.5 rounded-lg px-1.5 text-[11px] font-medium whitespace-nowrap text-neutral-500 transition-colors hover:text-neutral-800"
                   >
                     {/* Il numero, non una freccia muta: da chiusa la card deve
                         dire che sotto c'è un confronto, o nessuno la apre.
