@@ -6,6 +6,7 @@ import {
   isFornitoreAdBeverage,
   matchAdBeverageProduct,
   normalizzaAdBeverage,
+  selezionaCandidatiAdBeverage,
   trovaMiglioreAdBeverage,
   type ProdottoAdBeverage,
 } from './ad-beverage';
@@ -168,6 +169,37 @@ describe('matching AD Beverage', () => {
     );
     assert.equal(esito.accettato, false);
     assert.match(esito.motivo, /variante diversa/);
+  });
+  it('porta a DeepSeek anche un candidato con un refuso ampio', () => {
+    const candidati = selezionaCandidatiAdBeverage(
+      locale({
+        name: 'ARDGERG 10 ANNI CL 70',
+        brand: 'Ardgerg',
+        categoria: 'Whisky',
+        unitSize: 70,
+        unitOfMeasure: 'CL',
+      }),
+      [
+        ad({ id: 'altro', nome: 'WHISKY ABERLOUR 10 ANNI 70 CL' }),
+        ad({ id: 'giusto', nome: 'WHISKY ARDBEG 10 ANNI 70 CL' }),
+      ],
+    );
+    assert.equal(candidati[0]?.prodotto.id, 'giusto');
+    assert.ok(candidati[0]!.richiamo >= 0.3);
+  });
+  it('accetta dalla regola un prodotto esatto anche senza formato locale', () => {
+    const esito = matchAdBeverageProduct(
+      locale({
+        name: 'DIPLOMATICO PLANAS',
+        brand: 'Diplomatico',
+        categoria: 'Rum',
+        unitSize: 1,
+        unitOfMeasure: 'PIECE',
+      }),
+      ad({ nome: 'RUM DIPLOMATICO PLANAS 47° 70 CL' }),
+    );
+    assert.equal(esito.accettato, true, esito.motivo);
+    assert.ok(esito.confidenza >= 0.85);
   });
 });
 

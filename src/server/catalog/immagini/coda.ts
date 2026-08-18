@@ -92,6 +92,7 @@ export async function cercaFotoMancanti(
       const trovata = await cercaImmagine(
         {
           name: p.name,
+          organizationId,
           brand: p.brand,
           gtin: p.gtin,
           unitSize: p.unitSize.toString(),

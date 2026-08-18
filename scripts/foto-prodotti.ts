@@ -8,7 +8,7 @@ import { comuniDaNomi } from '../src/server/catalog/immagini/parole-comuni.js';
  *   ./scripts/con-variabili.sh pnpm exec tsx --conditions=react-server \
  *     scripts/foto-prodotti.ts --scrivi [--quanti 50] [--riprova]
  *       [--prodotto <id>] [--anche-senza-marca] [--fornitore <nome>]
- *       [--aggiornato-prima-di <data ISO>]
+ *       [--aggiornato-prima-di <data ISO>] [--solo-ad]
  *
  * ── Perché è un comando e non un lavoro dentro la pagina ────────────────
  * Cercare una foto vuol dire parlare con un servizio esterno, aspettare, e
@@ -39,6 +39,7 @@ async function main() {
   const scrivi = process.argv.includes('--scrivi');
   const riprova = process.argv.includes('--riprova');
   const senzaMarca = process.argv.includes('--anche-senza-marca');
+  const soloAd = process.argv.includes('--solo-ad');
   const unoSolo = argomento('--prodotto');
   const fornitore = argomento('--fornitore');
   const primaDiTesto = argomento('--aggiornato-prima-di');
@@ -140,12 +141,14 @@ async function main() {
     const esito = await cercaImmagine(
       {
         name: p.name,
+        organizationId: p.organizationId,
         brand: p.brand,
         gtin: p.gtin,
         unitSize: p.unitSize.toString(),
         unitOfMeasure: p.unitOfMeasure,
         categoria: p.category?.name ?? null,
         fornitori: p.supplierProducts.map((offerta) => offerta.supplier.name),
+        soloAdBeverage: soloAd,
       },
       comuni,
     );

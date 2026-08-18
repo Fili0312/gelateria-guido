@@ -38,6 +38,8 @@ export interface ProdottoNormalizzato {
 
 export interface DatiProdotto {
   name: string;
+  /** Necessaria soltanto per contabilità, cache e budget del fallback IA. */
+  organizationId?: string;
   brand?: string | null;
   /** Riconosciuta dal modello insieme alla marca, quando c'è. */
   variante?: string | null;
@@ -47,6 +49,8 @@ export interface DatiProdotto {
   unitOfMeasure?: string | null;
   /** Fornitori attivi: AD si consulta soltanto quando compare qui. */
   fornitori?: readonly string[];
+  /** Nei riempimenti ufficiali AD evita di ripiegare su foto community OFF. */
+  soloAdBeverage?: boolean;
 }
 
 /**

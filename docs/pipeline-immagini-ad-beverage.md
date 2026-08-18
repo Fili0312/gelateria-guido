@@ -24,15 +24,27 @@ minuti per non produrre centinaia di tentativi e log uguali.
 La fonte AD viene consultata soltanto se il prodotto globale ha almeno
 un'offerta attiva del fornitore `AD Beverage`:
 
-1. catalogo ufficiale AD Beverage, soglia automatica `0,90`;
-2. Open Food Facts, soglia esistente e invariata `0,80`;
-3. nessuna foto, con il segnaposto categoria gia' esistente.
+1. matcher deterministico sul catalogo ufficiale AD Beverage, soglia
+   automatica `0,85`;
+2. per i prodotti rimasti senza foto, DeepSeek sceglie esclusivamente fra i
+   dieci candidati con immagine reale recuperati dallo stesso catalogo;
+3. Open Food Facts, soglia esistente e invariata `0,80`, resta disponibile
+   nella pipeline generale ma viene escluso dal riempimento massivo AD;
+4. nessuna foto, con il segnaposto categoria gia' esistente.
 
-Il matcher giudica tutti i 2.135 prodotti attivi e sceglie il migliore. Marca,
-variante, formato e tipo di confezione sono vincoli: un conflitto esplicito
-non puo' essere compensato da parole generiche. I risultati tra `0,80` e
-`0,899` restano dubbi e non vengono associati automaticamente. Un quasi pari
-fra due prodotti diversi viene scartato come ambiguo.
+Il matcher deterministico giudica tutti i 2.135 prodotti attivi e sceglie il
+migliore. Marca e variante restano vincoli: un conflitto esplicito non puo'
+essere compensato da parole generiche. I risultati tra `0,80` e `0,849`
+restano dubbi e non vengono associati automaticamente. Un quasi pari fra due
+prodotti diversi viene scartato come ambiguo.
+
+Il secondo passaggio usa il provider DeepSeek gia' configurato, con cache,
+contabilita' e tetto mensile di spesa. Il modello non naviga e non genera URL:
+puo' scegliere soltanto una riga reale con `foto_url` ufficiale fra quelle
+proposte dal filtro fuzzy. Il risultato viene accettato con confidenza almeno
+`0,82` e una risposta esplicita `stesso=true` e `sicuro=true`. Per una foto
+rappresentativa e' ammessa una capacita' o confezione differente dello stesso
+prodotto; gusto, colore, linea, annata ed eta' differenti vengono rifiutati.
 
 Le date operative del listino vengono ignorate; annata del vino ed eta' del
 distillato restano invece parte dell'identita'. `2012` e `2013` non sono
@@ -75,10 +87,18 @@ locali a servizi esterni. Il comando e':
   scripts/dry-run-ad-beverage.ts --quanti 30
 ```
 
+Il recupero dedicato sui prodotti AD senza foto, senza fallback OFF, e':
+
+```bash
+./scripts/con-variabili.sh pnpm exec tsx --conditions=react-server \
+  scripts/foto-ad-beverage-ia.ts --scrivi --quanti 300
+```
+
+Senza `--scrivi` il comando esegue e registra le decisioni IA ma non scarica
+foto e non modifica i prodotti.
+
 ## Diritti delle immagini
 
-Non e' stata trovata sul sito una licenza o un'autorizzazione esplicita al
-riuso sistematico delle immagini; le pagine AD indicizzate riportano invece
-"Tutti i diritti riservati". L'integrazione tecnica e il dry-run sono pronti,
-ma non e' stato eseguito alcun import massivo. Prima di lanciarlo serve una
-conferma dei diritti o un'autorizzazione di AD Beverage.
+Non e' stata trovata sul sito una licenza esplicita al riuso sistematico delle
+immagini; le pagine AD indicizzate riportano "Tutti i diritti riservati".
+L'esecuzione massiva deve quindi essere una scelta esplicita dell'operatore.

@@ -11,7 +11,7 @@ const CACHE_OK_MS = 6 * 60 * 60 * 1_000;
 const CACHE_ERRORE_MS = 15 * 60 * 1_000;
 
 /** La soglia OFF resta separata e invariata a 0,80. */
-export const SOGLIA_AD_BEVERAGE = 0.9;
+export const SOGLIA_AD_BEVERAGE = 0.85;
 export const SOGLIA_DUBBIA_AD_BEVERAGE = 0.8;
 
 export class AdBeverageError extends Error {
@@ -50,6 +50,13 @@ export interface EsitoMatchAdBeverage {
   motivo: string;
   formatoLocale: string | null;
   formatoAd: string | null;
+}
+
+export interface CandidatoAdBeverage {
+  prodotto: ProdottoAdBeverage;
+  /** Capacità del filtro lessicale di portare il prodotto davanti al modello. */
+  richiamo: number;
+  valutazione: EsitoMatchAdBeverage;
 }
 
 const PAROLE_RUMORE = new Set([
@@ -349,6 +356,12 @@ function stessaParola(a: string, b: string): boolean {
       distanza(a, b) <= 1)
   );
 }
+function similaritaParolaFuzzy(a: string, b: string): number {
+  if (stessaParola(a, b)) return 1;
+  if (/\d/.test(a) || /\d/.test(b)) return 0;
+  const massimo = Math.max(a.length, b.length);
+  return massimo < 4 ? 0 : Math.max(0, 1 - distanza(a, b) / massimo);
+}
 function tutteCoperte(a: readonly string[], b: readonly string[]): boolean {
   return a.every((x) => b.some((y) => stessaParola(x, y)));
 }
@@ -540,6 +553,62 @@ export function trovaMiglioreAdBeverage(
   return migliore;
 }
 
+/**
+ * Recupero permissivo per DeepSeek.
+ *
+ * Qui il punteggio non decide il match: serve soltanto a ridurre 2.000 nomi
+ * a un elenco corto che il modello possa leggere. Per questo tollera refusi
+ * più ampi e non chiude la porta su formato o confezione differenti.
+ */
+export function selezionaCandidatiAdBeverage(
+  locale: DatiProdotto,
+  catalogo: readonly ProdottoAdBeverage[],
+  massimo = 10,
+): CandidatoAdBeverage[] {
+  const nl = normalizzaAdBeverage(locale.name);
+  const marca = paroleMarca(locale.brand);
+  const paroleLocale = uniche([...nl.parole, ...marca]);
+  const formatoLocale = formatoDaDati(locale) ?? nl.formato;
+  const categoriaLocale = famigliaCategoria(locale.categoria);
+
+  return catalogo
+    .filter((prodotto) => estraiImmagineAdBeverage(prodotto) !== null)
+    .map((prodotto): CandidatoAdBeverage => {
+      const na = normalizzaAdBeverage(prodotto.nome);
+      const paroleAd = uniche(na.parole);
+      const copertura = paroleLocale.length
+        ? paroleLocale.reduce(
+            (somma, parola) =>
+              somma + Math.max(0, ...paroleAd.map((altra) => similaritaParolaFuzzy(parola, altra))),
+            0,
+          ) / paroleLocale.length
+        : 0;
+      const precisione = paroleAd.length
+        ? paroleAd.reduce(
+            (somma, parola) =>
+              somma +
+              Math.max(0, ...paroleLocale.map((altra) => similaritaParolaFuzzy(parola, altra))),
+            0,
+          ) / paroleAd.length
+        : 0;
+      const formatoAd = na.formato;
+      const categoriaAd = famigliaCategoria(prodotto.categoria);
+      let richiamo = copertura * 0.62 + precisione * 0.18;
+      if (marca.length && tutteCoperte(marca, na.parole)) richiamo += 0.12;
+      if (formatoLocale && formatoAd) {
+        richiamo += formatiUguali(formatoLocale, formatoAd) ? 0.12 : -0.04;
+      }
+      if (categoriaLocale && categoriaAd) {
+        richiamo += categoriaLocale === categoriaAd ? 0.08 : -0.12;
+      }
+      const valutazione = matchAdBeverageProduct(locale, prodotto);
+      richiamo += valutazione.confidenza * 0.08;
+      return { prodotto, richiamo: arrotonda(richiamo), valutazione };
+    })
+    .sort((a, b) => b.richiamo - a.richiamo || b.valutazione.confidenza - a.valutazione.confidenza)
+    .slice(0, Math.max(1, massimo));
+}
+
 interface ConfigurazioneSupabase {
   url: string;
   chiaveAnonima: string;
@@ -625,7 +694,7 @@ export async function caricaCatalogoAdBeverage(): Promise<ProdottoAdBeverage[]> 
 
 let cache: { finoA: number; prodotti: readonly ProdottoAdBeverage[] } | null = null;
 let caricamento: Promise<readonly ProdottoAdBeverage[]> | null = null;
-async function catalogoConCache(): Promise<readonly ProdottoAdBeverage[]> {
+export async function catalogoAdBeverageConCache(): Promise<readonly ProdottoAdBeverage[]> {
   if (cache && cache.finoA > Date.now()) return cache.prodotti;
   if (caricamento) return caricamento;
   caricamento = caricaCatalogoAdBeverage()
@@ -653,7 +722,7 @@ export function isFornitoreAdBeverage(nome: string): boolean {
   return pulito === 'adbeverage' || pulito === 'adbspa';
 }
 export async function cercaAdBeverage(locale: DatiProdotto): Promise<EsitoMatchAdBeverage> {
-  return trovaMiglioreAdBeverage(locale, await catalogoConCache());
+  return trovaMiglioreAdBeverage(locale, await catalogoAdBeverageConCache());
 }
 
 /** Solo host ufficiali: il catalogo remoto non diventa un vettore SSRF. */

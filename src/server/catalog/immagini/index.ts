@@ -7,6 +7,7 @@ import {
   isFornitoreAdBeverage,
   scaricaImmagineAdBeverage,
 } from './ad-beverage';
+import { matchAdBeverageConIa } from './ad-beverage-ai';
 import { salvaImmagine } from './archivio';
 import { perEan, perTesto, scarica, type SchedaTrovata } from './open-food-facts';
 import { normalizza, type DatiProdotto, type ProdottoNormalizzato } from './normalizza';
@@ -81,7 +82,19 @@ export async function cercaImmagine(
   const dati: ProdottoNormalizzato = normalizza(prodotto);
 
   if (prodotto.fornitori?.some(isFornitoreAdBeverage)) {
-    const ad = await cercaAdBeverage(prodotto);
+    let ad = await cercaAdBeverage(prodotto);
+    if (
+      prodotto.organizationId &&
+      (!ad.accettato || !ad.prodotto || !estraiImmagineAdBeverage(ad.prodotto))
+    ) {
+      try {
+        ad = await matchAdBeverageConIa(prodotto, prodotto.organizationId, ad);
+      } catch (errore) {
+        // L'arricchimento non deve mai fermare un import: se DeepSeek non
+        // risponde resta il giudizio deterministico e si prosegue col fallback.
+        console.error('Match immagini AD con DeepSeek non disponibile:', errore);
+      }
+    }
     if (ad.accettato && ad.prodotto && estraiImmagineAdBeverage(ad.prodotto)) {
       const file = await scaricaImmagineAdBeverage(ad.prodotto);
       if (file) {
@@ -97,6 +110,9 @@ export async function cercaImmagine(
           };
         }
       }
+    }
+    if (prodotto.soloAdBeverage) {
+      return NIENTE(`AD Beverage: ${ad.motivo}`);
     }
   }
 
@@ -210,6 +226,7 @@ export async function aggiornaImmagineProdotto(
   const esito = await cercaImmagine(
     {
       name: prodotto.name,
+      organizationId,
       brand: prodotto.brand,
       gtin: prodotto.gtin,
       unitSize: prodotto.unitSize.toString(),
