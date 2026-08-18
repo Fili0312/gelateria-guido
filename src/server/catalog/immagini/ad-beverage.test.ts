@@ -201,6 +201,48 @@ describe('matching AD Beverage', () => {
     assert.equal(esito.accettato, true, esito.motivo);
     assert.ok(esito.confidenza >= 0.85);
   });
+  it('riconosce 3Y come la stessa età di 3 Y O', () => {
+    const esito = matchAdBeverageProduct(
+      locale({
+        name: 'HAVANA CLUB 3Y RON 40% LT.1',
+        brand: 'Havana Club',
+        categoria: 'Rum',
+        unitSize: 1,
+        unitOfMeasure: 'L',
+      }),
+      ad({ nome: 'RUM HAVANA CLUB 3 Y O 37 5 1 L' }),
+    );
+    assert.equal(esito.accettato, true, esito.motivo);
+  });
+  it('usa soltanto equivalenze commerciali AD verificate', () => {
+    const casi = [
+      [
+        locale({ name: 'BATIDA DE COCO NEW CL.70', categoria: 'Liquore' }),
+        ad({ nome: 'LIQUORE MANGAROCA BATIDA DE COCO 16 1 L' }),
+      ],
+      [
+        locale({
+          name: 'SCIROPPO PASSION FRUIT ODK',
+          brand: 'ODK',
+          categoria: 'Sciroppo',
+        }),
+        ad({ nome: 'SCIROPPO ORSA DRINKS PASSION FRUIT SYRUP VP 750 ML' }),
+      ],
+      [
+        locale({
+          name: 'ZACAPA CENTENARIO 23 ANNI CL 70',
+          brand: 'Zacapa',
+          categoria: 'Rum',
+        }),
+        ad({ nome: 'RUM ZACAPA SOLERA GRAN RESERVA 40 70 CL' }),
+      ],
+    ] as const;
+    for (const [prodotto, scheda] of casi) {
+      const esito = matchAdBeverageProduct(prodotto, scheda);
+      assert.equal(esito.accettato, true, esito.motivo);
+      assert.match(esito.motivo, /equivalenza foto AD verificata/);
+    }
+  });
 });
 
 describe('confini della fonte', () => {

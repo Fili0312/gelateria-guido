@@ -287,7 +287,7 @@ export function normalizzaAdBeverage(testo: string): NomeAdBeverageNormalizzato 
     .replace(/\b(?:tel|telefono)\.?\s*\+?[\d\s/-]{6,}\b/g, ' ')
     .replace(/\b\d{1,2}[./-]\d{1,2}[./-](?:\d{2}|\d{4})\b/g, ' ')
     // Date operative via; annata e eta' sono invece identita' prodotto.
-    .replace(/\b(\d{1,2})\s*(?:y\.?\s*o\.?|anni?)\b/g, ' eta$1 ')
+    .replace(/\b(\d{1,2})\s*(?:y(?:\.?\s*o\.?)?|anni?)\b/g, ' eta$1 ')
     .replace(/\b((?:19|20)\d{2})\b/g, ' annata$1 ')
     .replace(/\b\d+(?:[.,]\d+)?\s*(?:%|°|gradi\b|vol\b)/g, ' ')
     .replace(
@@ -417,6 +417,40 @@ function arrotonda(n: number): number {
   return Math.max(0, Math.min(1, Math.round(n * 1_000) / 1_000));
 }
 
+function contiene(parole: readonly string[], ...richieste: string[]): boolean {
+  return richieste.every((richiesta) => parole.includes(richiesta));
+}
+
+/**
+ * Equivalenze commerciali verificate sul listino locale e sul catalogo AD.
+ * Restano volutamente strette: servono per denominazioni ufficiali diverse,
+ * non per rendere intercambiabili marche, gusti o linee somiglianti.
+ */
+function equivalenzaFotoVerificata(
+  locale: NomeAdBeverageNormalizzato,
+  ad: NomeAdBeverageNormalizzato,
+): string | null {
+  if (
+    contiene(locale.parole, 'batida', 'coco') &&
+    contiene(ad.parole, 'mangaroca', 'batida', 'coco')
+  ) {
+    return 'Batida de Coco / Mangaroca Batida de Coco';
+  }
+  if (
+    contiene(locale.parole, 'sciroppo', 'passion', 'fruit', 'odk') &&
+    contiene(ad.parole, 'sciroppo', 'orsa', 'drinks', 'passion', 'fruit')
+  ) {
+    return 'ODK / Orsa Drinks Passion Fruit';
+  }
+  if (
+    contiene(locale.parole, 'zacapa', 'centenario', 'eta23') &&
+    contiene(ad.parole, 'zacapa', 'solera', 'gran', 'reserva')
+  ) {
+    return 'Zacapa Centenario 23 / Solera Gran Reserva';
+  }
+  return null;
+}
+
 /** Marca, variante, formato e contenitore sono porte, non bonus compensabili. */
 export function matchAdBeverageProduct(
   locale: DatiProdotto,
@@ -436,6 +470,15 @@ export function matchAdBeverageProduct(
     formatoLocale: fl?.etichetta ?? null,
     formatoAd: fa?.etichetta ?? null,
   };
+  const equivalenzaVerificata = equivalenzaFotoVerificata(nl, na);
+  if (equivalenzaVerificata) {
+    return {
+      ...base,
+      confidenza: 0.97,
+      accettato: true,
+      motivo: `equivalenza foto AD verificata: ${equivalenzaVerificata}`,
+    };
+  }
   if (marca.length && !tutteCoperte(marca, na.parole)) {
     return {
       ...base,
