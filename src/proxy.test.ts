@@ -39,6 +39,25 @@ describe('proxy autenticazione', () => {
     assert.equal(proxy(request('/api/health')).headers.get('x-middleware-next'), '1');
   });
 
+  it('manifest e icone restano raggiungibili senza sessione', async () => {
+    // Safari li scarica senza cookie quando si aggiunge l'app alla schermata
+    // home: se rispondono col redirect al login, sul telefono resta una
+    // scorciatoia col nome sbagliato che riapre il browser.
+    const { default: manifest } = await import('@/app/manifest');
+    const percorsi = [
+      '/manifest.webmanifest',
+      ...(manifest().icons ?? []).map((i) => i.src.replace('/gelateria', '')),
+    ];
+
+    for (const percorso of percorsi) {
+      assert.equal(
+        proxy(request(percorso)).headers.get('x-middleware-next'),
+        '1',
+        `${percorso} deve restare pubblico`,
+      );
+    }
+  });
+
   it('il matcher reale copre la radice esatta e ignora gli asset Next', () => {
     const nextConfig = { basePath: '/gelateria' };
 

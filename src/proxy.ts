@@ -4,7 +4,20 @@ import { AuthConfigurationError, getSessionSecret } from '@/server/auth/config';
 import { clearSessionCookie, SESSION_COOKIE_NAME } from '@/server/auth/cookie';
 import { verifySessionToken } from '@/server/auth/session-token';
 
-const PUBLIC_PATHS = new Set(['/login', '/api/auth/login', '/api/auth/logout', '/api/health']);
+const PUBLIC_PATHS = new Set([
+  '/login',
+  '/api/auth/login',
+  '/api/auth/logout',
+  '/api/health',
+  // Il manifest e le icone li scarica Safari **senza i cookie di sessione**,
+  // quando si aggiunge l'app alla schermata home. Dietro al login tornerebbe
+  // la pagina di login al posto del manifest, e sul telefono resterebbe una
+  // scorciatoia col nome del dominio che riapre Safari invece dell'app.
+  // Dentro non c'è niente di riservato: il nome dell'app e il suo logo.
+  '/manifest.webmanifest',
+  '/apple-touch-icon.png',
+  '/icona-512.png',
+]);
 
 function normalizedPathname(request: NextRequest): string {
   const pathname = request.nextUrl.pathname.replace(/\/+$/, '');
