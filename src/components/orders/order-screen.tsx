@@ -448,7 +448,7 @@ export function OrderScreen({
                   imparato altrove, e dice quanto c'è dentro senza leggere. */}
               <span className="relative shrink-0">
                 <span
-                  className={`grid h-10 w-10 place-items-center rounded-[0.9rem] ${
+                  className={`grid h-9 w-9 place-items-center rounded-xl min-[360px]:h-10 min-[360px]:w-10 ${
                     t.righe === 0 ? 'bg-neutral-100 text-neutral-400' : 'bg-brand-600 text-white'
                   }`}
                 >
@@ -480,7 +480,7 @@ export function OrderScreen({
                   si leggeva «1 prodo…». Sulla seconda riga, in grassetto,
                   si vede uguale e non toglie niente a nessuno. */}
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] text-neutral-500">
+                <span className="block truncate text-[12px] text-neutral-500 min-[360px]:text-[13px]">
                   {t.righe === 0
                     ? 'Ordine vuoto'
                     : `${t.righe} ${t.righe === 1 ? 'prodotto' : 'prodotti'} · ${t.confezioni} conf.`}
@@ -524,8 +524,11 @@ export function OrderScreen({
                   : 'bg-brand-600 hover:bg-brand-700 cursor-pointer text-white'
               }`}
             >
-              <span className="hidden min-[380px]:inline">Vai all’ordine</span>
-              <span className="min-[380px]:hidden">Ordine</span>
+              {/* A trecentoventi pixel «Vai all'ordine» si porta via i
+                  pixel che servono a leggere quanti prodotti ci sono
+                  dentro. «Ordine →» dice la stessa cosa in metà spazio. */}
+              <span className="hidden min-[360px]:inline">Vai all’ordine</span>
+              <span className="min-[360px]:hidden">Ordine</span>
               <AppIcon name="arrow-right" className="h-4 w-4 shrink-0" />
             </Link>
           </div>
