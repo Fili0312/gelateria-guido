@@ -56,7 +56,7 @@ function Card({
       type="button"
       onClick={onClick}
       aria-pressed={attiva}
-      className={`focus-visible:ring-brand-600 flex w-[5.75rem] shrink-0 cursor-pointer snap-start flex-col items-center gap-1.5 rounded-[1.25rem] border px-2 py-3 transition-colors focus-visible:ring-2 focus-visible:outline-none ${
+      className={`focus-visible:ring-brand-600 flex w-[4.75rem] shrink-0 cursor-pointer snap-start flex-col items-center gap-1 rounded-2xl border px-1.5 py-2.5 transition-colors focus-visible:ring-2 focus-visible:outline-none ${
         attiva
           ? 'border-brand-500 bg-brand-50'
           : 'border-neutral-200 bg-white hover:border-neutral-300 active:bg-neutral-50'
@@ -66,21 +66,21 @@ function Card({
           quello che si vede per primo scorrendo, e senza fondo un tratto
           sottile su bianco a questa misura sparisce. */}
       <span
-        className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${
+        className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${
           attiva ? 'bg-white' : sfondo
         }`}
       >
         {disegno}
       </span>
       <span
-        className={`line-clamp-2 text-center text-[13px] leading-4 font-semibold ${
+        className={`line-clamp-2 text-center text-[11.5px] leading-[1.2] font-semibold ${
           attiva ? 'text-brand-900' : 'text-neutral-700'
         }`}
       >
         {nome}
       </span>
       <span
-        className={`tabellare text-[11px] leading-none ${
+        className={`tabellare text-[10px] leading-none ${
           attiva ? 'text-brand-600' : 'text-neutral-400'
         }`}
       >
@@ -106,7 +106,7 @@ export function CategoryRail({
 
   return (
     <div
-      className="scrollbar-none -mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-0.5 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0"
+      className="scrollbar-none -mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-0.5 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0"
       role="group"
       aria-label="Filtra per categoria"
     >
@@ -120,7 +120,7 @@ export function CategoryRail({
           <svg
             viewBox="0 0 24 24"
             aria-hidden
-            className="h-7 w-7 text-neutral-500"
+            className="h-6 w-6 text-neutral-500"
             fill="none"
             stroke="currentColor"
             strokeWidth={1.7}
@@ -146,7 +146,7 @@ export function CategoryRail({
             onClick={() => onScegli(scelta === c.id ? null : c.id)}
             disegno={
               <span className={v.accento}>
-                <DisegnoCategoria genere={v.genere} className="h-7 w-7" />
+                <DisegnoCategoria genere={v.genere} className="h-6 w-6" />
               </span>
             }
           />

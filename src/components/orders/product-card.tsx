@@ -224,11 +224,36 @@ export function ProductCard({
         />
 
         <div className="min-w-0 flex-1">
-          {risultato.category && (
-            <p className="truncate text-[11px] font-semibold tracking-wide text-neutral-400 uppercase">
-              {risultato.category.name}
+          <div className="flex items-center justify-between gap-2">
+            <p className="truncate text-[11px] font-semibold tracking-wide text-violet-600 uppercase">
+              {risultato.category?.name ?? ''}
             </p>
-          )}
+            {altre.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setAperto((v) => !v)}
+                aria-expanded={aperto}
+                aria-label={
+                  aperto
+                    ? `Nascondi gli altri fornitori di ${risultato.name}`
+                    : `Mostra gli altri ${altre.length} fornitori di ${risultato.name}`
+                }
+                className="-my-1.5 -mr-1.5 inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-0.5 rounded-lg px-1.5 text-[11px] font-medium whitespace-nowrap text-neutral-500 transition-colors hover:text-neutral-800"
+              >
+                {/* Il numero, non una freccia muta: da chiusa la card deve
+                    dire che sotto c'è un confronto, o nessuno la apre. Ma in
+                    grigio e in piccolo — è una seconda scelta, e non deve
+                    competere col bottone verde. */}
+                <span aria-hidden>
+                  +{altre.length} {altre.length === 1 ? 'fornitore' : 'fornitori'}
+                </span>
+                <AppIcon
+                  name="chevron"
+                  className={`h-3 w-3 transition-transform ${aperto ? 'rotate-90' : ''}`}
+                />
+              </button>
+            )}
+          </div>
           {/* Il nome del listino è tutto maiuscolo perché nasce per essere
               stampato e letto a magazzino. A schermo occupa più spazio a
               parità di parole, va a capo prima e si tronca proprio sulla
@@ -261,31 +286,6 @@ export function ProductCard({
                     prezzo fermo
                   </span>
                 )}
-                {altre.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setAperto((v) => !v)}
-                    aria-expanded={aperto}
-                    aria-label={
-                      aperto
-                        ? `Nascondi gli altri fornitori di ${risultato.name}`
-                        : `Mostra gli altri ${altre.length} fornitori di ${risultato.name}`
-                    }
-                    className="-mx-1.5 -my-1.5 inline-flex min-h-10 cursor-pointer items-center gap-0.5 rounded-lg px-1.5 text-[11px] font-medium whitespace-nowrap text-neutral-500 transition-colors hover:text-neutral-800"
-                  >
-                    {/* Il numero, non una freccia muta: da chiusa la card deve
-                        dire che sotto c'è un confronto, o nessuno la apre.
-                        Ma in grigio e in piccolo: è una seconda scelta, e
-                        non deve competere col bottone verde. */}
-                    <span aria-hidden>
-                      +{altre.length} {altre.length === 1 ? 'fornitore' : 'fornitori'}
-                    </span>
-                    <AppIcon
-                      name="chevron"
-                      className={`h-3 w-3 transition-transform ${aperto ? 'rotate-90' : ''}`}
-                    />
-                  </button>
-                )}
               </div>
             </>
           ) : (
@@ -298,8 +298,14 @@ export function ProductCard({
           )}
         </div>
 
+        {/* Larghezza **riservata**, uguale nei due stati.
+            Premendo «+» il bottone da quarantotto pixel diventa il comando
+            quantità da centoventi, e tutta la card si riassestava sotto il
+            dito: il nome si accorciava, le righe si spostavano, e il secondo
+            tocco finiva altrove. Lo spazio del comando c'è già prima che
+            serva, quindi non si muove niente. */}
         {prima && (
-          <div className="ml-auto flex shrink-0 flex-col items-end gap-2.5">
+          <div className="ml-auto flex w-[7.5rem] shrink-0 flex-col items-end gap-2.5 min-[400px]:w-[8.25rem]">
             <Prezzo offerta={prima} grande />
             {gia ? (
               <Quantita

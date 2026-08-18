@@ -50,8 +50,8 @@ export function OrderScreen({
   const [risultati, setRisultati] = useState(catalogoIniziale);
   const [cercando, setCercando] = useState(false);
   const [selezione, setSelezione] = useState(0);
-  const [schedaOrdine, setSchedaOrdine] = useState(false);
   const [categoria, setCategoria] = useState<string | null>(null);
+  const [foglioOrdine, setFoglioOrdine] = useState(false);
   const [filtri, setFiltri] = useState<Filtri>(FILTRI_VUOTI);
   const [ordinamento, setOrdinamento] = useState<Ordinamento>('rilevanza');
   const [mutazioniInCorso, setMutazioniInCorso] = useState(0);
@@ -323,11 +323,15 @@ export function OrderScreen({
     <div>
       <div>
         {/* ── La testa della pagina ────────────────────────────────────
-            Ricerca, categorie e ordinamento restano appiccicati in cima:
-            sono i tre comandi con cui si naviga, e scorrendo verso il
-            quattrocentesimo prodotto devono restare a portata di pollice
-            invece di obbligare a risalire. */}
-        <div className="sticky top-0 z-20 -mx-4 space-y-3 bg-neutral-50/95 px-4 pt-1 pb-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-2 lg:px-2">
+            Scorre via insieme al resto.
+            Restava appiccicata in cima, e su un telefono si portava dietro
+            un terzo dello schermo per tutta la scorrimento: ricerca,
+            ventotto categorie e due comandi sempre presenti mentre si
+            guardano i prodotti, che sono la ragione per cui si è aperta la
+            pagina. Per tornare ai filtri si risale — è un gesto solo, e
+            costa meno di guardare quattrocento prodotti dentro una
+            finestrella. */}
+        <div className="-mx-4 space-y-3 px-4 pt-1 pb-3 sm:-mx-6 sm:px-6 lg:-mx-2 lg:px-2">
           <div className="relative">
             <AppIcon
               name="search"
@@ -410,130 +414,141 @@ export function OrderScreen({
         />
       </div>
 
-      {/* ── Il carrello, in basso ─────────────────────────────────────── */}
-      {/* Chiuso dice quanto stai spendendo, aperto mostra cosa. La stima
-          serve mentre si ordina — è il momento in cui si decide se togliere
-          una cassa — e per averla non si deve smettere di scegliere. */}
-      {/* `lg:pl-72` come il guscio: senza, la barra passa **sotto** il menu
-          laterale e il totale finisce a metà fra le due cose. */}
+      {/* ── L'ordine ──────────────────────────────────────────────────
+          Una barra sola, con **un solo comportamento**: si preme e l'ordine
+          si apre a schermo intero.
+
+          Prima la stessa barra faceva due cose diverse — una metà scopriva
+          un pannello che saliva da sotto, l'altra portava al riepilogo — e
+          il pannello si fermava a metà schermo coprendo proprio le card che
+          si stavano guardando. Un foglio che prende tutto lo schermo non si
+          muove sotto le dita: o sei nell'elenco, o sei nell'ordine. */}
       <div className="pb-sicuro fixed inset-x-0 bottom-0 z-30 px-3 sm:px-6 lg:pl-72">
         <div className="mx-auto w-full max-w-[94rem] sm:px-1 xl:px-4">
-          {schedaOrdine && (
-            <div className="mb-2 max-h-[65vh] overflow-y-auto overscroll-contain rounded-2xl border border-neutral-200 bg-white shadow-2xl shadow-neutral-900/20">
-              <OrderPanel
-                ordine={ordine}
-                onCambiaQuantita={cambiaQuantita}
-                onRimuovi={rimuovi}
-                onSvuota={svuota}
-                onCambiaFornitore={cambiaFornitore}
-                onIgnoraAvviso={ignoraAvviso}
-                inCorso={mutazioniInCorso > 0}
-              />
-            </div>
-          )}
-
-          <div
-            className={`flex items-stretch gap-2 rounded-[1.25rem] border bg-white/95 p-2 shadow-lg shadow-neutral-900/10 backdrop-blur transition-colors ${
-              t.righe === 0 ? 'border-neutral-200' : 'border-brand-200'
+          <button
+            type="button"
+            onClick={() => setFoglioOrdine(true)}
+            disabled={t.righe === 0}
+            aria-label={`Apri l’ordine: ${t.righe} prodotti, ${euro(t.netto)}`}
+            className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left shadow-lg transition-colors ${
+              t.righe === 0
+                ? 'border border-neutral-200 bg-white/95 shadow-neutral-900/5 backdrop-blur'
+                : 'bg-brand-600 hover:bg-brand-700 shadow-brand-900/25 cursor-pointer'
             }`}
           >
-            <button
-              type="button"
-              onClick={() => setSchedaOrdine((v) => !v)}
-              aria-expanded={schedaOrdine}
-              aria-label={schedaOrdine ? 'Chiudi il riepilogo dell’ordine' : 'Apri l’ordine'}
-              className="focus-visible:ring-brand-600 flex min-h-12 min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-xl px-1.5 text-left transition-colors hover:bg-neutral-50 focus-visible:ring-2 focus-visible:outline-none sm:gap-3"
-            >
-              {/* Il cestino col numero sopra: è il segno che tutti hanno già
-                  imparato altrove, e dice quanto c'è dentro senza leggere. */}
-              <span className="relative shrink-0">
-                <span
-                  className={`grid h-9 w-9 place-items-center rounded-xl min-[360px]:h-10 min-[360px]:w-10 ${
-                    t.righe === 0 ? 'bg-neutral-100 text-neutral-400' : 'bg-brand-600 text-white'
-                  }`}
+            <span className="relative shrink-0">
+              <span
+                className={`grid h-10 w-10 place-items-center rounded-xl ${
+                  t.righe === 0 ? 'bg-neutral-100 text-neutral-400' : 'bg-white/15 text-white'
+                }`}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden
+                  className="h-5 w-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.8}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 >
-                  <svg
-                    viewBox="0 0 24 24"
-                    aria-hidden
-                    className="h-6 w-6"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={1.8}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M4 8h16l-1.4 10.2A2 2 0 0 1 16.6 20H7.4a2 2 0 0 1-2-1.8L4 8Z" />
-                    <path d="M8.5 8 12 3.5 15.5 8" />
-                  </svg>
+                  <path d="M4 8h16l-1.4 10.2A2 2 0 0 1 16.6 20H7.4a2 2 0 0 1-2-1.8L4 8Z" />
+                  <path d="M8.5 8 12 3.5 15.5 8" />
+                </svg>
+              </span>
+              {t.confezioni > 0 && (
+                <span className="tabellare absolute -top-1.5 -right-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-neutral-900 px-1 text-[11px] font-bold text-white">
+                  {t.confezioni}
                 </span>
-                {t.confezioni > 0 && (
-                  <span className="tabellare absolute -top-1.5 -right-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-neutral-900 px-1 text-[11px] font-bold text-white">
-                    {t.confezioni}
-                  </span>
+              )}
+            </span>
+
+            <span className="min-w-0 flex-1">
+              <span
+                className={`block truncate text-[12px] ${
+                  t.righe === 0 ? 'text-neutral-500' : 'text-white/80'
+                }`}
+              >
+                {t.righe === 0
+                  ? 'Ordine vuoto'
+                  : `${t.righe} ${t.righe === 1 ? 'prodotto' : 'prodotti'} · ${t.confezioni} conf.`}
+              </span>
+              <span
+                className={`block truncate text-[15px] leading-tight font-bold ${
+                  t.righe === 0 ? 'text-neutral-400' : 'text-white'
+                }`}
+              >
+                {t.righe === 0 ? (
+                  <span className="text-[13px] font-normal">Premi + per cominciare</span>
+                ) : (
+                  <>
+                    <span className="tabellare">{euro(t.netto)}</span>
+                    <span className="text-[12px] font-normal text-white/75">
+                      {Number(t.ritornoAtteso) > 0
+                        ? ` · ${euro(t.ritornoAtteso)} di sconti`
+                        : ' · più IVA'}
+                    </span>
+                  </>
                 )}
               </span>
+            </span>
 
-              {/* Il totale sta **dentro** la colonna del testo, non in una
-                  sua accanto.
-                  Da solo si prendeva ottanta pixel fissi, e a
-                  trecentonovanta ne restavano quarantotto per la scritta:
-                  si leggeva «1 prodo…». Sulla seconda riga, in grassetto,
-                  si vede uguale e non toglie niente a nessuno. */}
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[12px] text-neutral-500 min-[360px]:text-[13px]">
-                  {t.righe === 0
-                    ? 'Ordine vuoto'
-                    : `${t.righe} ${t.righe === 1 ? 'prodotto' : 'prodotti'} · ${t.confezioni} conf.`}
-                </span>
-                <span className="block truncate text-[15px] leading-tight font-bold text-neutral-950">
-                  {t.righe === 0 ? (
-                    <span className="text-[13px] font-normal text-neutral-400">
-                      Premi + per cominciare
-                    </span>
-                  ) : (
-                    <>
-                      <span className="tabellare">{euro(t.netto)}</span>
-                      <span className="text-[12px] font-normal text-neutral-500">
-                        {Number(t.ritornoAtteso) > 0
-                          ? ` · ${euro(t.ritornoAtteso)} di sconti`
-                          : ' · più IVA'}
-                      </span>
-                    </>
-                  )}
-                </span>
+            {t.righe > 0 && (
+              <AppIcon name="chevron" className="mr-1 h-4 w-4 shrink-0 -rotate-90 text-white/80" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Il foglio dell'ordine: prende tutto lo schermo, quindi non copre
+          niente a metà e non c'è dubbio su dove si è. */}
+      {foglioOrdine && (
+        <div className="fixed inset-0 z-40 flex flex-col bg-neutral-50">
+          <div className="flex items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 py-3">
+            <span>
+              <span className="block text-[17px] leading-tight font-bold text-neutral-950">
+                Il tuo ordine
               </span>
-              {/* La freccia solo dove c'è spazio: su un telefono stretto è il
-                  primo pezzo che si può togliere senza perdere niente, e
-                  toglierlo è ciò che tiene «Vai all'ordine» dentro lo
-                  schermo. */}
-              <AppIcon
-                name="chevron"
-                className={`hidden h-4 w-4 shrink-0 text-neutral-400 transition-transform sm:block ${
-                  schedaOrdine ? '-rotate-90' : 'rotate-90'
-                }`}
-              />
+              <span className="block text-[13px] text-neutral-500">
+                {t.righe} {t.righe === 1 ? 'prodotto' : 'prodotti'} · {t.confezioni} conf. ·{' '}
+                {euro(t.netto)} più IVA
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setFoglioOrdine(false)}
+              aria-label="Torna al catalogo"
+              className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-xl text-neutral-500 transition-colors hover:bg-neutral-100"
+            >
+              <span aria-hidden className="text-2xl leading-none">
+                ×
+              </span>
             </button>
+          </div>
 
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <OrderPanel
+              ordine={ordine}
+              onCambiaQuantita={cambiaQuantita}
+              onRimuovi={rimuovi}
+              onSvuota={svuota}
+              onCambiaFornitore={cambiaFornitore}
+              onIgnoraAvviso={ignoraAvviso}
+              inCorso={mutazioniInCorso > 0}
+            />
+          </div>
+
+          <div className="pb-sicuro border-t border-neutral-200 bg-white px-4 pt-3">
             <Link
               href="/ordini/riepilogo"
-              aria-disabled={t.righe === 0}
-              tabIndex={t.righe === 0 ? -1 : undefined}
-              className={`inline-flex min-h-12 shrink-0 items-center gap-1.5 rounded-[0.9rem] px-3 text-[13px] font-semibold whitespace-nowrap transition-colors min-[400px]:px-4 min-[400px]:text-sm ${
-                t.righe === 0
-                  ? 'pointer-events-none bg-neutral-100 text-neutral-400'
-                  : 'bg-brand-600 hover:bg-brand-700 cursor-pointer text-white'
-              }`}
+              className="bg-brand-600 hover:bg-brand-700 flex min-h-13 w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-bold text-white transition-colors"
             >
-              {/* A trecentoventi pixel «Vai all'ordine» si porta via i
-                  pixel che servono a leggere quanti prodotti ci sono
-                  dentro. «Ordine →» dice la stessa cosa in metà spazio. */}
-              <span className="hidden min-[360px]:inline">Vai all’ordine</span>
-              <span className="min-[360px]:hidden">Ordine</span>
-              <AppIcon name="arrow-right" className="h-4 w-4 shrink-0" />
+              Vai al riepilogo
+              <AppIcon name="arrow-right" className="h-4 w-4" />
             </Link>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Lo spazio sotto l'elenco, o le ultime card finiscono dietro la barra. */}
       <div className="h-24" />
