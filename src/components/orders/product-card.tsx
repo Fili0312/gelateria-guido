@@ -233,8 +233,14 @@ export function ProductCard({
               stampato e letto a magazzino. A schermo occupa più spazio a
               parità di parole, va a capo prima e si tronca proprio sulla
               parola che distingue il prodotto: si leggeva «ABSOLUT
-              CITRON…». Il dato non cambia — cambia come lo si mostra. */}
-          <p className="mt-1 line-clamp-2 text-[17px] leading-[1.25] font-semibold text-neutral-950">
+              CITRON…». Il dato non cambia — cambia come lo si mostra.
+
+              Tre righe sotto i quattrocento pixel, due sopra. Su uno
+              schermo stretto, con il comando quantità accanto, al nome
+              restano ottantaquattro pixel: in due righe ci sta «Absolut
+              Citron…», che è di nuovo il troncamento da cui siamo partiti.
+              Venti pixel di card in più valgono il nome intero. */}
+          <p className="mt-1 line-clamp-3 text-[15px] leading-[1.3] font-semibold text-neutral-950 min-[360px]:text-[16px] min-[400px]:line-clamp-2 min-[400px]:text-[17px] min-[400px]:leading-[1.25]">
             {nomeLeggibile(risultato.name)}
           </p>
 
