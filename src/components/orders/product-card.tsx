@@ -128,7 +128,20 @@ function Aggiungi({ etichetta, onClick }: { etichetta: string; onClick: () => vo
 }
 
 /** Prezzo, sconto e badge: il blocco che si legge per decidere. */
-function Prezzo({ offerta, grande }: { offerta: OffertaOrdinabile; grande: boolean }) {
+function Prezzo({
+  offerta,
+  grande,
+  /**
+   * Sul blocco grande lo sconto si stacca e scende in fondo alla card.
+   * Impilato sotto il prezzo faceva tre righe in alto a destra, e lasciava
+   * un buco vuoto largo mezza card sotto la pastiglia della categoria.
+   */
+  conSconto = true,
+}: {
+  offerta: OffertaOrdinabile;
+  grande: boolean;
+  conSconto?: boolean;
+}) {
   const sconto = Number(offerta.scontoExtraPct) > 0;
   return (
     <div className="flex flex-col items-end gap-0.5">
@@ -151,7 +164,7 @@ function Prezzo({ offerta, grande }: { offerta: OffertaOrdinabile; grande: boole
           {euro(offerta.unitPrice)}/{offerta.unitPriceBasis === 'PER_KG' ? 'kg' : 'L'}
         </span>
       )}
-      {sconto && (
+      {sconto && conSconto && (
         <span
           className="rounded-lg bg-violet-50 px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap text-violet-700"
           title={`Sconto concordato: paghi ${euro(offerta.priceNet)} e ti tornano indietro ${euro(
@@ -264,7 +277,7 @@ export function ProductCard({
               )}
             </div>
 
-            {prima && <Prezzo offerta={prima} grande />}
+            {prima && <Prezzo offerta={prima} grande conSconto={false} />}
           </div>
 
           {/* Il nome del listino è tutto maiuscolo perché nasce per essere
@@ -273,7 +286,7 @@ export function ProductCard({
               distingue il prodotto: si leggeva «ABSOLUT CITRON…». Il dato
               non cambia — l'ordine di acquisto riporta ancora la dicitura
               del fornitore. */}
-          <p className="mt-1.5 line-clamp-2 text-[16px] leading-[1.25] font-bold text-neutral-950 min-[360px]:text-[17px] min-[400px]:text-[17.5px]">
+          <p className="mt-1 line-clamp-2 text-[16px] leading-[1.25] font-bold text-neutral-950 min-[360px]:text-[17px] min-[400px]:text-[17.5px]">
             {nomeLeggibile(risultato.name)}
           </p>
 
@@ -283,6 +296,16 @@ export function ProductCard({
                 <>
                   <ColloBadge confezione={prima} />
                   <span className="truncate">{prima.supplierName}</span>
+                  {Number(prima.scontoExtraPct) > 0 && (
+                    <span
+                      className="rounded-lg bg-violet-50 px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap text-violet-700"
+                      title={`Sconto concordato: paghi ${euro(prima.priceNet)} e ti tornano indietro ${euro(
+                        Number(prima.priceNet) - Number(prima.prezzoEffettivo),
+                      )}`}
+                    >
+                      −{prima.scontoExtraPct}% → {euro(prima.prezzoEffettivo)}
+                    </span>
+                  )}
                   {prima.migliore && (
                     <span className="inline-flex items-center gap-0.5 rounded-lg bg-green-50 px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap text-green-700">
                       <span aria-hidden>★</span> conviene
