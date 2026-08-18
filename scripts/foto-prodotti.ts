@@ -7,7 +7,8 @@ import { comuniDaNomi } from '../src/server/catalog/immagini/parole-comuni.js';
  *
  *   ./scripts/con-variabili.sh pnpm exec tsx --conditions=react-server \
  *     scripts/foto-prodotti.ts --scrivi [--quanti 50] [--riprova]
- *       [--prodotto <id>] [--anche-senza-marca]
+ *       [--prodotto <id>] [--anche-senza-marca] [--fornitore <nome>]
+ *       [--aggiornato-prima-di <data ISO>]
  *
  * ── Perché è un comando e non un lavoro dentro la pagina ────────────────
  * Cercare una foto vuol dire parlare con un servizio esterno, aspettare, e
@@ -39,8 +40,17 @@ async function main() {
   const riprova = process.argv.includes('--riprova');
   const senzaMarca = process.argv.includes('--anche-senza-marca');
   const unoSolo = argomento('--prodotto');
+  const fornitore = argomento('--fornitore');
+  const primaDiTesto = argomento('--aggiornato-prima-di');
+  const aggiornatoPrimaDi = primaDiTesto ? new Date(primaDiTesto) : null;
   const quanti = Number(argomento('--quanti') ?? '100');
   if (!Number.isFinite(quanti) || quanti <= 0) throw new Error('--quanti non valido.');
+  if (aggiornatoPrimaDi && Number.isNaN(aggiornatoPrimaDi.getTime())) {
+    throw new Error('--aggiornato-prima-di deve essere una data ISO valida.');
+  }
+  if (aggiornatoPrimaDi && !riprova) {
+    throw new Error('--aggiornato-prima-di richiede anche --riprova.');
+  }
 
   const prodotti = await systemPrisma.product.findMany({
     where: unoSolo
@@ -50,7 +60,21 @@ async function main() {
           // Chi è già stato cercato e non trovato si ripassa solo se
           // richiesto: ripeterlo a ogni giro è chiedere alla fonte le stesse
           // quattrocento domande a cui ha già risposto di no.
-          ...(riprova ? {} : { imageUpdatedAt: null }),
+          ...(aggiornatoPrimaDi
+            ? { imageUpdatedAt: { lt: aggiornatoPrimaDi } }
+            : riprova
+              ? {}
+              : { imageUpdatedAt: null }),
+          ...(fornitore
+            ? {
+                supplierProducts: {
+                  some: {
+                    active: true,
+                    supplier: { name: { equals: fornitore, mode: 'insensitive' } },
+                  },
+                },
+              }
+            : {}),
           // ── Perché di norma si guardano solo quelli con la marca ────────
           // Senza marca la ricerca ripiega su una regola molto più severa e
           // quasi sempre risponde «non trovata» — e quel «non trovata»
