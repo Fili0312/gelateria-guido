@@ -473,29 +473,35 @@ export function OrderScreen({
                 )}
               </span>
 
+              {/* Il totale sta **dentro** la colonna del testo, non in una
+                  sua accanto.
+                  Da solo si prendeva ottanta pixel fissi, e a
+                  trecentonovanta ne restavano quarantotto per la scritta:
+                  si leggeva «1 prodo…». Sulla seconda riga, in grassetto,
+                  si vede uguale e non toglie niente a nessuno. */}
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold text-neutral-900">
+                <span className="block truncate text-[13px] text-neutral-500">
                   {t.righe === 0
                     ? 'Ordine vuoto'
                     : `${t.righe} ${t.righe === 1 ? 'prodotto' : 'prodotti'} · ${t.confezioni} conf.`}
                 </span>
-                <span className="block truncate text-[12px] text-neutral-500">
-                  {t.righe === 0
-                    ? 'Premi + su un prodotto per cominciare'
-                    : Number(t.ritornoAtteso) > 0
-                      ? `${euro(t.ritornoAtteso)} di sconti concordati`
-                      : 'più IVA'}
+                <span className="block truncate text-[15px] leading-tight font-bold text-neutral-950">
+                  {t.righe === 0 ? (
+                    <span className="text-[13px] font-normal text-neutral-400">
+                      Premi + per cominciare
+                    </span>
+                  ) : (
+                    <>
+                      <span className="tabellare">{euro(t.netto)}</span>
+                      <span className="text-[12px] font-normal text-neutral-500">
+                        {Number(t.ritornoAtteso) > 0
+                          ? ` · ${euro(t.ritornoAtteso)} di sconti`
+                          : ' · più IVA'}
+                      </span>
+                    </>
+                  )}
                 </span>
               </span>
-
-              {/* A ordine vuoto non c'è nessun totale da mostrare: «0,00 €»
-                  non informa, e i suoi settanta pixel troncavano la scritta
-                  accanto proprio quando serve leggerla per capire cosa fare. */}
-              {t.righe > 0 && (
-                <span className="tabellare shrink-0 text-lg font-extrabold text-neutral-950 sm:pr-1">
-                  {euro(t.netto)}
-                </span>
-              )}
               {/* La freccia solo dove c'è spazio: su un telefono stretto è il
                   primo pezzo che si può togliere senza perdere niente, e
                   toglierlo è ciò che tiene «Vai all'ordine» dentro lo
@@ -512,7 +518,7 @@ export function OrderScreen({
               href="/ordini/riepilogo"
               aria-disabled={t.righe === 0}
               tabIndex={t.righe === 0 ? -1 : undefined}
-              className={`inline-flex min-h-12 shrink-0 items-center gap-1.5 rounded-[0.9rem] px-3.5 text-sm font-semibold whitespace-nowrap transition-colors sm:px-4 ${
+              className={`inline-flex min-h-12 shrink-0 items-center gap-1.5 rounded-[0.9rem] px-3 text-[13px] font-semibold whitespace-nowrap transition-colors min-[400px]:px-4 min-[400px]:text-sm ${
                 t.righe === 0
                   ? 'pointer-events-none bg-neutral-100 text-neutral-400'
                   : 'bg-brand-600 hover:bg-brand-700 cursor-pointer text-white'
