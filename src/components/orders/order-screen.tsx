@@ -76,7 +76,13 @@ export function OrderScreen({
   }, []);
 
   useEffect(() => {
-    campo.current?.focus();
+    // Il campo si mette a fuoco da solo **solo dove c'è una tastiera**.
+    //
+    // Su un telefono non serve a niente — la tastiera di sistema non si apre
+    // senza un tocco vero — e in cambio la pagina si apre con l'alone verde
+    // acceso attorno alla ricerca, che è la prima cosa che si vede e sembra
+    // un avviso. Su un computer invece si comincia a scrivere subito.
+    if (window.matchMedia?.('(pointer: fine)').matches) campo.current?.focus();
   }, []);
 
   const cerca = useCallback(
@@ -321,7 +327,7 @@ export function OrderScreen({
             sono i tre comandi con cui si naviga, e scorrendo verso il
             quattrocentesimo prodotto devono restare a portata di pollice
             invece di obbligare a risalire. */}
-        <div className="sticky top-0 z-20 -mx-4 space-y-2.5 bg-neutral-50/95 px-4 pt-1 pb-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-2 lg:px-2">
+        <div className="sticky top-0 z-20 -mx-4 space-y-3 bg-neutral-50/95 px-4 pt-1 pb-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-2 lg:px-2">
           <div className="relative">
             <AppIcon
               name="search"
@@ -337,7 +343,7 @@ export function OrderScreen({
               aria-label="Cerca nel catalogo"
               autoComplete="off"
               inputMode="search"
-              className="focus:border-brand-500 focus:ring-brand-500/30 h-13 w-full rounded-2xl border border-neutral-200 bg-white pr-12 pl-11 text-neutral-950 shadow-sm transition-colors outline-none placeholder:text-neutral-400 focus:ring-4"
+              className="focus:border-brand-500 focus:ring-brand-500/30 h-[3.25rem] w-full rounded-[1.1rem] border border-neutral-200 bg-white pr-12 pl-11 text-neutral-950 transition-colors outline-none placeholder:text-neutral-400 focus:ring-4"
             />
             {termine && (
               <button
@@ -377,7 +383,7 @@ export function OrderScreen({
             }}
           />
 
-          <p className="flex items-center gap-2 px-1 text-xs text-neutral-500">
+          <p className="-mt-1 flex items-center gap-2 px-1 text-[13px] text-neutral-500">
             <span>
               {cercando
                 ? 'Sto cercando…'
@@ -427,8 +433,8 @@ export function OrderScreen({
           )}
 
           <div
-            className={`flex items-stretch gap-2 rounded-2xl border-2 bg-white/95 p-2 shadow-xl shadow-neutral-900/15 backdrop-blur transition-colors ${
-              t.righe === 0 ? 'border-neutral-200' : 'border-brand-500'
+            className={`flex items-stretch gap-2 rounded-[1.25rem] border bg-white/95 p-2 shadow-lg shadow-neutral-900/10 backdrop-blur transition-colors ${
+              t.righe === 0 ? 'border-neutral-200' : 'border-brand-200'
             }`}
           >
             <button
@@ -436,13 +442,13 @@ export function OrderScreen({
               onClick={() => setSchedaOrdine((v) => !v)}
               aria-expanded={schedaOrdine}
               aria-label={schedaOrdine ? 'Chiudi il riepilogo dell’ordine' : 'Apri l’ordine'}
-              className="focus-visible:ring-brand-600 flex min-h-13 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-xl px-2 text-left transition-colors hover:bg-neutral-50 focus-visible:ring-2 focus-visible:outline-none sm:gap-3"
+              className="focus-visible:ring-brand-600 flex min-h-12 min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-xl px-1.5 text-left transition-colors hover:bg-neutral-50 focus-visible:ring-2 focus-visible:outline-none sm:gap-3"
             >
               {/* Il cestino col numero sopra: è il segno che tutti hanno già
                   imparato altrove, e dice quanto c'è dentro senza leggere. */}
               <span className="relative shrink-0">
                 <span
-                  className={`grid h-10 w-10 place-items-center rounded-xl sm:h-11 sm:w-11 ${
+                  className={`grid h-10 w-10 place-items-center rounded-[0.9rem] ${
                     t.righe === 0 ? 'bg-neutral-100 text-neutral-400' : 'bg-brand-600 text-white'
                   }`}
                 >
@@ -468,12 +474,12 @@ export function OrderScreen({
               </span>
 
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-bold text-neutral-900">
+                <span className="block truncate text-sm font-semibold text-neutral-900">
                   {t.righe === 0
                     ? 'Ordine vuoto'
                     : `${t.righe} ${t.righe === 1 ? 'prodotto' : 'prodotti'} · ${t.confezioni} conf.`}
                 </span>
-                <span className="block truncate text-xs text-neutral-500">
+                <span className="block truncate text-[12px] text-neutral-500">
                   {t.righe === 0
                     ? 'Premi + su un prodotto per cominciare'
                     : Number(t.ritornoAtteso) > 0
@@ -486,7 +492,7 @@ export function OrderScreen({
                   non informa, e i suoi settanta pixel troncavano la scritta
                   accanto proprio quando serve leggerla per capire cosa fare. */}
               {t.righe > 0 && (
-                <span className="tabellare shrink-0 text-lg font-black text-neutral-950 sm:pr-1 sm:text-xl">
+                <span className="tabellare shrink-0 text-lg font-extrabold text-neutral-950 sm:pr-1">
                   {euro(t.netto)}
                 </span>
               )}
@@ -506,7 +512,7 @@ export function OrderScreen({
               href="/ordini/riepilogo"
               aria-disabled={t.righe === 0}
               tabIndex={t.righe === 0 ? -1 : undefined}
-              className={`inline-flex min-h-13 shrink-0 items-center gap-1.5 rounded-xl px-3 text-sm font-bold whitespace-nowrap transition-colors sm:px-4 ${
+              className={`inline-flex min-h-12 shrink-0 items-center gap-1.5 rounded-[0.9rem] px-3.5 text-sm font-semibold whitespace-nowrap transition-colors sm:px-4 ${
                 t.righe === 0
                   ? 'pointer-events-none bg-neutral-100 text-neutral-400'
                   : 'bg-brand-600 hover:bg-brand-700 cursor-pointer text-white'
@@ -521,7 +527,7 @@ export function OrderScreen({
       </div>
 
       {/* Lo spazio sotto l'elenco, o le ultime card finiscono dietro la barra. */}
-      <div className="h-28" />
+      <div className="h-24" />
     </div>
   );
 }

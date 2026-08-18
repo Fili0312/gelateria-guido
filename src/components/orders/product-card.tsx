@@ -6,7 +6,7 @@ import { FotoProdotto } from '@/components/products/foto-prodotto';
 import { ColloBadge } from '@/components/products/collo-badge';
 import type { OffertaOrdinabile, RisultatoOrdinabile } from '@/features/orders/dto';
 import { CONFEZIONI_MAX, CONFEZIONI_MIN } from '@/features/orders/schema';
-import { euro, formatoConfezione } from '@/features/products/format';
+import { euro, formatoConfezione, nomeLeggibile } from '@/features/products/format';
 
 /**
  * Un prodotto da ordinare, come card.
@@ -116,9 +116,9 @@ function Aggiungi({ etichetta, onClick }: { etichetta: string; onClick: () => vo
       type="button"
       onClick={onClick}
       aria-label={etichetta}
-      className="bg-brand-600 hover:bg-brand-700 active:bg-brand-900 focus-visible:ring-brand-600 grid h-12 w-12 shrink-0 cursor-pointer place-items-center rounded-xl text-white shadow-sm transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+      className="bg-brand-600 hover:bg-brand-700 active:bg-brand-900 focus-visible:ring-brand-600 grid h-12 w-12 shrink-0 cursor-pointer place-items-center rounded-[0.9rem] text-white transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
     >
-      <span aria-hidden className="text-2xl leading-none font-bold">
+      <span aria-hidden className="text-2xl leading-none font-light">
         +
       </span>
     </button>
@@ -130,9 +130,14 @@ function Prezzo({ offerta, grande }: { offerta: OffertaOrdinabile; grande: boole
   const sconto = Number(offerta.scontoExtraPct) > 0;
   return (
     <div className="flex flex-col items-end gap-0.5">
+      {/* Il numero più grande della card: è la ragione per cui questa app
+          esiste. Tutto il resto si legge solo se questo non è bastato. */}
       <span
-        className={`tabellare leading-none font-black text-neutral-950 ${
-          grande ? 'text-xl' : 'text-base'
+        className={`tabellare leading-none font-extrabold text-neutral-950 ${
+          // Un filo più piccolo sui telefoni stretti: a 320 pixel ogni
+          // millimetro tolto qui è un millimetro dato al nome, che è
+          // l'unica cosa che davvero non può essere troncata.
+          grande ? 'text-[1.4rem] min-[380px]:text-[1.6rem]' : 'text-base'
         }`}
       >
         {euro(offerta.priceNet)}
@@ -140,13 +145,13 @@ function Prezzo({ offerta, grande }: { offerta: OffertaOrdinabile; grande: boole
       {/* Il prezzo per unità solo se la confezione è dichiarata: altrimenti
           sarebbe diviso per un numero inventato e sembrerebbe un dato vero. */}
       {offerta.unitPrice && offerta.packQuantityConfirmed && (
-        <span className="tabellare text-xs text-neutral-400">
+        <span className="tabellare text-[13px] font-normal text-neutral-400">
           {euro(offerta.unitPrice)}/{offerta.unitPriceBasis === 'PER_KG' ? 'kg' : 'L'}
         </span>
       )}
       {sconto && (
         <span
-          className="rounded-md bg-violet-100 px-1.5 py-0.5 text-[11px] font-bold whitespace-nowrap text-violet-800"
+          className="rounded-lg bg-violet-50 px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap text-violet-700"
           title={`Sconto concordato: paghi ${euro(offerta.priceNet)} e ti tornano indietro ${euro(
             Number(offerta.priceNet) - Number(offerta.prezzoEffettivo),
           )}`}
@@ -195,45 +200,49 @@ export function ProductCard({
       ref={elemento}
       onMouseEnter={onSeleziona}
       className={`rounded-2xl border bg-white transition-colors ${
-        gia
-          ? 'border-brand-500 bg-brand-50/40'
-          : attiva
-            ? 'border-neutral-300'
-            : 'border-neutral-200'
+        // Verde solo quando il prodotto è **dentro l'ordine**: è un'informazione
+        // vera. Un bordo verde su ogni card sotto il dito lo renderebbe un
+        // colore di sfondo, e allora non direbbe più niente.
+        gia ? 'border-brand-300 bg-brand-50/50' : 'border-neutral-200'
       }`}
     >
-      <div className="flex items-center gap-3 p-3">
+      <div className="flex items-center gap-3 p-3 min-[380px]:gap-3.5 min-[380px]:p-3.5">
         <FotoProdotto
           src={risultato.imageUrl}
           nome={risultato.name}
           categoria={risultato.category?.name}
-          className="h-[4.5rem] w-14 sm:h-24 sm:w-[4.5rem]"
+          className="h-[5.5rem] w-16 min-[380px]:h-[6rem] min-[380px]:w-[4.5rem] sm:h-[6.5rem] sm:w-20"
         />
 
         <div className="min-w-0 flex-1">
           {risultato.category && (
-            <p className="text-[11px] font-bold tracking-wide text-violet-700 uppercase">
+            <p className="truncate text-[11px] font-semibold tracking-wide text-neutral-400 uppercase">
               {risultato.category.name}
             </p>
           )}
-          <p className="mt-0.5 line-clamp-2 leading-5 font-bold text-neutral-950">
-            {risultato.name}
+          {/* Il nome del listino è tutto maiuscolo perché nasce per essere
+              stampato e letto a magazzino. A schermo occupa più spazio a
+              parità di parole, va a capo prima e si tronca proprio sulla
+              parola che distingue il prodotto: si leggeva «ABSOLUT
+              CITRON…». Il dato non cambia — cambia come lo si mostra. */}
+          <p className="mt-1 line-clamp-2 text-[17px] leading-[1.25] font-semibold text-neutral-950">
+            {nomeLeggibile(risultato.name)}
           </p>
 
           {prima ? (
             <>
-              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-500">
+              <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-neutral-500">
                 <ColloBadge confezione={prima} />
                 <span className="truncate">{prima.supplierName}</span>
               </p>
-              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
                 {prima.migliore && (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-green-100 px-1.5 py-0.5 text-[11px] font-bold text-green-800">
+                  <span className="inline-flex items-center gap-0.5 rounded-lg bg-green-50 px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap text-green-700">
                     <span aria-hidden>★</span> conviene
                   </span>
                 )}
                 {prima.stale && (
-                  <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[11px] font-bold text-amber-800">
+                  <span className="rounded-lg bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700">
                     prezzo fermo
                   </span>
                 )}
@@ -247,14 +256,18 @@ export function ProductCard({
                         ? `Nascondi gli altri fornitori di ${risultato.name}`
                         : `Mostra gli altri ${altre.length} fornitori di ${risultato.name}`
                     }
-                    className="text-brand-700 hover:bg-brand-50 -my-1 inline-flex min-h-8 cursor-pointer items-center gap-1 rounded-lg px-1.5 text-xs font-semibold transition-colors"
+                    className="-mx-1 -my-1 inline-flex min-h-8 cursor-pointer items-center gap-0.5 rounded-lg px-1 text-[11px] font-medium whitespace-nowrap text-neutral-500 transition-colors hover:text-neutral-800"
                   >
                     {/* Il numero, non una freccia muta: da chiusa la card deve
-                        dire che sotto c'è un confronto, o nessuno la apre. */}
-                    <span aria-hidden>+{altre.length} fornitori</span>
+                        dire che sotto c'è un confronto, o nessuno la apre.
+                        Ma in grigio e in piccolo: è una seconda scelta, e
+                        non deve competere col bottone verde. */}
+                    <span aria-hidden>
+                      +{altre.length} {altre.length === 1 ? 'fornitore' : 'fornitori'}
+                    </span>
                     <AppIcon
                       name="chevron"
-                      className={`h-3.5 w-3.5 transition-transform ${aperto ? 'rotate-90' : ''}`}
+                      className={`h-3 w-3 transition-transform ${aperto ? 'rotate-90' : ''}`}
                     />
                   </button>
                 )}
@@ -271,7 +284,7 @@ export function ProductCard({
         </div>
 
         {prima && (
-          <div className="flex shrink-0 flex-col items-end gap-2">
+          <div className="flex shrink-0 flex-col items-end gap-2.5">
             <Prezzo offerta={prima} grande />
             {gia ? (
               <Quantita

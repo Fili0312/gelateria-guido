@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { DisegnoCategoria, visualeCategoria } from './categoria-visuale';
 
 /**
  * La foto di un prodotto, o un segnaposto che non finge di esserlo.
@@ -19,73 +20,16 @@ import { useState } from 'react';
  * riconosce scorrendo.
  */
 
-export type GenereProdotto = 'acqua' | 'bottiglia' | 'lattina' | 'caffe' | 'scatola';
-
 /**
  * Che disegno mettere quando la foto non c'è.
  *
  * Dalla categoria, che è un dato nostro e affidabile — non dalla foto, che è
- * quella che manca. Un'icona che dice «bottiglia» accanto a «Amaro
- * Montenegro» comunica comunque qualcosa; un rettangolo grigio no.
+ * quella che manca. Un calice accanto a «Nero d'Avola» comunica comunque
+ * qualcosa; un rettangolo grigio no. La scelta del disegno e del colore sta
+ * in `categoria-visuale.tsx`, insieme a quella delle card dei filtri: se
+ * fosse scritta due volte, prima o poi «Amaro» avrebbe un bicchiere in cima
+ * alla pagina e una bottiglia dentro la card.
  */
-export function genereDa(categoria: string | null | undefined): GenereProdotto {
-  const c = (categoria ?? '').toLowerCase();
-  if (/acqua|water/.test(c)) return 'acqua';
-  if (/caff|caffe|tè|the\b|tisan/.test(c)) return 'caffe';
-  if (/bibit|cola|energy|lattin|birra/.test(c)) return 'lattina';
-  if (
-    /amaro|liquor|vodka|gin|rum|whisky|grappa|vino|spuman|bitter|sciroppo|succo|tequila|distillat|analcolic/.test(
-      c,
-    )
-  ) {
-    return 'bottiglia';
-  }
-  return 'scatola';
-}
-
-function Disegno({ genere }: { genere: GenereProdotto }) {
-  const comune = {
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth: 1.5,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-  };
-  return (
-    <svg viewBox="0 0 24 32" aria-hidden className="h-3/5 w-3/5 text-neutral-300" {...comune}>
-      {genere === 'bottiglia' && (
-        <>
-          <path d="M10 3h4v5.5l3 4.5v15a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 7 28V13l3-4.5V3Z" />
-          <path d="M7 18h10" />
-        </>
-      )}
-      {genere === 'acqua' && (
-        <>
-          <path d="M10 3h4v4l2.5 3.5V28a1.5 1.5 0 0 1-1.5 1.5H9A1.5 1.5 0 0 1 7.5 28V10.5L10 7V3Z" />
-          <path d="M7.5 15h9M7.5 20h9" />
-        </>
-      )}
-      {genere === 'lattina' && (
-        <>
-          <path d="M8 5h8v22a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V5Z" />
-          <path d="M8 5c0-1.1 1.8-2 4-2s4 .9 4 2M8 10h8" />
-        </>
-      )}
-      {genere === 'caffe' && (
-        <>
-          <path d="M5 11h13v9a6 6 0 0 1-6 6h-1a6 6 0 0 1-6-6v-9Z" />
-          <path d="M18 13h1.5a2.5 2.5 0 0 1 0 5H18M9 7V5M13 7V5" />
-        </>
-      )}
-      {genere === 'scatola' && (
-        <>
-          <path d="M4 10.5 12 7l8 3.5v11L12 25l-8-3.5v-11Z" />
-          <path d="M4 10.5 12 14l8-3.5M12 14v11" />
-        </>
-      )}
-    </svg>
-  );
-}
 
 export function FotoProdotto({
   src,
@@ -100,12 +44,17 @@ export function FotoProdotto({
   className?: string;
 }) {
   const [rotta, setRotta] = useState(false);
-  const genere = genereDa(categoria);
+  const visuale = visualeCategoria(categoria);
   const mostraFoto = src !== null && !rotta;
 
   return (
     <span
-      className={`grid shrink-0 place-items-center overflow-hidden rounded-xl bg-neutral-50 ${className}`}
+      className={`grid shrink-0 place-items-center overflow-hidden rounded-2xl ${
+        // Senza foto il riquadro prende il fondo tenue della famiglia: un
+        // quadrato grigio con dentro una sagoma minuscola sembrava un errore
+        // di caricamento, mentre un fondo colorato si legge come una scelta.
+        mostraFoto ? 'bg-white' : visuale.sfondo
+      } ${className}`}
     >
       {mostraFoto ? (
         // `alt` vuoto e non il nome del prodotto: il nome è già scritto
@@ -122,10 +71,15 @@ export function FotoProdotto({
           loading="lazy"
           decoding="async"
           onError={() => setRotta(true)}
-          className="h-full w-full object-contain p-1"
+          className="h-full w-full object-contain p-0.5"
         />
       ) : (
-        <Disegno genere={genere} />
+        // Grande: riempie i due terzi del riquadro invece di galleggiarci
+        // dentro. Una sagoma piccola in un quadrato vuoto sembra una foto
+        // che non è arrivata; una sagoma piena sembra un'illustrazione.
+        <span className={visuale.accento}>
+          <DisegnoCategoria genere={visuale.genere} className="h-11 w-11" />
+        </span>
       )}
       {/* Detto una volta sola, per chi non vede il riquadro. */}
       {!mostraFoto && <span className="sr-only">Nessuna foto per {nome}</span>}

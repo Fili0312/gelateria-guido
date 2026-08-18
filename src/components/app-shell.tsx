@@ -25,11 +25,11 @@ function isActive(pathname: string, href: string) {
 function Brand() {
   return (
     <Link href="/" className="group flex min-h-11 items-center gap-3 rounded-xl">
-      <span className="bg-brand-600 shadow-brand-900/10 grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-sm font-black tracking-tight text-white shadow-lg transition-transform group-hover:-rotate-2">
+      <span className="bg-brand-600 grid h-10 w-10 shrink-0 place-items-center rounded-[0.9rem] text-sm font-extrabold tracking-tight text-white transition-transform group-hover:-rotate-2 sm:h-11 sm:w-11 sm:rounded-2xl">
         GG
       </span>
       <span className="min-w-0 leading-tight">
-        <span className="block text-sm font-extrabold tracking-tight text-neutral-950">
+        <span className="block text-[15px] font-bold tracking-tight text-neutral-950">
           Gelateria Guido
         </span>
         <span className="block text-xs text-neutral-500">Listini e ordini</span>
@@ -115,7 +115,11 @@ function Breadcrumb({ pathname }: { pathname: string }) {
   return (
     <nav
       aria-label="Percorso"
-      className="mb-5 flex items-center gap-1.5 text-xs font-medium text-neutral-500 sm:mb-7"
+      // Nascoste sul telefono: sotto l'intestazione c'è già il menu con la
+      // voce attiva evidenziata, quindi queste ripetono la stessa cosa —
+      // e la ripetono occupando una riga intera prima che si veda un
+      // prodotto. Da tablet in su lo spazio c'è e servono per risalire.
+      className="mb-5 hidden items-center gap-1.5 text-xs font-medium text-neutral-500 sm:mb-7 sm:flex"
     >
       <span>Gelateria Guido</span>
       <AppIcon name="chevron" className="h-3.5 w-3.5 text-neutral-300" />
@@ -163,16 +167,16 @@ export function AppShell({
 
       <div className="lg:pl-72">
         <header className="sticky top-0 z-20 border-b border-neutral-200/80 bg-white/95 backdrop-blur lg:hidden">
-          <div className="flex h-16 items-center justify-between px-4 sm:px-6">
+          <div className="flex h-14 items-center justify-between px-4 sm:px-6">
             <Brand />
             <LogoutButton endpoint={logoutEndpoint} loginPath={loginPath} compact />
           </div>
-          <div className="overflow-x-auto px-3 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="overflow-x-auto px-3 pb-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <Navigation pathname={pathname} mobile />
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-[94rem] px-4 py-6 sm:px-7 sm:py-8 xl:px-10">
+        <main className="mx-auto w-full max-w-[94rem] px-4 py-3 sm:px-7 sm:py-8 xl:px-10">
           <Breadcrumb pathname={pathname} />
           {children}
         </main>

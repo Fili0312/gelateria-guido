@@ -10,6 +10,7 @@ import {
   formatoConfezione,
   formatoUnitario,
   costoRealeConfezione,
+  nomeLeggibile,
   prezzoUnitario,
   prezzoUnitarioDiCatalogo,
 } from './format';
@@ -214,5 +215,31 @@ describe('il prezzo per unità contiene il rimborso concordato', () => {
     const senza = offerta({ scontoExtraApplicato: '0' });
     assert.equal(costoRealeConfezione(senza), null);
     assert.match(prezzoUnitario(senza), /0,4425/);
+  });
+});
+
+describe('nomeLeggibile', () => {
+  it('rende leggibile il maiuscolo dei listini', () => {
+    assert.equal(nomeLeggibile('ABSOLUT CITRON VODKA LITRO'), 'Absolut Citron Vodka Litro');
+    assert.equal(nomeLeggibile('AMARO MONTENEGRO CL.100'), 'Amaro Montenegro CL.100');
+  });
+
+  it('lascia in maiuscolo le sigle, che altrimenti sembrano errori', () => {
+    assert.match(nomeLeggibile("A.CAMPOREALE NERO D'AVOLA SICILIA DOC"), /DOC$/);
+    assert.match(nomeLeggibile('BROOKLYN SESSION IPA'), /IPA$/);
+    assert.match(nomeLeggibile('ACQUA PANNA CL.50 PET'), /CL\.50 PET$/);
+  });
+
+  it('capisce iniziali puntate e apostrofi', () => {
+    assert.match(nomeLeggibile('S.BENEDETTO ACQUA'), /^S\.Benedetto/);
+    assert.match(nomeLeggibile("NERO D'AVOLA"), /D'Avola/);
+    // Possessivo inglese: dopo l'apostrofo c'è una lettera sola.
+    assert.match(nomeLeggibile("BECK'S CL 33X24"), /^Beck's/);
+  });
+
+  it('non tocca un nome che qualcuno ha già scritto a mano', () => {
+    // Chi ha scritto «dell'Erborista» sa come si scrive meglio di noi.
+    const scritto = 'Amaro dell’Erborista Varnelli';
+    assert.equal(nomeLeggibile(scritto), scritto);
   });
 });

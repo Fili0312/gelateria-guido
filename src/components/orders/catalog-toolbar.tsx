@@ -118,10 +118,10 @@ export function CatalogToolbar({
           type="button"
           onClick={() => setAperto((v) => !v)}
           aria-expanded={aperto}
-          className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3.5 text-sm font-semibold transition-colors ${
+          className={`inline-flex h-11 cursor-pointer items-center gap-2 rounded-[0.9rem] border px-3 text-[13px] font-semibold transition-colors ${
             attivi > 0
-              ? 'border-brand-600 bg-brand-50 text-brand-800'
-              : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
+              ? 'border-brand-400 bg-brand-50 text-brand-800'
+              : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300'
           }`}
         >
           <svg
@@ -206,7 +206,7 @@ export function CatalogToolbar({
         )}
       </div>
 
-      <div className="relative ml-auto">
+      <div className="relative ml-auto min-w-0 flex-1">
         {/* Un `select` vero, non un menu costruito a mano: sul telefono apre
             la rotella di sistema, che si usa con una mano sola e senza
             imparare niente. */}
@@ -214,7 +214,7 @@ export function CatalogToolbar({
           value={ordinamento}
           onChange={(e) => onOrdinamento(e.target.value as Ordinamento)}
           aria-label="Ordina i prodotti"
-          className="focus:border-brand-500 focus:ring-brand-500/30 min-h-11 cursor-pointer appearance-none rounded-xl border border-neutral-200 bg-white py-0 pr-9 pl-3.5 text-sm font-semibold text-neutral-700 outline-none focus:ring-4"
+          className="focus:border-brand-500 focus:ring-brand-500/30 h-11 w-full cursor-pointer appearance-none rounded-[0.9rem] border border-neutral-200 bg-white py-0 pr-9 pl-3.5 text-[13px] font-semibold text-neutral-600 outline-none focus:ring-4"
         >
           {(Object.keys(ETICHETTE) as Ordinamento[]).map((o) => (
             <option key={o} value={o}>

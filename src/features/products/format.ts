@@ -194,3 +194,96 @@ export function dataBreve(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('it-IT');
 }
+
+/**
+ * Sigle e parole che restano com'erano scritte.
+ *
+ * Sono di due tipi: **denominazioni** (DOC, IGT, DOP) e **unità o materiali**
+ * (CL, PET, VAP). «Doc» e «Igt» in mezzo a un nome sembrano errori di
+ * battitura; «Cl» al posto di «CL» sembra un'abbreviazione sbagliata.
+ */
+const SIGLE = new Set([
+  'DOC',
+  'DOCG',
+  'IGT',
+  'IGP',
+  'DOP',
+  'STG',
+  'BIO',
+  'VSQ',
+  'CL',
+  'ML',
+  'LT',
+  'L',
+  'KG',
+  'GR',
+  'G',
+  'PZ',
+  'CT',
+  'CF',
+  'PET',
+  'VAP',
+  'BT',
+  'IPA',
+  'APA',
+  'XO',
+  'VS',
+  'VSOP',
+  'RTD',
+  'GT',
+  'DJ',
+  'BIB',
+]);
+
+/**
+ * Il nome di un prodotto, come si legge.
+ *
+ * ── Perché non si mostra il nome del listino così com'è ─────────────────
+ * I listini sono scritti in maiuscolo perché nascono per essere stampati e
+ * letti a magazzino: «ABSOLUT CITRON VODKA LITRO». In una card quel
+ * maiuscolo occupa più spazio a parità di parole, va a capo prima, e
+ * costringe a troncare — sullo schermo si leggeva «ABSOLUT CITRON…», cioè si
+ * perdeva proprio la parola che distingue il prodotto.
+ *
+ * Il maiuscolo si legge anche più lentamente: senza le salite e le discese
+ * delle lettere tutte le parole hanno la stessa sagoma rettangolare, e non
+ * si riconoscono a colpo d'occhio — che è come si scorre un catalogo.
+ *
+ * ── Cosa non fa ─────────────────────────────────────────────────────────
+ * **Non tocca il dato.** Il nome a database resta quello del fornitore, ed è
+ * quello che finisce sull'ordine di acquisto: il PDF che il fornitore riceve
+ * deve riportare la sua dicitura, non una nostra versione più bella.
+ *
+ * Un nome già scritto in modo misto si lascia stare: se qualcuno ha scritto
+ * «Amaro dell'Erborista», sa come si scrive meglio di questa funzione.
+ */
+export function nomeLeggibile(grezzo: string): string {
+  // Solo se è tutto maiuscolo: è il segno che nessuno ha scelto quelle
+  // maiuscole, le ha messe il gestionale del fornitore.
+  if (grezzo !== grezzo.toUpperCase()) return grezzo;
+
+  return (
+    grezzo
+      .toLowerCase()
+      .replace(/[\p{L}\p{N}']+/gu, (parola) => {
+        const su = parola.toUpperCase();
+        if (SIGLE.has(su)) return su;
+        // Un pezzo che contiene cifre è un formato o un codice: «33x24»,
+        // «100ml». Metterci la maiuscola non lo rende più leggibile.
+        if (/\d/.test(parola)) return parola;
+        return parola.charAt(0).toUpperCase() + parola.slice(1);
+      })
+      // «S.Benedetto», «A.Camporeale»: la lettera dopo il punto è un'iniziale.
+      .replace(
+        /(\.)(\p{Ll})/gu,
+        (_, punto: string, lettera: string) => punto + lettera.toUpperCase(),
+      )
+      // «Nero d'Avola»: dopo l'apostrofo comincia un nome. Non dopo quello di
+      // «Beck's», dove segue una lettera sola — è un possessivo inglese, non
+      // un'elisione italiana, e «Beck'S» non lo scriverebbe nessuno.
+      .replace(
+        /(['\u2019])(\p{Ll})(\p{L})/gu,
+        (_, apice: string, prima: string, dopo: string) => `${apice}${prima.toUpperCase()}${dopo}`,
+      )
+  );
+}
