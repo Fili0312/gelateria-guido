@@ -201,7 +201,7 @@ export function ProductCard({
     <li
       ref={elemento}
       onMouseEnter={onSeleziona}
-      className={`rounded-2xl border bg-white transition-colors ${
+      className={`overflow-hidden rounded-2xl border bg-white transition-colors ${
         // Verde solo quando il prodotto è **dentro l'ordine**: è un'informazione
         // vera. Un bordo verde su ogni card sotto il dito lo renderebbe un
         // colore di sfondo, e allora non direbbe più niente.
@@ -215,129 +215,122 @@ export function ProductCard({
           scalano invece coi punti d'interruzione — foto, prezzo e comando
           quantità si stringono tutti — e il nome tiene sempre le sue due
           righe con dentro le parole che distinguono il prodotto. */}
-      <div className="flex items-center gap-2.5 py-3 pr-3 pl-0 min-[400px]:gap-3 min-[400px]:pr-3.5">
+      {/* ── Come è messa la card ──────────────────────────────────────
+          La foto occupa **tutto il fianco sinistro**, a filo e a tutta
+          altezza: niente margini attorno, niente sporgenze fuori dal bordo.
+
+          Il nome sta su una riga **sua**, larga quanto tutta la colonna.
+          Prima divideva la larghezza con prezzo e comandi e a
+          trecentoventi pixel gliene restavano ottantasei: «Absolut Citron
+          Vodka Litro» ci finiva a pezzi di una parola per riga. Ora ne ha
+          centonovantasei sullo stesso telefono, e il nome si legge — che è
+          la prima cosa che si guarda scorrendo. */}
+      <div className="flex items-stretch">
         <FotoProdotto
           src={risultato.imageUrl}
           nome={risultato.name}
           categoria={risultato.category?.name}
-          className="-ml-1 h-[5.5rem] w-[4.25rem] min-[360px]:h-[6.25rem] min-[360px]:w-[4.75rem] min-[400px]:h-[6.75rem] min-[400px]:w-[5.25rem]"
+          className="w-[4.25rem] shrink-0 self-stretch rounded-none min-[360px]:w-[4.75rem] min-[400px]:w-[5.25rem]"
         />
 
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            {risultato.category ? (
-              <span className="truncate rounded-md bg-violet-50 px-1.5 py-0.5 text-[10.5px] font-bold tracking-wide text-violet-600 uppercase">
-                {risultato.category.name}
-              </span>
-            ) : (
-              <span />
-            )}
-            {altre.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setAperto((v) => !v)}
-                aria-expanded={aperto}
-                aria-label={
-                  aperto
-                    ? `Nascondi gli altri fornitori di ${risultato.name}`
-                    : `Mostra gli altri ${altre.length} fornitori di ${risultato.name}`
-                }
-                className="-my-1.5 -mr-1 inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-0.5 rounded-lg px-1 text-[11px] font-semibold whitespace-nowrap text-neutral-400 transition-colors hover:text-neutral-700"
-              >
-                {/* Il numero, non una freccia muta: da chiusa la card deve
-                    dire che sotto c'è un confronto, o nessuno la apre. Ma in
-                    grigio e in piccolo — è una seconda scelta, e non deve
-                    competere col bottone verde. */}
-                {/* Solo il numero: la parola per esteso si portava via
-                    ottanta pixel sulla riga della categoria, e «VODKA»
-                    diventava «VOD…». Cosa significhi lo dice l'etichetta
-                    per chi non vede lo schermo, e la freccia per chi lo
-                    vede. */}
-                <span aria-hidden>+{altre.length}</span>
-                <AppIcon
-                  name="chevron"
-                  className={`h-3 w-3 transition-transform ${aperto ? 'rotate-90' : ''}`}
-                />
-              </button>
-            )}
+        <div className="min-w-0 flex-1 px-3 py-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-1.5">
+              {risultato.category && (
+                <span className="truncate rounded-md bg-violet-50 px-1.5 py-0.5 text-[10.5px] font-bold tracking-wide text-violet-600 uppercase">
+                  {risultato.category.name}
+                </span>
+              )}
+              {altre.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setAperto((v) => !v)}
+                  aria-expanded={aperto}
+                  aria-label={
+                    aperto
+                      ? `Nascondi gli altri fornitori di ${risultato.name}`
+                      : `Mostra gli altri ${altre.length} fornitori di ${risultato.name}`
+                  }
+                  className="-my-2 inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-0.5 rounded-lg px-1 text-[11px] font-semibold whitespace-nowrap text-neutral-400 transition-colors hover:text-neutral-700"
+                >
+                  {/* Solo il numero: «fornitore» per esteso si portava via
+                      ottanta pixel e faceva diventare «VODKA» un «VOD…». */}
+                  <span aria-hidden>+{altre.length}</span>
+                  <AppIcon
+                    name="chevron"
+                    className={`h-3 w-3 transition-transform ${aperto ? 'rotate-90' : ''}`}
+                  />
+                </button>
+              )}
+            </div>
+
+            {prima && <Prezzo offerta={prima} grande />}
           </div>
+
           {/* Il nome del listino è tutto maiuscolo perché nasce per essere
               stampato e letto a magazzino. A schermo occupa più spazio a
-              parità di parole, va a capo prima e si tronca proprio sulla
-              parola che distingue il prodotto: si leggeva «ABSOLUT
-              CITRON…». Il dato non cambia — cambia come lo si mostra.
-
-              Tre righe sotto i quattrocento pixel, due sopra. Su uno
-              schermo stretto, con il comando quantità accanto, al nome
-              restano ottantaquattro pixel: in due righe ci sta «Absolut
-              Citron…», che è di nuovo il troncamento da cui siamo partiti.
-              Venti pixel di card in più valgono il nome intero. */}
-          <p className="mt-1 line-clamp-3 text-[15px] leading-[1.25] font-bold text-neutral-950 min-[360px]:text-[16px] min-[400px]:line-clamp-2 min-[400px]:text-[17.5px]">
+              parità di parole e si troncava proprio sulla parola che
+              distingue il prodotto: si leggeva «ABSOLUT CITRON…». Il dato
+              non cambia — l'ordine di acquisto riporta ancora la dicitura
+              del fornitore. */}
+          <p className="mt-1.5 line-clamp-2 text-[16px] leading-[1.25] font-bold text-neutral-950 min-[360px]:text-[17px] min-[400px]:text-[17.5px]">
             {nomeLeggibile(risultato.name)}
           </p>
 
-          {prima ? (
-            <>
-              <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12.5px] text-neutral-500">
-                <ColloBadge confezione={prima} />
-                <span className="truncate">{prima.supplierName}</span>
-              </p>
-              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-                {prima.migliore && (
-                  <span className="inline-flex items-center gap-0.5 rounded-lg bg-green-50 px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap text-green-700">
-                    <span aria-hidden>★</span> conviene
-                  </span>
-                )}
-                {prima.stale && (
-                  <span className="rounded-lg bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700">
-                    prezzo fermo
-                  </span>
-                )}
-              </div>
-            </>
-          ) : (
-            <p className="mt-1 flex flex-wrap items-baseline gap-x-2 text-xs">
-              <span className="text-neutral-500">
-                {formatoConfezione(risultato.unitSize, risultato.unitOfMeasure, 1)}
-              </span>
-              <span className="text-amber-700">{risultato.nonOrdinabile}</span>
-            </p>
-          )}
-        </div>
-
-        {/* Larghezza **riservata**, uguale nei due stati.
-            Premendo «+» il bottone da quarantotto pixel diventa il comando
-            quantità da centoventi, e tutta la card si riassestava sotto il
-            dito: il nome si accorciava, le righe si spostavano, e il secondo
-            tocco finiva altrove. Lo spazio del comando c'è già prima che
-            serva, quindi non si muove niente. */}
-        {prima && (
-          <div className="ml-auto flex w-[6.5rem] shrink-0 flex-col items-end gap-2 min-[400px]:w-[7.5rem]">
-            <Prezzo offerta={prima} grande />
-            <div className="flex items-center gap-1.5">
-              {gia && (
-                <Quantita
-                  nome={risultato.name}
-                  quantita={gia.quantita}
-                  onCambia={(q) => onCambiaQuantita(gia.rigaId, q)}
-                  onTogli={() => onRimuovi(gia.rigaId)}
-                />
+          <div className="mt-1.5 flex items-end justify-between gap-2">
+            <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[12.5px] text-neutral-500">
+              {prima ? (
+                <>
+                  <ColloBadge confezione={prima} />
+                  <span className="truncate">{prima.supplierName}</span>
+                  {prima.migliore && (
+                    <span className="inline-flex items-center gap-0.5 rounded-lg bg-green-50 px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap text-green-700">
+                      <span aria-hidden>★</span> conviene
+                    </span>
+                  )}
+                  {prima.stale && (
+                    <span className="rounded-lg bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700">
+                      prezzo fermo
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span>{formatoConfezione(risultato.unitSize, risultato.unitOfMeasure, 1)}</span>
+                  <span className="text-amber-700">{risultato.nonOrdinabile}</span>
+                </>
               )}
-              <Aggiungi
-                etichetta={
-                  gia
-                    ? `Un’altra confezione di ${risultato.name}`
-                    : `Aggiungi ${risultato.name} all’ordine`
-                }
-                onClick={() =>
-                  gia
-                    ? onCambiaQuantita(gia.rigaId, Math.min(gia.quantita + 1, CONFEZIONI_MAX))
-                    : onAggiungi(prima.supplierProductId)
-                }
-              />
-            </div>
+            </span>
+
+            {/* Il «+» **non si sposta** quando il prodotto entra
+                nell'ordine: la pastiglia compare accanto, e il dito che
+                aggiunge la seconda confezione ritrova il bersaglio dov'era. */}
+            {prima && (
+              <div className="flex shrink-0 items-center gap-1.5">
+                {gia && (
+                  <Quantita
+                    nome={risultato.name}
+                    quantita={gia.quantita}
+                    onCambia={(q) => onCambiaQuantita(gia.rigaId, q)}
+                    onTogli={() => onRimuovi(gia.rigaId)}
+                  />
+                )}
+                <Aggiungi
+                  etichetta={
+                    gia
+                      ? `Un’altra confezione di ${risultato.name}`
+                      : `Aggiungi ${risultato.name} all’ordine`
+                  }
+                  onClick={() =>
+                    gia
+                      ? onCambiaQuantita(gia.rigaId, Math.min(gia.quantita + 1, CONFEZIONI_MAX))
+                      : onAggiungi(prima.supplierProductId)
+                  }
+                />
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {aperto && altre.length > 0 && (

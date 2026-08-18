@@ -71,14 +71,17 @@ export function FotoProdotto({
           loading="lazy"
           decoding="async"
           onError={() => setRotta(true)}
-          className="h-full w-full object-contain p-0.5"
+          className="h-full w-full object-contain p-1.5"
         />
       ) : (
         // Grande: riempie i due terzi del riquadro invece di galleggiarci
         // dentro. Una sagoma piccola in un quadrato vuoto sembra una foto
         // che non è arrivata; una sagoma piena sembra un'illustrazione.
         <span className={visuale.accento}>
-          <DisegnoCategoria genere={visuale.genere} className="h-11 w-11" />
+          <DisegnoCategoria
+            genere={visuale.genere}
+            className="h-10 w-10 min-[400px]:h-12 min-[400px]:w-12"
+          />
         </span>
       )}
       {/* Detto una volta sola, per chi non vede il riquadro. */}
