@@ -19,10 +19,11 @@ import { DisegnoCategoria, visualeCategoria } from './categoria-visuale';
  * il centro dell'etichetta e non la sagoma, che è proprio ciò che si
  * riconosce scorrendo.
  *
- * L'ingrandimento del 12% serve perché le foto dei cataloghi arrivano quasi
+ * L'ingrandimento del 22% serve perché le foto dei cataloghi arrivano quasi
  * sempre con un bordo bianco attorno al prodotto: `contain` rispetta quel
  * bordo e la bottiglia finisce a galleggiare piccola in mezzo al riquadro.
- * Un dodici per cento se lo mangia senza arrivare a tagliare il tappo.
+ * Il riquadro ritaglia, quindi l'ingrandimento non esce dalla card: mangia
+ * il bianco, e su una bottiglia molto stretta al massimo sfiora il tappo.
  */
 
 /**
@@ -76,7 +77,7 @@ export function FotoProdotto({
           loading="lazy"
           decoding="async"
           onError={() => setRotta(true)}
-          className="h-full w-full scale-[1.12] object-contain object-center"
+          className="h-full w-full scale-[1.22] object-contain object-center"
         />
       ) : (
         // Grande: riempie i due terzi del riquadro invece di galleggiarci
