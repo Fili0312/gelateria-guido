@@ -18,6 +18,11 @@ import { DisegnoCategoria, visualeCategoria } from './categoria-visuale';
  * `cover` riempirebbe il riquadro tagliando: di una bottiglia si vedrebbe
  * il centro dell'etichetta e non la sagoma, che è proprio ciò che si
  * riconosce scorrendo.
+ *
+ * L'ingrandimento del 12% serve perché le foto dei cataloghi arrivano quasi
+ * sempre con un bordo bianco attorno al prodotto: `contain` rispetta quel
+ * bordo e la bottiglia finisce a galleggiare piccola in mezzo al riquadro.
+ * Un dodici per cento se lo mangia senza arrivare a tagliare il tappo.
  */
 
 /**
@@ -49,7 +54,7 @@ export function FotoProdotto({
 
   return (
     <span
-      className={`grid shrink-0 place-items-center overflow-hidden rounded-2xl ${
+      className={`relative grid shrink-0 place-items-center overflow-hidden rounded-2xl ${
         // Senza foto il riquadro prende il fondo tenue della famiglia: un
         // quadrato grigio con dentro una sagoma minuscola sembrava un errore
         // di caricamento, mentre un fondo colorato si legge come una scelta.
@@ -71,7 +76,7 @@ export function FotoProdotto({
           loading="lazy"
           decoding="async"
           onError={() => setRotta(true)}
-          className="h-full w-full object-contain p-0.5"
+          className="h-full w-full scale-[1.12] object-contain object-center"
         />
       ) : (
         // Grande: riempie i due terzi del riquadro invece di galleggiarci
