@@ -74,3 +74,33 @@ dialog::backdrop {
     animation-iteration-count: 1 !important;
   }
 }
+
+/*
+ * Su iOS, toccare un campo con testo sotto i 16px fa ingrandire la pagina —
+ * e poi tocca ripicciolirla a mano. Succedeva su ogni «+» dell'ordine,
+ * perché il campo della quantità è piccolo per stare nella riga.
+ *
+ * La cura NON è togliere lo zoom con `maximum-scale=1`: quello impedisce di
+ * ingrandire *anche quando serve davvero*, e in un magazzino con poca luce
+ * serve. Si porta il testo dei campi a 16px, che è la soglia sotto la quale
+ * Safari decide di aiutare.
+ *
+ * `pointer: coarse` e non una larghezza: la regola riguarda i dita, non gli
+ * schermi. Su un desktop con il mouse non cambia niente, e un tablet grande
+ * ce l'ha lo stesso il problema.
+ */
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/*
+ * Il fondo dello schermo su iPhone è occupato dalla barra home. Senza questo,
+ * la barra dell'ordine ci finisce sotto e il totale si legge a metà.
+ */
+.pb-sicuro {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}

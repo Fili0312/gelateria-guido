@@ -377,7 +377,7 @@ export function OrderScreen({
           una cassa — e per averla non si deve smettere di scegliere. */}
       {/* `lg:pl-72` come il guscio: senza, la barra passa **sotto** il menu
           laterale e il totale finisce a metà fra le due cose. */}
-      <div className="fixed inset-x-0 bottom-0 z-30 px-3 pb-3 sm:px-6 lg:pl-72">
+      <div className="pb-sicuro fixed inset-x-0 bottom-0 z-30 px-3 sm:px-6 lg:pl-72">
         <div className="mx-auto w-full max-w-[94rem] sm:px-1 xl:px-4">
           {schedaOrdine && (
             <div className="mb-2 max-h-[65vh] overflow-y-auto overscroll-contain rounded-2xl border border-neutral-200 bg-white shadow-2xl shadow-neutral-900/20">
