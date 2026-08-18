@@ -237,6 +237,12 @@ describe('nomeLeggibile', () => {
     assert.match(nomeLeggibile("BECK'S CL 33X24"), /^Beck's/);
   });
 
+  it('non si fa ingannare da una nota fra parentesi', () => {
+    // Il nome è urlato dal gestionale, la nota l'ha aggiunta una persona:
+    // guardando la riga intera sembrava già scritta bene.
+    assert.match(nomeLeggibile('ZUBROWKA VODKA BIALA 1 LT (promoz.)'), /^Zubrowka Vodka Biala/);
+  });
+
   it('non tocca un nome che qualcuno ha già scritto a mano', () => {
     // Chi ha scritto «dell'Erborista» sa come si scrive meglio di noi.
     const scritto = 'Amaro dell’Erborista Varnelli';

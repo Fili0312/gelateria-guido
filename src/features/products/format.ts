@@ -260,7 +260,13 @@ const SIGLE = new Set([
 export function nomeLeggibile(grezzo: string): string {
   // Solo se è tutto maiuscolo: è il segno che nessuno ha scelto quelle
   // maiuscole, le ha messe il gestionale del fornitore.
-  if (grezzo !== grezzo.toUpperCase()) return grezzo;
+  //
+  // Le note fra parentesi non contano. «ZUBROWKA VODKA BIALA (promoz.)» è
+  // un nome urlato con un appunto scritto a mano in coda: guardando la riga
+  // intera sembrava già scritta bene, e restava in maiuscolo proprio nei
+  // nomi più lunghi — quelli che di spazio ne hanno meno.
+  const senzaNote = grezzo.replace(/\([^)]*\)/g, '');
+  if (senzaNote !== senzaNote.toUpperCase()) return grezzo;
 
   return (
     grezzo
