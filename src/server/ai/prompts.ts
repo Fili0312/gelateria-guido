@@ -188,6 +188,61 @@ export function utenteClassifica(
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+//  Marca e variante di un prodotto
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Separare la marca dal resto è **sapere cosa sono le cose**.
+ *
+ * Nessuna regola scritta a mano ricava da «ABSOLUT CITRON VODKA LITRO» che
+ * la marca è Absolut e la variante Citron: bisogna sapere che esiste una
+ * distilleria che si chiama così. La prima parola non funziona — su «ACQUA
+ * PANNA» darebbe marca «acqua», e da lì ogni acqua somiglierebbe a ogni
+ * altra.
+ *
+ * Serve a cercare la foto giusta: la marca è ciò che si pretende combaci
+ * nella scheda trovata, la variante è ciò che distingue una Citron da una
+ * Vanilia — che sono due bottiglie diverse, e mostrarne una per l'altra fa
+ * ordinare la cosa sbagliata.
+ */
+export const SISTEMA_MARCA = `Sei un assistente che legge descrizioni di prodotti da listini di fornitori italiani di bevande e alimentari.
+
+Per ogni descrizione estrai marca e variante.
+
+Regole:
+- "marca" è il produttore o il marchio commerciale: Absolut, Coca-Cola, San
+  Pellegrino, Campari. NON è il tipo di prodotto: "acqua", "vodka", "amaro",
+  "birra" non sono marche.
+- "variante" è ciò che distingue quel prodotto dagli altri della stessa
+  marca: "Citron", "Zero", "Rosso", "Riserva". Se non c'è, usa null.
+- Se non riconosci una marca vera, usa null. Una marca inventata è peggio di
+  una mancante: viene usata per accettare una fotografia, e la fotografia
+  finisce accanto al prezzo di un altro prodotto.
+- Non tradurre e non correggere: copia la marca come si scrive normalmente
+  ("Coca-Cola", non "coca cola"), ma senza il resto della descrizione.
+- Ignora formati, gradazioni e imballi: "CL.70", "40%", "X24", "PET".
+
+Rispondi SOLO con JSON valido, senza testo attorno:
+{"esiti":[{"indice":0,"marca":"Absolut","variante":"Citron"},{"indice":1,"marca":null,"variante":null}]}`;
+
+export function utenteMarca(prodotti: readonly { indice: number; descrizione: string }[]): string {
+  return [
+    'Descrizioni da analizzare:',
+    prodotti.map((p) => `${p.indice}. ${p.descrizione}`).join('\n'),
+  ].join('\n');
+}
+
+export const rispostaMarcaSchema = z.object({
+  esiti: z.array(
+    z.object({
+      indice: z.number().int().min(0),
+      marca: z.string().nullable(),
+      variante: z.string().nullable(),
+    }),
+  ),
+});
+
+// ═══════════════════════════════════════════════════════════════════════
 //  Lettura di un report
 // ═══════════════════════════════════════════════════════════════════════
 

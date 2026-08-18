@@ -581,8 +581,32 @@ model Product {
   unitOfMeasure UnitOfMeasure @map("unit_of_measure")
   baseUnit      BaseUnit      @map("base_unit")
 
-  gtin      String?
+  gtin String?
+
+  /// ── La foto del prodotto ────────────────────────────────────────────
+  /// Il file sta **sul nostro disco**, non su un dominio esterno: la CSP
+  /// consente immagini solo da `self`, e un `<img>` verso openfoodfacts.org
+  /// verrebbe bloccato dal browser. Scaricarla una volta evita anche di
+  /// chiedere alla fonte una foto per prodotto a ogni apertura della pagina.
   imagePath String? @map("image_path")
+
+  /// Da dove viene: `OFF` Open Food Facts, `MANUAL` caricata a mano,
+  /// `NONE` cercata e non trovata. `NONE` **non** è un fallimento da
+  /// ritentare a ogni giro: è una risposta, e ricordarla è ciò che impedisce
+  /// di richiedere ogni notte le stesse quattrocento foto che non esistono.
+  imageSource String? @map("image_source")
+
+  /// Il codice del prodotto **nella fonte**: per Open Food Facts il barcode.
+  /// Serve a risalire alla scheda quando una foto risulta sbagliata.
+  imageExternalId String? @map("image_external_id")
+
+  /// Quanto siamo sicuri che la foto sia di *questo* prodotto, da 0 a 1.
+  /// Sotto la soglia non si associa niente: una bottiglia sbagliata fa
+  /// ordinare la cosa sbagliata, un riquadro vuoto no.
+  imageConfidence Decimal? @map("image_confidence") @db.Decimal(4, 3)
+
+  /// Quando si è cercata l'ultima volta — trovata o no.
+  imageUpdatedAt DateTime? @map("image_updated_at")
 
   /// Testo normalizzato per la ricerca e per il confronto trigram:
   /// minuscolo, senza accenti, senza punteggiatura, senza i token di
@@ -608,6 +632,9 @@ model Product {
   @@index([organizationId])
   @@index([organizationId, categoryId])
   @@index([organizationId, normalizedName])
+  /// Per la coda delle foto: «quelli mai cercati, poi i più vecchi». Senza,
+  /// ogni giro di riempimento scandisce l'intero catalogo.
+  @@index([organizationId, imageUpdatedAt])
   /// Indici trigram per la ricerca fuzzy e per i candidati di abbinamento.
   /// Dichiarati qui e non solo in SQL: Prisma non li vedrebbe, e la prima
   /// migrazione generata dopo li cancellerebbe in silenzio — trasformando

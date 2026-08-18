@@ -20,6 +20,7 @@ import type {
   RigaOrdinePatch,
 } from '@/features/orders/schema';
 import { selezionaRigheSenzaConfronto } from '@/features/orders/summary';
+import { urlImmagine } from '@/server/catalog/immagini/archivio';
 import { rimuoviDocumento } from '@/server/export/archivio';
 import {
   prismaForOrganization,
@@ -728,10 +729,19 @@ export function ordersRepository(organizationId: string) {
       const esito = { items: trovati };
 
       const ids = esito.items.map((i) => i.id);
-      const [mappa, ordine] = await Promise.all([
+      const [mappa, ordine, conFoto] = await Promise.all([
         confronti.perProdotti(ids),
         leggi(await idBozza(userId)),
+        // Una lettura a parte, per chiave primaria: la ricerca per testo passa
+        // da SQL grezzo e non porta questa colonna, e aggiungercela
+        // significherebbe toccare la query di ricerca — che è la cosa più
+        // delicata del catalogo — per una figura.
+        db.product.findMany({
+          where: { id: { in: ids }, imagePath: { not: null } },
+          select: { id: true },
+        }),
       ]);
+      const hannoFoto = new Set(conFoto.map((p) => p.id));
 
       const nellOrdine = new Map<string, number>();
       for (const riga of ordine.righe) {
@@ -784,6 +794,7 @@ export function ordersRepository(organizationId: string) {
           category: hit.category,
           unitSize: hit.unitSize,
           unitOfMeasure: hit.unitOfMeasure,
+          imageUrl: hannoFoto.has(hit.id) ? urlImmagine(hit.id) : null,
           offerte,
           nonOrdinabile:
             offerte.length === 0 ? (confronto.reason ?? 'Nessun prezzo corrente.') : null,

@@ -1,5 +1,4 @@
 import { OrderScreen } from '@/components/orders/order-screen';
-import { Badge } from '@/components/ui';
 import { getCurrentUser } from '@/server/auth';
 import { withBasePath } from '@/server/base-path';
 import { ordersRepository } from '@/server/repositories/orders';
@@ -28,20 +27,15 @@ export default async function OrdiniPage() {
   ]);
 
   return (
-    <div className="space-y-5">
-      <header>
-        <Badge variant="brand" dot>
-          Ordine in corso
-        </Badge>
-        <h1 className="mt-3 text-3xl font-black tracking-[-0.035em] text-neutral-950 sm:text-4xl">
-          Ordini
-        </h1>
-        <p className="mt-2 max-w-2xl leading-6 text-neutral-500">
-          Il catalogo è già qui: premi <strong>+</strong> per aggiungere. L’ordine sta di fianco e
-          resta dov’è anche se chiudi la pagina, e accanto a ogni prodotto c’è già scritto da chi
-          conviene comprarlo.
-        </p>
-      </header>
+    // Niente titolo grande e niente paragrafo di spiegazione.
+    //
+    // Su un telefono occupavano metà della prima schermata per dire cose che
+    // si capiscono guardando: che questa è la pagina degli ordini lo dice la
+    // voce di menu da cui si è arrivati, e che si preme «+» per aggiungere lo
+    // dice il bottone verde. Al loro posto ci stanno due prodotti, che sono
+    // il motivo per cui si è aperta la pagina.
+    <div>
+      <h1 className="sr-only">Ordini</h1>
 
       <OrderScreen
         ordineIniziale={ordine}

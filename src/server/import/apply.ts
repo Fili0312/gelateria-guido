@@ -16,6 +16,7 @@ import { baseDi, type BaseUnit, type UnitOfMeasure } from '@/server/domain/packa
 import { categoriaSuggerita } from '@/server/domain/catalog/categorie';
 import { improntaDaCampi } from '@/server/domain/packaging/fingerprint';
 import { normalizzaPrezzoIva, PrezzoIvaError } from '@/server/domain/pricing/vat';
+import { cercaFotoMancanti } from '@/server/catalog/immagini/coda';
 import { ricalcolaMiglioriOfferte } from './best-offer';
 import {
   decisioneConfezioneApplicabile,
@@ -810,6 +811,15 @@ export async function applicaImport(
   } catch (errore) {
     console.error(`Ricalcolo delle migliori offerte dopo l'import ${priceListId} fallito:`, errore);
   }
+
+  // Le foto dei prodotti nuovi, **senza aspettarle**.
+  //
+  // Sono minuti di richieste a un servizio esterno, una per volta. Chi ha
+  // appena caricato il listino ha già quello che gli serviva — i prezzi — e
+  // non deve restare fermo davanti a una rotellina perché stiamo cercando
+  // delle figure. `void`: si parte e si va avanti; se la ricerca fallisce,
+  // fallisce da sola e l'import resta valido.
+  void cercaFotoMancanti(organizationId);
 
   return esito;
 }

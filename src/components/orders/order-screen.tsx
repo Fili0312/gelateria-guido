@@ -5,7 +5,9 @@ import { AppIcon } from '@/components/app-icon';
 import { useToast } from '@/components/ui';
 import type { OrderApiBody, OrdineCorrente, RisultatoOrdinabile } from '@/features/orders/dto';
 import { CONFEZIONI_MAX } from '@/features/orders/schema';
-import { CatalogFilters, raggruppa } from './catalog-filters';
+import { raggruppa } from './catalog-filters';
+import { CategoryRail } from './category-rail';
+import { CatalogToolbar, FILTRI_VUOTI, type Filtri, type Ordinamento } from './catalog-toolbar';
 import Link from 'next/link';
 import { euro } from '@/features/products/format';
 import { OrderPanel } from './order-panel';
@@ -49,8 +51,9 @@ export function OrderScreen({
   const [cercando, setCercando] = useState(false);
   const [selezione, setSelezione] = useState(0);
   const [schedaOrdine, setSchedaOrdine] = useState(false);
-  const [reparto, setReparto] = useState<string | null>(null);
   const [categoria, setCategoria] = useState<string | null>(null);
+  const [filtri, setFiltri] = useState<Filtri>(FILTRI_VUOTI);
+  const [ordinamento, setOrdinamento] = useState<Ordinamento>('rilevanza');
   const [mutazioniInCorso, setMutazioniInCorso] = useState(0);
 
   const campo = useRef<HTMLInputElement>(null);
@@ -239,25 +242,46 @@ export function OrderScreen({
   // ciò che resta dopo il filtro: altrimenti scegliendo «Birre» sparirebbero
   // tutte le altre voci e non si potrebbe più tornare indietro.
   const { reparti, categoriePerReparto } = useMemo(() => raggruppa(risultati), [risultati]);
-  // Con un reparto solo — «Bevande», che è il caso di questa gelateria — la
-  // riga dei reparti non compare, ed è giusto: un filtro con una voce sola
-  // non filtra niente. Ma le categorie sotto vanno mostrate lo stesso, o non
-  // resta nessun filtro. Prima bisognava scegliere un reparto per vederle, e
-  // quel reparto non c'era da scegliere.
-  const categorie = reparto
-    ? (categoriePerReparto.get(reparto) ?? [])
+  // Con un reparto solo — «Bevande», che è il caso di questa gelateria — il
+  // filtro per reparto non compare, ed è giusto: un filtro con una voce sola
+  // non filtra niente. Ma le categorie vanno mostrate lo stesso, o non resta
+  // nessun filtro.
+  const categorie = filtri.reparto
+    ? (categoriePerReparto.get(filtri.reparto) ?? [])
     : reparti.length === 1
       ? (categoriePerReparto.get(reparti[0]!.id) ?? [])
-      : [];
+      : [...categoriePerReparto.values()].flat().sort((a, b) => a.nome.localeCompare(b.nome, 'it'));
 
   const mostrati = useMemo(() => {
-    if (!reparto && !categoria) return risultati;
-    return risultati.filter((r) => {
-      if (reparto && (r.category?.departmentId ?? 'senza') !== reparto) return false;
+    const filtrati = risultati.filter((r) => {
+      if (filtri.reparto && (r.category?.departmentId ?? 'senza') !== filtri.reparto) return false;
       if (categoria && (r.category?.id ?? 'senza') !== categoria) return false;
+      if (filtri.soloConfrontabili && !r.confrontato) return false;
+      if (filtri.nascondiNonOrdinabili && r.offerte.length === 0) return false;
       return true;
     });
-  }, [risultati, reparto, categoria]);
+
+    // L'ordinamento è **nel browser**, sull'elenco già arrivato: cambiarlo
+    // non fa aspettare niente. «Più rilevanti» non riordina affatto — è
+    // l'ordine in cui il server li ha dati, che per una ricerca è la
+    // pertinenza e per il catalogo intero è l'alfabeto.
+    if (ordinamento === 'rilevanza') return filtrati;
+
+    const prezzo = (r: (typeof filtrati)[number]) =>
+      r.offerte[0] ? Number(r.offerte[0].prezzoEffettivo) : null;
+
+    return [...filtrati].sort((a, b) => {
+      if (ordinamento === 'nome') return a.name.localeCompare(b.name, 'it');
+      const pa = prezzo(a);
+      const pb = prezzo(b);
+      // Chi non ha prezzo va in fondo in entrambi i versi: in cima a
+      // «prezzo crescente» sembrerebbe il più conveniente di tutti.
+      if (pa === null && pb === null) return 0;
+      if (pa === null) return 1;
+      if (pb === null) return -1;
+      return ordinamento === 'prezzo-su' ? pa - pb : pb - pa;
+    });
+  }, [risultati, categoria, filtri, ordinamento]);
 
   const perOfferta = useMemo(() => {
     const mappa = new Map<string, { rigaId: string; quantita: number }>();
@@ -291,18 +315,17 @@ export function OrderScreen({
 
   return (
     <div>
-      {/* Il catalogo prende tutta la pagina.
-          L'ordine stava in una colonna fissa a destra: venticinque
-          centimetri sempre occupati da una cosa che si guarda alla fine,
-          mentre l'elenco da cui si sceglie — quello su cui si passa tutto il
-          tempo — stava stretto. Ora l'ordine è una barra in basso che si
-          apre quando serve, e il resto è catalogo. */}
       <div>
-        <div className="bg-neutral-50/95 sticky top-0 z-20 -mx-4 space-y-2.5 px-4 pt-1 pb-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-2 lg:px-2">
+        {/* ── La testa della pagina ────────────────────────────────────
+            Ricerca, categorie e ordinamento restano appiccicati in cima:
+            sono i tre comandi con cui si naviga, e scorrendo verso il
+            quattrocentesimo prodotto devono restare a portata di pollice
+            invece di obbligare a risalire. */}
+        <div className="sticky top-0 z-20 -mx-4 space-y-2.5 bg-neutral-50/95 px-4 pt-1 pb-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-2 lg:px-2">
           <div className="relative">
             <AppIcon
               name="search"
-              className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-neutral-400"
+              className="pointer-events-none absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-neutral-400"
             />
             <input
               ref={campo}
@@ -310,58 +333,68 @@ export function OrderScreen({
               value={termine}
               onChange={(e) => setTermine(e.target.value)}
               onKeyDown={tasti}
-              placeholder="Cerca un prodotto, un codice, un sinonimo…"
+              placeholder="Cerca un prodotto…"
               aria-label="Cerca nel catalogo"
               autoComplete="off"
               inputMode="search"
-              className="focus:border-brand-500 focus:ring-brand-500/30 h-12 w-full rounded-xl border border-neutral-200 bg-white pr-11 pl-10 text-[15px] text-neutral-950 shadow-sm transition-colors outline-none placeholder:text-neutral-400 focus:ring-4"
+              className="focus:border-brand-500 focus:ring-brand-500/30 h-13 w-full rounded-2xl border border-neutral-200 bg-white pr-12 pl-11 text-neutral-950 shadow-sm transition-colors outline-none placeholder:text-neutral-400 focus:ring-4"
             />
             {termine && (
               <button
                 type="button"
                 onClick={() => setTermine('')}
                 aria-label="Azzera la ricerca"
-                className="absolute top-1/2 right-2 grid h-9 w-9 -translate-y-1/2 cursor-pointer place-items-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
+                className="absolute top-1/2 right-2 grid h-10 w-10 -translate-y-1/2 cursor-pointer place-items-center rounded-xl text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
               >
-                <span aria-hidden className="text-lg leading-none">
+                <span aria-hidden className="text-xl leading-none">
                   ×
                 </span>
               </button>
             )}
           </div>
 
-          <CatalogFilters
-            reparti={reparti}
+          <CategoryRail
             categorie={categorie}
-            repartoScelto={reparto}
-            categoriaScelta={categoria}
-            onReparto={(id) => {
-              setReparto(id);
-              setCategoria(null);
-              setSelezione(0);
-            }}
-            onCategoria={(id) => {
+            scelta={categoria}
+            totale={risultati.length}
+            onScegli={(id) => {
               setCategoria(id);
               setSelezione(0);
             }}
-            totale={risultati.length}
           />
 
-          <p className="flex items-center gap-2 text-xs text-neutral-500">
+          <CatalogToolbar
+            reparti={reparti}
+            filtri={filtri}
+            onFiltri={(f) => {
+              setFiltri(f);
+              setSelezione(0);
+            }}
+            ordinamento={ordinamento}
+            onOrdinamento={(o) => {
+              setOrdinamento(o);
+              setSelezione(0);
+            }}
+          />
+
+          <p className="flex items-center gap-2 px-1 text-xs text-neutral-500">
             <span>
               {cercando
                 ? 'Sto cercando…'
                 : `${mostrati.length} ${mostrati.length === 1 ? 'prodotto' : 'prodotti'}`}
               {mostrati.length !== risultati.length && ` su ${risultati.length}`}
             </span>
-            <span className="text-neutral-300">·</span>
-            <span>↑↓ per scegliere, Invio per aggiungere</span>
+            {/* Solo dove c'è una tastiera: su un telefono «Invio per
+                aggiungere» è un'istruzione per un tasto che non esiste. */}
+            <span className="hidden sm:inline">
+              <span className="text-neutral-300">·</span> ↑↓ per scegliere, Invio per aggiungere
+            </span>
           </p>
         </div>
 
         <ProductRail
           risultati={mostrati}
-          raggruppa={!categoria}
+          raggruppa={!categoria && ordinamento === 'rilevanza'}
           selezione={selezione}
           perOfferta={perOfferta}
           onSeleziona={setSelezione}
@@ -393,21 +426,49 @@ export function OrderScreen({
             </div>
           )}
 
-          <div className="flex items-stretch gap-2 rounded-2xl border border-neutral-200 bg-white/95 p-2 shadow-xl shadow-neutral-900/15 backdrop-blur">
+          <div
+            className={`flex items-stretch gap-2 rounded-2xl border-2 bg-white/95 p-2 shadow-xl shadow-neutral-900/15 backdrop-blur transition-colors ${
+              t.righe === 0 ? 'border-neutral-200' : 'border-brand-500'
+            }`}
+          >
             <button
               type="button"
               onClick={() => setSchedaOrdine((v) => !v)}
               aria-expanded={schedaOrdine}
-              className="focus-visible:ring-brand-600 flex min-h-12 flex-1 cursor-pointer items-center gap-3 rounded-xl px-3 text-left transition-colors hover:bg-neutral-50 focus-visible:ring-2 focus-visible:outline-none"
+              aria-label={schedaOrdine ? 'Chiudi il riepilogo dell’ordine' : 'Apri l’ordine'}
+              className="focus-visible:ring-brand-600 flex min-h-13 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-xl px-2 text-left transition-colors hover:bg-neutral-50 focus-visible:ring-2 focus-visible:outline-none sm:gap-3"
             >
-              <AppIcon
-                name="chevron"
-                className={`h-4 w-4 shrink-0 text-neutral-400 transition-transform ${
-                  schedaOrdine ? 'rotate-90' : '-rotate-90'
-                }`}
-              />
+              {/* Il cestino col numero sopra: è il segno che tutti hanno già
+                  imparato altrove, e dice quanto c'è dentro senza leggere. */}
+              <span className="relative shrink-0">
+                <span
+                  className={`grid h-10 w-10 place-items-center rounded-xl sm:h-11 sm:w-11 ${
+                    t.righe === 0 ? 'bg-neutral-100 text-neutral-400' : 'bg-brand-600 text-white'
+                  }`}
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    aria-hidden
+                    className="h-6 w-6"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.8}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M4 8h16l-1.4 10.2A2 2 0 0 1 16.6 20H7.4a2 2 0 0 1-2-1.8L4 8Z" />
+                    <path d="M8.5 8 12 3.5 15.5 8" />
+                  </svg>
+                </span>
+                {t.confezioni > 0 && (
+                  <span className="tabellare absolute -top-1.5 -right-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-neutral-900 px-1 text-[11px] font-bold text-white">
+                    {t.confezioni}
+                  </span>
+                )}
+              </span>
+
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold text-neutral-900">
+                <span className="block truncate text-sm font-bold text-neutral-900">
                   {t.righe === 0
                     ? 'Ordine vuoto'
                     : `${t.righe} ${t.righe === 1 ? 'prodotto' : 'prodotti'} · ${t.confezioni} conf.`}
@@ -416,33 +477,51 @@ export function OrderScreen({
                   {t.righe === 0
                     ? 'Premi + su un prodotto per cominciare'
                     : Number(t.ritornoAtteso) > 0
-                      ? `${euro(t.ritornoAtteso)} torneranno indietro per gli sconti concordati`
+                      ? `${euro(t.ritornoAtteso)} di sconti concordati`
                       : 'più IVA'}
                 </span>
               </span>
-              <span className="tabellare shrink-0 text-xl font-black text-neutral-950">
-                {euro(t.netto)}
-              </span>
+
+              {/* A ordine vuoto non c'è nessun totale da mostrare: «0,00 €»
+                  non informa, e i suoi settanta pixel troncavano la scritta
+                  accanto proprio quando serve leggerla per capire cosa fare. */}
+              {t.righe > 0 && (
+                <span className="tabellare shrink-0 text-lg font-black text-neutral-950 sm:pr-1 sm:text-xl">
+                  {euro(t.netto)}
+                </span>
+              )}
+              {/* La freccia solo dove c'è spazio: su un telefono stretto è il
+                  primo pezzo che si può togliere senza perdere niente, e
+                  toglierlo è ciò che tiene «Vai all'ordine» dentro lo
+                  schermo. */}
+              <AppIcon
+                name="chevron"
+                className={`hidden h-4 w-4 shrink-0 text-neutral-400 transition-transform sm:block ${
+                  schedaOrdine ? '-rotate-90' : 'rotate-90'
+                }`}
+              />
             </button>
 
             <Link
               href="/ordini/riepilogo"
               aria-disabled={t.righe === 0}
               tabIndex={t.righe === 0 ? -1 : undefined}
-              className={`inline-flex min-h-12 shrink-0 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
+              className={`inline-flex min-h-13 shrink-0 items-center gap-1.5 rounded-xl px-3 text-sm font-bold whitespace-nowrap transition-colors sm:px-4 ${
                 t.righe === 0
                   ? 'pointer-events-none bg-neutral-100 text-neutral-400'
                   : 'bg-brand-600 hover:bg-brand-700 cursor-pointer text-white'
               }`}
             >
-              Riepilogo
+              <span className="hidden min-[380px]:inline">Vai all’ordine</span>
+              <span className="min-[380px]:hidden">Ordine</span>
+              <AppIcon name="arrow-right" className="h-4 w-4 shrink-0" />
             </Link>
           </div>
         </div>
       </div>
 
-      {/* Lo spazio sotto l'elenco, o le ultime righe finiscono dietro la barra. */}
-      <div className="h-24" />
+      {/* Lo spazio sotto l'elenco, o le ultime card finiscono dietro la barra. */}
+      <div className="h-28" />
     </div>
   );
 }

@@ -1,329 +1,17 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { AppIcon } from '@/components/app-icon';
-import type { OffertaOrdinabile, RisultatoOrdinabile } from '@/features/orders/dto';
-import { CONFEZIONI_MAX, CONFEZIONI_MIN } from '@/features/orders/schema';
-import { euro, formatoConfezione } from '@/features/products/format';
-import { ColloBadge } from '@/components/products/collo-badge';
+import type { RisultatoOrdinabile } from '@/features/orders/dto';
+import { ProductCard } from './product-card';
 
 /**
- * Il catalogo da cui si ordina: una riga per prodotto, minimale.
+ * L'elenco dei prodotti, a card.
  *
- * Una riga sola in altezza, non una scheda. Con trecento prodotti la
- * differenza fra 44 e 96 pixel di riga è fra vederne dodici e vederne cinque,
- * e vederne dodici è la ragione per cui si scorre invece di cercare.
+ * ── Perché resta il raggruppamento per categoria ────────────────────────
+ * Cinquecento card di fila non hanno appigli: si scorre e si perde il segno.
+ * L'intestazione di categoria dice sempre in che parte del catalogo si è.
  *
- * Tutto ciò che serve a decidere sta su una riga: nome, formato, prezzo,
- * prezzo per unità e fornitore. Quello che serve a **capire** — gli altri
- * fornitori — si apre solo se lo si chiede.
- */
-
-function Quantita({
-  nome,
-  quantita,
-  onCambia,
-  onTogli,
-}: {
-  nome: string;
-  quantita: number;
-  onCambia: (q: number) => void;
-  onTogli: () => void;
-}) {
-  // `null` mentre non si sta scrivendo: così il campo segue le modifiche che
-  // arrivano da altrove (il «+», o l'ordine ricaricato) invece di restare
-  // fermo su quello che c'era quando si è aperta la pagina.
-  const [bozza, setBozza] = useState<string | null>(null);
-
-  function conferma() {
-    if (bozza === null) return;
-    const richiesta = Number(bozza);
-    setBozza(null);
-    // Un campo svuotato non vuol dire zero: vuol dire che ci si è ripensati.
-    if (!bozza.trim() || !Number.isFinite(richiesta)) return;
-    if (richiesta < CONFEZIONI_MIN) {
-      onTogli();
-      return;
-    }
-    const limitata = Math.min(richiesta, CONFEZIONI_MAX);
-    if (limitata !== quantita) onCambia(limitata);
-  }
-
-  return (
-    <span className="border-brand-200 bg-brand-50 flex items-center gap-0.5 rounded-lg border">
-      <button
-        type="button"
-        onClick={() => (quantita <= CONFEZIONI_MIN ? onTogli() : onCambia(quantita - 1))}
-        aria-label={quantita <= CONFEZIONI_MIN ? 'Togli dall’ordine' : 'Una confezione in meno'}
-        className="text-brand-800 hover:bg-brand-100 grid h-11 w-9 cursor-pointer place-items-center rounded-l-lg transition-colors"
-      >
-        <AppIcon name={quantita <= CONFEZIONI_MIN ? 'warning' : 'chevron'} className="hidden" />
-        <span aria-hidden className="text-lg leading-none font-bold">
-          {quantita <= CONFEZIONI_MIN ? '×' : '−'}
-        </span>
-      </button>
-      {/* Il numero si scrive.
-          Cinquanta casse d'acqua a colpi di «+» sono cinquanta clic, e chi
-          ordina lo fa una volta e poi torna a contare a mano su un foglio.
-          Si scrive e si conferma: Invio, o uscendo dal campo. */}
-      <input
-        type="text"
-        inputMode="numeric"
-        value={bozza ?? String(quantita)}
-        onChange={(e) => setBozza(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
-        onFocus={(e) => e.currentTarget.select()}
-        onBlur={() => conferma()}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            e.currentTarget.blur();
-          } else if (e.key === 'Escape') {
-            e.preventDefault();
-            setBozza(null);
-            e.currentTarget.blur();
-          }
-        }}
-        aria-label={`Confezioni di ${nome}`}
-        className="tabellare focus:bg-brand-100 w-10 cursor-text bg-transparent text-center text-sm font-black text-neutral-950 outline-none"
-      />
-      <button
-        type="button"
-        onClick={() => onCambia(Math.min(quantita + 1, CONFEZIONI_MAX))}
-        aria-label="Una confezione in più"
-        className="text-brand-800 hover:bg-brand-100 grid h-11 w-9 cursor-pointer place-items-center rounded-r-lg transition-colors"
-      >
-        <span aria-hidden className="text-lg leading-none font-bold">
-          +
-        </span>
-      </button>
-    </span>
-  );
-}
-
-function Offerta({
-  offerta,
-  compatta = false,
-}: {
-  offerta: OffertaOrdinabile;
-  compatta?: boolean;
-}) {
-  return (
-    <>
-      <span className="tabellare font-semibold text-neutral-950">{euro(offerta.priceNet)}</span>
-      {/* A cosa si riferisce la cifra: un collo da ventiquattro o una
-          bottiglia. Il prezzo al litro è sparito da qui — serve al confronto,
-          non a chi sta scegliendo quante casse ordinare, e su ogni riga
-          rubava lo spazio all'unica cosa che qui conta davvero. */}
-      <ColloBadge confezione={offerta} />
-      <span className={compatta ? 'text-neutral-500' : 'text-neutral-500'}>
-        {offerta.supplierName}
-      </span>
-      {Number(offerta.scontoExtraPct) > 0 && (
-        <span
-          className="rounded bg-violet-100 px-1.5 py-0.5 text-[11px] font-semibold text-violet-800"
-          title={`Sconto extra concordato: paghi ${euro(offerta.priceNet)} e ti tornano indietro ${euro(Number(offerta.priceNet) - Number(offerta.prezzoEffettivo))}`}
-        >
-          −{offerta.scontoExtraPct}% → {euro(offerta.prezzoEffettivo)}
-        </span>
-      )}
-      {offerta.migliore && (
-        <span className="rounded bg-green-100 px-1.5 py-0.5 text-[11px] font-semibold text-green-800">
-          migliore
-        </span>
-      )}
-      {offerta.stale && (
-        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800">
-          fermo
-        </span>
-      )}
-    </>
-  );
-}
-
-function Riga({
-  risultato,
-  attiva,
-  perOfferta,
-  onSeleziona,
-  onAggiungi,
-  onCambiaQuantita,
-  onRimuovi,
-}: {
-  risultato: RisultatoOrdinabile;
-  attiva: boolean;
-  perOfferta: Map<string, { rigaId: string; quantita: number }>;
-  onSeleziona: () => void;
-  onAggiungi: (supplierProductId: string) => void;
-  onCambiaQuantita: (rigaId: string, quantita: number) => void;
-  onRimuovi: (rigaId: string) => void;
-}) {
-  const prima0 = risultato.offerte[0];
-  const altre0 = risultato.offerte.slice(1);
-  // Le righe con più fornitori nascono **chiuse**.
-  //
-  // Prima nascevano aperte, per non far perdere il confronto. Con due
-  // fornitori e trecento prodotti funzionava; con nove fornitori e
-  // cinquecento no — un elenco in cui un terzo delle righe è alto il triplo
-  // delle altre non si scorre, e per arrivare alla lettera S si passa sopra
-  // duecento offerte che non si stavano cercando.
-  //
-  // Il confronto non si perde: sulla riga chiusa c'è già il fornitore
-  // migliore col suo prezzo, e accanto quanti altri ce l'hanno. Chi vuole
-  // vederli preme, e chi sta cercando la vodka scorre.
-  const [aperto, setAperto] = useState(false);
-  const elemento = useRef<HTMLLIElement>(null);
-
-  useEffect(() => {
-    if (attiva) elemento.current?.scrollIntoView({ block: 'nearest' });
-  }, [attiva]);
-
-  const prima = prima0;
-  const altre = altre0;
-  const gia = prima ? perOfferta.get(prima.supplierProductId) : undefined;
-
-  return (
-    <li
-      ref={elemento}
-      onMouseEnter={onSeleziona}
-      className={`border-l-2 transition-colors ${
-        attiva ? 'border-brand-500 bg-brand-50/40' : 'border-transparent hover:bg-neutral-50'
-      }`}
-    >
-      <div className="flex items-center gap-3 py-3 pr-3 pl-4">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] leading-5 font-semibold text-neutral-950">
-            {risultato.name}
-          </p>
-          {/* Il formato del pezzo sta dentro l'etichetta del collo, non anche
-              qui accanto: scriverlo due volte non lo rende più chiaro. E il
-              «collo da N» in coda era una terza ripetizione della stessa
-              cosa, con un colore tutto suo. */}
-          <p className="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-xs">
-            {prima ? (
-              <Offerta offerta={prima} />
-            ) : (
-              <>
-                <span className="text-neutral-500">
-                  {formatoConfezione(risultato.unitSize, risultato.unitOfMeasure, 1)}
-                </span>
-                <span className="text-amber-700">{risultato.nonOrdinabile}</span>
-              </>
-            )}
-          </p>
-        </div>
-
-        {altre.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setAperto((v) => !v)}
-            aria-expanded={aperto}
-            aria-label={
-              aperto
-                ? `Nascondi gli altri fornitori di ${risultato.name}`
-                : `Mostra gli altri ${altre.length} fornitori di ${risultato.name}`
-            }
-            title={aperto ? 'Nascondi gli altri fornitori' : `Altri ${altre.length} fornitori`}
-            className={`flex h-11 shrink-0 cursor-pointer items-center gap-1 rounded-lg px-2 text-xs font-semibold transition-colors ${
-              aperto ? 'bg-neutral-100 text-neutral-700' : 'text-brand-700 hover:bg-brand-50'
-            }`}
-          >
-            {/* Il numero, non una freccia muta: da chiusa la riga deve dire
-                che sotto c'è un confronto, o nessuno la apre. */}
-            <span aria-hidden>+{altre.length}</span>
-            <AppIcon
-              name="chevron"
-              className={`h-3.5 w-3.5 transition-transform ${aperto ? 'rotate-90' : ''}`}
-            />
-          </button>
-        )}
-
-        {prima &&
-          (gia ? (
-            <Quantita
-              nome={risultato.name}
-              quantita={gia.quantita}
-              onCambia={(q) => onCambiaQuantita(gia.rigaId, q)}
-              onTogli={() => onRimuovi(gia.rigaId)}
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={() => onAggiungi(prima.supplierProductId)}
-              aria-label={`Aggiungi ${risultato.name} all’ordine`}
-              className="bg-brand-600 hover:bg-brand-700 focus-visible:ring-brand-600 grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-lg text-white transition-colors focus-visible:ring-2 focus-visible:outline-none"
-            >
-              <span aria-hidden className="text-xl leading-none font-bold">
-                +
-              </span>
-            </button>
-          ))}
-      </div>
-
-      {aperto && altre.length > 0 && (
-        <>
-          {/* Perché guardare le alternative: senza questa riga sono solo altri
-              numeri, e restano lì senza far decidere niente. */}
-          {risultato.confrontato && risultato.risparmioPerConfezione && (
-            <p className="border-t border-neutral-100 bg-green-50/60 px-6 py-1 text-xs text-green-900">
-              Conviene da <strong>{prima!.supplierName}</strong>:{' '}
-              <strong>{euro(risultato.risparmioPerConfezione)}</strong> in meno a confezione
-              rispetto all’altro fornitore.
-            </p>
-          )}
-          <ul className="space-y-1 border-t border-neutral-100 bg-neutral-50/70 py-1.5 pr-2 pl-6">
-            {altre.map((offerta) => {
-              const suo = perOfferta.get(offerta.supplierProductId);
-              return (
-                <li key={offerta.supplierProductId} className="flex items-center gap-3">
-                  <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 text-xs">
-                    <Offerta offerta={offerta} compatta />
-                    <span className="text-neutral-400">
-                      {formatoConfezione(
-                        offerta.unitSize,
-                        offerta.unitOfMeasure,
-                        offerta.packQuantity,
-                      )}
-                    </span>
-                  </span>
-                  {suo ? (
-                    <Quantita
-                      nome={`${risultato.name} da ${offerta.supplierName}`}
-                      quantita={suo.quantita}
-                      onCambia={(q) => onCambiaQuantita(suo.rigaId, q)}
-                      onTogli={() => onRimuovi(suo.rigaId)}
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => onAggiungi(offerta.supplierProductId)}
-                      aria-label={`Aggiungi ${risultato.name} da ${offerta.supplierName}`}
-                      className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-lg border border-neutral-300 bg-white text-neutral-700 transition-colors hover:border-neutral-400"
-                    >
-                      <span aria-hidden className="text-lg leading-none font-bold">
-                        +
-                      </span>
-                    </button>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </>
-      )}
-    </li>
-  );
-}
-
-/**
- * L'elenco, spezzato per categoria.
- *
- * Un elenco di trecento righe di fila non ha appigli: si scorre e si perde il
- * segno. Le intestazioni di categoria restano appiccicate in cima mentre si
- * scorre, così si sa **sempre** in che parte del catalogo si è — e per saltare
- * altrove ci sono i filtri, non il rotolamento.
- *
- * Quando si è già scelta una categoria non si raggruppa: sarebbe un gruppo
- * solo, con l'intestazione a ripetere il filtro appena premuto.
+ * Quando una categoria è già stata scelta non si raggruppa: sarebbe un
+ * gruppo solo, con l'intestazione a ripetere il filtro appena premuto.
  */
 export function ProductRail({
   risultati,
@@ -352,8 +40,8 @@ export function ProductRail({
     );
   }
 
-  const riga = (risultato: RisultatoOrdinabile, indice: number) => (
-    <Riga
+  const card = (risultato: RisultatoOrdinabile, indice: number) => (
+    <ProductCard
       key={risultato.productId}
       risultato={risultato}
       attiva={indice === selezione}
@@ -367,11 +55,8 @@ export function ProductRail({
 
   if (!raggruppa) {
     return (
-      <ul
-        className="divide-y divide-neutral-100 overflow-hidden rounded-2xl border border-neutral-200 bg-white"
-        aria-label="Prodotti da ordinare"
-      >
-        {risultati.map(riga)}
+      <ul className="space-y-2" aria-label="Prodotti da ordinare">
+        {risultati.map(card)}
       </ul>
     );
   }
@@ -393,24 +78,17 @@ export function ProductRail({
   });
 
   return (
-    <div
-      className="overflow-hidden rounded-2xl border border-neutral-200 bg-white"
-      aria-label="Prodotti da ordinare"
-    >
-      {gruppi.map((gruppo, i) => (
-        <section key={gruppo.chiave} className={i === 0 ? '[&>h3]:border-t-0' : undefined}>
-          {/* Non appiccicate in cima: sopra c'è già una barra sticky di
-              altezza variabile — ricerca, reparti, categorie — e qualunque
-              scostamento fisso finisce per coprire una riga. Una riga coperta
-              è la riga che si stava per premere. */}
-          <h3 className="flex items-baseline justify-between gap-2 border-y border-neutral-200 bg-neutral-100 px-4 py-2 text-xs font-bold tracking-wider text-neutral-600 uppercase">
+    <div className="space-y-4" aria-label="Prodotti da ordinare">
+      {gruppi.map((gruppo) => (
+        <section key={gruppo.chiave}>
+          <h3 className="mb-2 flex items-baseline justify-between gap-2 px-1 text-xs font-bold tracking-wider text-neutral-500 uppercase">
             <span className="truncate">{gruppo.nome}</span>
             <span className="tabellare shrink-0 font-normal text-neutral-400">
               {gruppo.indici.length}
             </span>
           </h3>
-          <ul className="divide-y divide-neutral-100">
-            {gruppo.indici.map((indice) => riga(risultati[indice]!, indice))}
+          <ul className="space-y-2">
+            {gruppo.indici.map((indice) => card(risultati[indice]!, indice))}
           </ul>
         </section>
       ))}

@@ -43,6 +43,14 @@ export interface RisultatoOrdinabile {
   name: string;
   brand: string | null;
   category: ProductCategoryRef | null;
+  /**
+   * Dove chiedere la foto, o `null` se non ne abbiamo una.
+   *
+   * È un indirizzo **nostro**, non quello della fonte da cui la foto viene:
+   * la CSP consente immagini solo da noi, e comunque nessuno deve poter
+   * dedurre il catalogo guardando a chi chiediamo le figure.
+   */
+  imageUrl: string | null;
   unitSize: string;
   unitOfMeasure: UnitOfMeasureValue;
   /** Le offerte ordinabili, dalla più conveniente. Vuota = non ordinabile. */
