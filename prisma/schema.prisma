@@ -590,8 +590,9 @@ model Product {
   /// chiedere alla fonte una foto per prodotto a ogni apertura della pagina.
   imagePath String? @map("image_path")
 
-  /// Da dove viene: `OFF` Open Food Facts, `MANUAL` caricata a mano,
-  /// `NONE` cercata e non trovata. `NONE` **non** è un fallimento da
+  /// Da dove viene: `AD_BEVERAGE` catalogo ufficiale AD, `OFF` Open Food
+  /// Facts, `MANUAL` caricata a mano, `NONE` cercata e non trovata.
+  /// `NONE` **non** è un fallimento da
   /// ritentare a ogni giro: è una risposta, e ricordarla è ciò che impedisce
   /// di richiedere ogni notte le stesse quattrocento foto che non esistono.
   imageSource String? @map("image_source")

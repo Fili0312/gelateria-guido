@@ -56,6 +56,8 @@ describe('EAN', () => {
 describe('formato', () => {
   it('lo scrive come una persona', () => {
     assert.equal(formatoLeggibile('1', 'LITER'), '1 L');
+    assert.equal(formatoLeggibile('1', 'L'), '1 L');
+    assert.equal(formatoLeggibile('70', 'CL'), '70 cl');
     assert.equal(formatoLeggibile('0.5', 'LITER'), '0.5 L');
     assert.equal(formatoLeggibile('0', 'LITER'), null);
   });

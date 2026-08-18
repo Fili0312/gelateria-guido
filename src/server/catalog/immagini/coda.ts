@@ -59,7 +59,17 @@ export async function cercaFotoMancanti(
         // Solo quelli di cui sappiamo il produttore: senza marca la ricerca
         // quasi sempre risponde «non trovata», e quel «non trovata» resta
         // scritto. Meglio lasciarli in coda per quando la marca ci sarà.
-        brand: { not: null },
+        OR: [
+          { brand: { not: null } },
+          {
+            supplierProducts: {
+              some: {
+                active: true,
+                supplier: { name: { equals: 'AD Beverage', mode: 'insensitive' } },
+              },
+            },
+          },
+        ],
       },
       select: {
         id: true,
@@ -69,6 +79,10 @@ export async function cercaFotoMancanti(
         unitSize: true,
         unitOfMeasure: true,
         category: { select: { name: true } },
+        supplierProducts: {
+          where: { active: true },
+          select: { supplier: { select: { name: true } } },
+        },
       },
       take: massimo,
     });
@@ -83,6 +97,7 @@ export async function cercaFotoMancanti(
           unitSize: p.unitSize.toString(),
           unitOfMeasure: p.unitOfMeasure,
           categoria: p.category?.name ?? null,
+          fornitori: p.supplierProducts.map((offerta) => offerta.supplier.name),
         },
         comuni,
       );

@@ -45,6 +45,8 @@ export interface DatiProdotto {
   categoria?: string | null;
   unitSize?: string | number | null;
   unitOfMeasure?: string | null;
+  /** Fornitori attivi: AD si consulta soltanto quando compare qui. */
+  fornitori?: readonly string[];
 }
 
 /**
@@ -147,12 +149,20 @@ export function formatoLeggibile(
   const quanto = Number(unitSize);
   if (!Number.isFinite(quanto) || quanto <= 0) return null;
   const sigla: Record<string, string> = {
+    L: 'L',
+    DL: 'dl',
+    CL: 'cl',
+    ML: 'ml',
+    KG: 'kg',
+    HG: 'hg',
+    G: 'g',
+    MG: 'mg',
+    PIECE: 'pz',
     LITER: 'L',
     MILLILITER: 'ml',
     CENTILITER: 'cl',
     KILOGRAM: 'kg',
     GRAM: 'g',
-    PIECE: 'pz',
   };
   const um = sigla[unitOfMeasure ?? ''] ?? null;
   if (!um) return null;

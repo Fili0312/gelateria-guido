@@ -59,7 +59,21 @@ async function main() {
           // catalogo, e per recuperarlo servirebbe un `--riprova` che nessuno
           // saprebbe di dover fare. Con `--anche-senza-marca` lo si fa
           // apposta, sapendo cosa si sta facendo.
-          ...(senzaMarca ? {} : { brand: { not: null } }),
+          ...(senzaMarca
+            ? {}
+            : {
+                OR: [
+                  { brand: { not: null } },
+                  {
+                    supplierProducts: {
+                      some: {
+                        active: true,
+                        supplier: { name: { equals: 'AD Beverage', mode: 'insensitive' } },
+                      },
+                    },
+                  },
+                ],
+              }),
         },
     select: {
       id: true,
@@ -70,6 +84,10 @@ async function main() {
       unitSize: true,
       unitOfMeasure: true,
       category: { select: { name: true } },
+      supplierProducts: {
+        where: { active: true },
+        select: { supplier: { select: { name: true } } },
+      },
     },
     // I mai cercati per primi: un'interruzione a metà non deve far ripartire
     // dallo stesso punto la volta dopo.
@@ -103,6 +121,7 @@ async function main() {
         unitSize: p.unitSize.toString(),
         unitOfMeasure: p.unitOfMeasure,
         categoria: p.category?.name ?? null,
+        fornitori: p.supplierProducts.map((offerta) => offerta.supplier.name),
       },
       comuni,
     );

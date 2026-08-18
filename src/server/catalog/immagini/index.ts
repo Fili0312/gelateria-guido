@@ -1,6 +1,12 @@
 import 'server-only';
 
 import { prismaForOrganization } from '@/server/db';
+import {
+  cercaAdBeverage,
+  estraiImmagineAdBeverage,
+  isFornitoreAdBeverage,
+  scaricaImmagineAdBeverage,
+} from './ad-beverage';
 import { salvaImmagine } from './archivio';
 import { perEan, perTesto, scarica, type SchedaTrovata } from './open-food-facts';
 import { normalizza, type DatiProdotto, type ProdottoNormalizzato } from './normalizza';
@@ -12,12 +18,12 @@ import { SOGLIA_AUTOMATICA, valuta } from './punteggio';
  *
  * ── L'ordine, e perché è questo ─────────────────────────────────────────
  *
- *   EAN  →  ricerca per testo  →  niente
+ *   AD Beverage (solo suoi prodotti)  →  EAN OFF  →  testo OFF  →  niente
  *
- * L'EAN per primo perché **è** il prodotto: quando c'è, non c'è niente da
- * giudicare. La ricerca testuale dopo, e col punteggio davanti, perché lì
- * si sta indovinando — e indovinare bene ottantacinque volte su cento
- * significa che quindici prodotti su cento avrebbero la foto di qualcos'altro.
+ * Il catalogo ufficiale viene prima soltanto se il prodotto ha un'offerta
+ * AD attiva e supera la soglia dedicata 0,90. Per tutti gli altri prodotti
+ * il flusso resta identico. Dentro OFF, l'EAN viene prima perché **è** il
+ * prodotto; la ricerca testuale arriva dopo col punteggio davanti.
  *
  * «Niente» è un esito legittimo e viene **scritto a database**, non solo
  * subito: senza, ogni riempimento ripartirebbe da capo sugli stessi
@@ -31,7 +37,7 @@ import { SOGLIA_AUTOMATICA, valuta } from './punteggio';
  * Al posto della foto sbagliata c'è un'icona che si dichiara tale.
  */
 
-export type FonteImmagine = 'OFF' | 'MANUAL' | 'NONE';
+export type FonteImmagine = 'AD_BEVERAGE' | 'OFF' | 'MANUAL' | 'NONE';
 
 export interface EsitoImmagine {
   trovata: boolean;
@@ -73,6 +79,27 @@ export async function cercaImmagine(
   comuni: ReadonlySet<string> = new Set(),
 ): Promise<EsitoImmagine> {
   const dati: ProdottoNormalizzato = normalizza(prodotto);
+
+  if (prodotto.fornitori?.some(isFornitoreAdBeverage)) {
+    const ad = await cercaAdBeverage(prodotto);
+    if (ad.accettato && ad.prodotto && estraiImmagineAdBeverage(ad.prodotto)) {
+      const file = await scaricaImmagineAdBeverage(ad.prodotto);
+      if (file) {
+        const percorso = await salvaImmagine(file.dati, file.tipo);
+        if (percorso) {
+          return {
+            trovata: true,
+            percorso,
+            fonte: 'AD_BEVERAGE',
+            idEsterno: ad.prodotto.codice ?? ad.prodotto.id,
+            confidenza: ad.confidenza,
+            motivo: ad.motivo,
+          };
+        }
+      }
+    }
+  }
+
   const riferimento = {
     nome: dati.name,
     marca: dati.brand,
@@ -104,7 +131,11 @@ export async function cercaImmagine(
     // sarebbe fidarsi dell'ordinamento della fonte, che ordina per
     // popolarità: cercando «absolut» il primo risultato è un sugo per la
     // pasta della Heinz che ha la vodka fra gli ingredienti.
-    let migliore: { scheda: SchedaTrovata; confidenza: number; motivo: string } | null = null;
+    let migliore: {
+      scheda: SchedaTrovata;
+      confidenza: number;
+      motivo: string;
+    } | null = null;
     for (const scheda of candidati) {
       const esito = valuta(riferimento, scheda, comuni);
       if (!migliore || esito.confidenza > migliore.confidenza) {
@@ -168,6 +199,10 @@ export async function aggiornaImmagineProdotto(
       unitSize: true,
       unitOfMeasure: true,
       category: { select: { name: true } },
+      supplierProducts: {
+        where: { active: true },
+        select: { supplier: { select: { name: true } } },
+      },
     },
   });
   if (!prodotto) return NIENTE('prodotto inesistente');
@@ -180,6 +215,7 @@ export async function aggiornaImmagineProdotto(
       unitSize: prodotto.unitSize.toString(),
       unitOfMeasure: prodotto.unitOfMeasure,
       categoria: prodotto.category?.name ?? null,
+      fornitori: prodotto.supplierProducts.map((offerta) => offerta.supplier.name),
     },
     await paroleComuni(organizationId),
   );
