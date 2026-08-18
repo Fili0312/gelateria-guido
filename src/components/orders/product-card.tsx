@@ -208,14 +208,14 @@ export function ProductCard({
         gia ? 'border-brand-300 bg-brand-50/50' : 'border-neutral-200'
       }`}
     >
-      {/* `flex-wrap` con una larghezza minima al testo.
-          Quando un prodotto entra nell'ordine il «+» diventa il comando
-          quantità, che è largo il triplo: a trecentoventi pixel il nome si
-          riduceva a sessanta e si troncava. Così, quando i tre blocchi non
-          ci stanno, il comando scende da solo su una riga sua invece di
-          rubare spazio al nome — e il nome è l'unica cosa che non si può
-          troncare. */}
-      <div className="flex flex-wrap items-center gap-3 p-3 min-[400px]:gap-3.5 min-[400px]:p-3.5">
+      {/* Una riga sola, sempre.
+          Il ritorno a capo automatico dava card alte duecentottanta pixel a
+          trecentoventi e centosettanta a trecentonovanta: scorrendo, la
+          stessa lista cambiava passo a seconda del telefono. Le misure
+          scalano invece coi punti d'interruzione — foto, prezzo e comando
+          quantità si stringono tutti — e il nome tiene sempre le sue due
+          righe con dentro le parole che distinguono il prodotto. */}
+      <div className="flex items-center gap-3 p-3 min-[400px]:gap-3.5 min-[400px]:p-3.5">
         <FotoProdotto
           src={risultato.imageUrl}
           nome={risultato.name}
@@ -223,7 +223,7 @@ export function ProductCard({
           className="h-[4.75rem] w-12 min-[360px]:h-[5.5rem] min-[360px]:w-16 min-[400px]:h-[6rem] sm:h-[6.5rem] sm:w-[4.5rem]"
         />
 
-        <div className="min-w-[7rem] flex-1">
+        <div className="min-w-0 flex-1">
           {risultato.category && (
             <p className="truncate text-[11px] font-semibold tracking-wide text-neutral-400 uppercase">
               {risultato.category.name}
