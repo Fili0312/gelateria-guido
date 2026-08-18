@@ -67,7 +67,7 @@ function Quantita({
         type="button"
         onClick={() => (meno ? onTogli() : onCambia(quantita - 1))}
         aria-label={meno ? `Togli ${nome} dall’ordine` : 'Una confezione in meno'}
-        className="text-brand-800 hover:bg-brand-100 active:bg-brand-200 grid h-12 w-10 cursor-pointer place-items-center rounded-l-xl transition-colors min-[400px]:w-11"
+        className="text-brand-800 hover:bg-brand-100 active:bg-brand-200 grid h-12 w-9 cursor-pointer place-items-center rounded-l-xl transition-colors min-[400px]:w-10"
       >
         <span aria-hidden className="text-xl leading-none font-bold">
           {meno ? '×' : '−'}
@@ -94,13 +94,13 @@ function Quantita({
           }
         }}
         aria-label={`Confezioni di ${nome}`}
-        className="tabellare focus:bg-brand-100 w-9 cursor-text bg-transparent text-center font-bold text-neutral-950 outline-none min-[400px]:w-10"
+        className="tabellare focus:bg-brand-100 w-8 cursor-text bg-transparent text-center font-bold text-neutral-950 outline-none min-[400px]:w-9"
       />
       <button
         type="button"
         onClick={() => onCambia(Math.min(quantita + 1, CONFEZIONI_MAX))}
         aria-label="Una confezione in più"
-        className="text-brand-800 hover:bg-brand-100 active:bg-brand-200 grid h-12 w-10 cursor-pointer place-items-center rounded-r-xl transition-colors min-[400px]:w-11"
+        className="text-brand-800 hover:bg-brand-100 active:bg-brand-200 grid h-12 w-9 cursor-pointer place-items-center rounded-r-xl transition-colors min-[400px]:w-10"
       >
         <span aria-hidden className="text-xl leading-none font-bold">
           +
@@ -238,15 +238,18 @@ export function ProductCard({
                     ? `Nascondi gli altri fornitori di ${risultato.name}`
                     : `Mostra gli altri ${altre.length} fornitori di ${risultato.name}`
                 }
-                className="-my-1.5 -mr-1.5 inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-0.5 rounded-lg px-1.5 text-[11px] font-medium whitespace-nowrap text-neutral-500 transition-colors hover:text-neutral-800"
+                className="-my-1.5 -mr-1 inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-0.5 rounded-lg px-1 text-[11px] font-semibold whitespace-nowrap text-neutral-400 transition-colors hover:text-neutral-700"
               >
                 {/* Il numero, non una freccia muta: da chiusa la card deve
                     dire che sotto c'è un confronto, o nessuno la apre. Ma in
                     grigio e in piccolo — è una seconda scelta, e non deve
                     competere col bottone verde. */}
-                <span aria-hidden>
-                  +{altre.length} {altre.length === 1 ? 'fornitore' : 'fornitori'}
-                </span>
+                {/* Solo il numero: la parola per esteso si portava via
+                    ottanta pixel sulla riga della categoria, e «VODKA»
+                    diventava «VOD…». Cosa significhi lo dice l'etichetta
+                    per chi non vede lo schermo, e la freccia per chi lo
+                    vede. */}
+                <span aria-hidden>+{altre.length}</span>
                 <AppIcon
                   name="chevron"
                   className={`h-3 w-3 transition-transform ${aperto ? 'rotate-90' : ''}`}
@@ -305,7 +308,7 @@ export function ProductCard({
             tocco finiva altrove. Lo spazio del comando c'è già prima che
             serva, quindi non si muove niente. */}
         {prima && (
-          <div className="ml-auto flex w-[7.5rem] shrink-0 flex-col items-end gap-2.5 min-[400px]:w-[8.25rem]">
+          <div className="ml-auto flex w-[6.5rem] shrink-0 flex-col items-end gap-2 min-[400px]:w-[7.25rem]">
             <Prezzo offerta={prima} grande />
             {gia ? (
               <Quantita
