@@ -61,21 +61,25 @@ function Quantita({
 
   const meno = quantita <= CONFEZIONI_MIN;
 
+  // Una pastiglia tonda, **accanto** al bottone e non al suo posto.
+  //
+  // Il «+» resta dov'è e continua ad aggiungere: aggiungendo la seconda
+  // confezione il dito non deve cercare un altro bersaglio. La pastiglia
+  // compare a sinistra, nello spazio che era già riservato, e serve a
+  // togliere o a scrivere il numero — cinquanta casse d'acqua non si fanno
+  // a colpi di «+».
   return (
-    <span className="border-brand-300 bg-brand-50 flex items-center rounded-xl border">
+    <span className="border-brand-200 bg-brand-50 flex shrink-0 items-center rounded-full border">
       <button
         type="button"
         onClick={() => (meno ? onTogli() : onCambia(quantita - 1))}
         aria-label={meno ? `Togli ${nome} dall’ordine` : 'Una confezione in meno'}
-        className="text-brand-800 hover:bg-brand-100 active:bg-brand-200 grid h-12 w-9 cursor-pointer place-items-center rounded-l-xl transition-colors min-[400px]:w-10"
+        className="text-brand-700 hover:bg-brand-100 active:bg-brand-200 grid h-11 w-8 cursor-pointer place-items-center rounded-l-full transition-colors"
       >
-        <span aria-hidden className="text-xl leading-none font-bold">
+        <span aria-hidden className="text-base leading-none font-bold">
           {meno ? '×' : '−'}
         </span>
       </button>
-      {/* Il numero si scrive.
-          Cinquanta casse d'acqua a colpi di «+» sono cinquanta pressioni, e
-          chi ordina lo fa una volta e poi torna al foglio di carta. */}
       <input
         type="text"
         inputMode="numeric"
@@ -94,18 +98,8 @@ function Quantita({
           }
         }}
         aria-label={`Confezioni di ${nome}`}
-        className="tabellare focus:bg-brand-100 w-8 cursor-text bg-transparent text-center font-bold text-neutral-950 outline-none min-[400px]:w-9"
+        className="tabellare focus:bg-brand-100 h-11 w-7 cursor-text rounded-r-full bg-transparent pr-0.5 text-center text-[15px] font-bold text-neutral-950 outline-none"
       />
-      <button
-        type="button"
-        onClick={() => onCambia(Math.min(quantita + 1, CONFEZIONI_MAX))}
-        aria-label="Una confezione in più"
-        className="text-brand-800 hover:bg-brand-100 active:bg-brand-200 grid h-12 w-9 cursor-pointer place-items-center rounded-r-xl transition-colors min-[400px]:w-10"
-      >
-        <span aria-hidden className="text-xl leading-none font-bold">
-          +
-        </span>
-      </button>
     </span>
   );
 }
@@ -116,11 +110,19 @@ function Aggiungi({ etichetta, onClick }: { etichetta: string; onClick: () => vo
       type="button"
       onClick={onClick}
       aria-label={etichetta}
-      className="bg-brand-600 hover:bg-brand-700 active:bg-brand-900 focus-visible:ring-brand-600 grid h-12 w-12 shrink-0 cursor-pointer place-items-center rounded-[0.9rem] text-white transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+      className="bg-brand-600 hover:bg-brand-700 active:bg-brand-800 focus-visible:ring-brand-600 grid h-12 w-12 shrink-0 cursor-pointer place-items-center rounded-full text-white transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
     >
-      <span aria-hidden className="text-2xl leading-none font-light">
-        +
-      </span>
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden
+        className="h-6 w-6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2.2}
+        strokeLinecap="round"
+      >
+        <path d="M12 5.5v13M5.5 12h13" />
+      </svg>
     </button>
   );
 }
@@ -137,9 +139,7 @@ function Prezzo({ offerta, grande }: { offerta: OffertaOrdinabile; grande: boole
           // Un filo più piccolo sui telefoni stretti: a 320 pixel ogni
           // millimetro tolto qui è un millimetro dato al nome, che è
           // l'unica cosa che davvero non può essere troncata.
-          grande
-            ? 'text-[1.25rem] min-[360px]:text-[1.4rem] min-[400px]:text-[1.6rem]'
-            : 'text-base'
+          grande ? 'text-[1.3rem] min-[400px]:text-[1.45rem]' : 'text-base'
         }`}
       >
         {euro(offerta.priceNet)}
@@ -215,19 +215,23 @@ export function ProductCard({
           scalano invece coi punti d'interruzione — foto, prezzo e comando
           quantità si stringono tutti — e il nome tiene sempre le sue due
           righe con dentro le parole che distinguono il prodotto. */}
-      <div className="flex items-center gap-3 p-3 min-[400px]:gap-3.5 min-[400px]:p-3.5">
+      <div className="flex items-center gap-2.5 py-3 pr-3 pl-0 min-[400px]:gap-3 min-[400px]:pr-3.5">
         <FotoProdotto
           src={risultato.imageUrl}
           nome={risultato.name}
           categoria={risultato.category?.name}
-          className="h-[4.75rem] w-12 min-[360px]:h-[5.5rem] min-[360px]:w-16 min-[400px]:h-[6rem] sm:h-[6.5rem] sm:w-[4.5rem]"
+          className="-ml-1 h-[5.5rem] w-[4.25rem] min-[360px]:h-[6.25rem] min-[360px]:w-[4.75rem] min-[400px]:h-[6.75rem] min-[400px]:w-[5.25rem]"
         />
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <p className="truncate text-[11px] font-semibold tracking-wide text-violet-600 uppercase">
-              {risultato.category?.name ?? ''}
-            </p>
+            {risultato.category ? (
+              <span className="truncate rounded-md bg-violet-50 px-1.5 py-0.5 text-[10.5px] font-bold tracking-wide text-violet-600 uppercase">
+                {risultato.category.name}
+              </span>
+            ) : (
+              <span />
+            )}
             {altre.length > 0 && (
               <button
                 type="button"
@@ -268,13 +272,13 @@ export function ProductCard({
               restano ottantaquattro pixel: in due righe ci sta «Absolut
               Citron…», che è di nuovo il troncamento da cui siamo partiti.
               Venti pixel di card in più valgono il nome intero. */}
-          <p className="mt-1 line-clamp-3 text-[15px] leading-[1.3] font-semibold text-neutral-950 min-[360px]:text-[16px] min-[400px]:line-clamp-2 min-[400px]:text-[17px] min-[400px]:leading-[1.25]">
+          <p className="mt-1 line-clamp-3 text-[15px] leading-[1.25] font-bold text-neutral-950 min-[360px]:text-[16px] min-[400px]:line-clamp-2 min-[400px]:text-[17.5px]">
             {nomeLeggibile(risultato.name)}
           </p>
 
           {prima ? (
             <>
-              <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-neutral-500">
+              <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12.5px] text-neutral-500">
                 <ColloBadge confezione={prima} />
                 <span className="truncate">{prima.supplierName}</span>
               </p>
@@ -308,21 +312,30 @@ export function ProductCard({
             tocco finiva altrove. Lo spazio del comando c'è già prima che
             serva, quindi non si muove niente. */}
         {prima && (
-          <div className="ml-auto flex w-[6.5rem] shrink-0 flex-col items-end gap-2 min-[400px]:w-[7.25rem]">
+          <div className="ml-auto flex w-[6.5rem] shrink-0 flex-col items-end gap-2 min-[400px]:w-[7.5rem]">
             <Prezzo offerta={prima} grande />
-            {gia ? (
-              <Quantita
-                nome={risultato.name}
-                quantita={gia.quantita}
-                onCambia={(q) => onCambiaQuantita(gia.rigaId, q)}
-                onTogli={() => onRimuovi(gia.rigaId)}
-              />
-            ) : (
+            <div className="flex items-center gap-1.5">
+              {gia && (
+                <Quantita
+                  nome={risultato.name}
+                  quantita={gia.quantita}
+                  onCambia={(q) => onCambiaQuantita(gia.rigaId, q)}
+                  onTogli={() => onRimuovi(gia.rigaId)}
+                />
+              )}
               <Aggiungi
-                etichetta={`Aggiungi ${risultato.name} all’ordine`}
-                onClick={() => onAggiungi(prima.supplierProductId)}
+                etichetta={
+                  gia
+                    ? `Un’altra confezione di ${risultato.name}`
+                    : `Aggiungi ${risultato.name} all’ordine`
+                }
+                onClick={() =>
+                  gia
+                    ? onCambiaQuantita(gia.rigaId, Math.min(gia.quantita + 1, CONFEZIONI_MAX))
+                    : onAggiungi(prima.supplierProductId)
+                }
               />
-            )}
+            </div>
           </div>
         )}
       </div>
