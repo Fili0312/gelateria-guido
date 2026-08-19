@@ -73,9 +73,9 @@ export function ClassifyButton({
       // prodotti, e dirlo è più utile di «0 classificati».
       if (d.senzaCategorie) {
         toast({
-          title: 'Non ci sono categorie',
+          title: 'Nessuna categoria definita',
           description:
-            'I prodotti si classificano dentro le categorie che crei tu: aprine qualcuna in «Reparti e categorie» e riprova.',
+            'La classificazione utilizza le categorie definite in anagrafica: crearne almeno una in «Reparti e categorie» e riprovare.',
           tone: 'error',
         });
         return;
@@ -109,7 +109,7 @@ export function ClassifyButton({
           disabled={attesa !== null}
           onClick={() => void classifica(false)}
           className="focus-visible:ring-brand-600 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 text-sm font-semibold text-neutral-800 transition-colors hover:border-neutral-400 disabled:cursor-wait disabled:opacity-60 focus-visible:ring-2 focus-visible:outline-none"
-          title="Guarda le parole della descrizione. Non costa niente."
+          title="Classificazione basata sui termini della descrizione. Nessun costo."
         >
           <AppIcon name="check" className="h-4 w-4" />
           {attesa === 'regola' ? 'Sto classificando…' : `Classifica ${daClassificare}`}
@@ -122,7 +122,7 @@ export function ClassifyButton({
           disabled={attesa !== null}
           onClick={() => void classifica(true)}
           className="focus-visible:ring-brand-600 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-violet-300 bg-violet-50 px-3 text-sm font-semibold text-violet-800 transition-colors hover:border-violet-400 disabled:cursor-wait disabled:opacity-60 focus-visible:ring-2 focus-visible:outline-none"
-          title="Solo i rimasti, quelli che richiedono di sapere cosa sono le cose. Chiamata a pagamento."
+          title="Solo i prodotti non classificati dalla regola. Comporta una chiamata a pagamento."
         >
           <AppIcon name="sparkles" className="h-4 w-4" />
           {attesa === 'ia' ? 'Sto chiedendo…' : `Elabora con IA i ${restano} rimasti`}

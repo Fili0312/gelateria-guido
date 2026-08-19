@@ -58,7 +58,7 @@ export function SupplierActions({
     } catch {
       toast({
         title: 'Server non raggiungibile',
-        description: 'Controlla la connessione e riprova.',
+        description: 'Verificare la connessione e riprovare.',
         tone: 'error',
       });
     } finally {
@@ -106,7 +106,7 @@ export function SupplierActions({
     } catch {
       toast({
         title: 'Server non raggiungibile',
-        description: 'Controlla la connessione e riprova.',
+        description: 'Verificare la connessione e riprovare.',
         tone: 'error',
       });
     } finally {

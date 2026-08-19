@@ -74,8 +74,8 @@ export default async function OrdineStoricoPage({ params }: { params: Promise<{ 
         <AppIcon name={annullato ? 'warning' : 'check'} className="mt-0.5 h-4 w-4 shrink-0" />
         <span>
           {annullato
-            ? 'Ordine annullato. Resta qui col suo numero: annullarlo non lo cancella, e lo storico deve poter dire cosa è successo.'
-            : 'Prezzi, confezioni e descrizioni sono quelli del momento della conferma e non cambieranno più, qualunque cosa succeda al catalogo.'}
+            ? 'Ordine annullato. Viene conservato con il proprio numero: l’annullamento non comporta la cancellazione.'
+            : 'Prezzi, confezioni e descrizioni sono quelli registrati alla conferma e non variano con le modifiche al catalogo.'}
         </span>
       </p>
 
@@ -106,7 +106,7 @@ export default async function OrdineStoricoPage({ params }: { params: Promise<{ 
       />
 
       <p className="text-xs text-neutral-400">
-        L’invio email dall’app è in pausa: scarica i documenti e allegali manualmente.
+        L’invio email dall’applicazione non è attivo: scaricare i documenti e allegarli manualmente.
       </p>
     </div>
   );

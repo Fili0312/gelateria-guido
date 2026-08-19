@@ -87,7 +87,7 @@ export function MatchingQueue({
             className="text-brand-700 underline"
             onClick={() => router.refresh()}
           >
-            Ricarica per vedere il resto
+            Ricaricare per visualizzare le restanti
           </button>
         </p>
       )}
@@ -177,7 +177,7 @@ export function MatchingQueue({
               </ul>
             ) : !riga.giaRivista ? (
               <p className="mt-3 text-sm text-neutral-500">
-                Nessun prodotto simile in catalogo con questo formato.
+                Nessun prodotto analogo a catalogo con questo formato.
               </p>
             ) : (
               <p className="mt-3 text-sm leading-6 text-amber-800">

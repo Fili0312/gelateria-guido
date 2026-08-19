@@ -75,7 +75,7 @@ export function SettingsForm({ initialValues }: { initialValues: SettingsValues 
           </SettingRow>
           <SettingRow
             title="Prezzo non aggiornato dopo"
-            description="Oltre questa età il prezzo viene mostrato come dato potenzialmente vecchio."
+            description="Superato questo periodo il prezzo viene segnalato come non aggiornato."
           >
             <div className="flex items-center gap-2">
               <Stepper
@@ -100,14 +100,14 @@ export function SettingsForm({ initialValues }: { initialValues: SettingsValues 
         <div className="border-b border-neutral-100 px-5 py-5 sm:px-6">
           <h2 className="text-lg font-black tracking-tight text-neutral-950">Soglie di avviso</h2>
           <p className="mt-1 text-sm text-neutral-500">
-            L’avviso “esiste di meglio” compare solo quando sono superate sia la percentuale sia la
-            cifra.
+            La segnalazione di offerta più conveniente compare soltanto quando sono superate
+            entrambe le soglie.
           </p>
         </div>
         <div className="px-5 sm:px-6">
           <SettingRow
             title="Risparmio percentuale minimo"
-            description="Evita avvisi su differenze percentuali trascurabili."
+            description="Evita segnalazioni su differenze percentuali trascurabili."
           >
             <div className="flex items-center gap-2">
               <Stepper
@@ -128,7 +128,7 @@ export function SettingsForm({ initialValues }: { initialValues: SettingsValues 
           </SettingRow>
           <SettingRow
             title="Risparmio assoluto minimo"
-            description="L’offerta alternativa deve far risparmiare almeno questa cifra per confezione."
+            description="L’offerta alternativa deve comportare un risparmio almeno pari a questo importo per confezione."
           >
             <div className="flex items-center gap-2">
               <Stepper
@@ -147,7 +147,7 @@ export function SettingsForm({ initialValues }: { initialValues: SettingsValues 
           </SettingRow>
           <SettingRow
             title="Variazione prezzo da confermare"
-            description="Un import che supera questa variazione richiede una conferma esplicita."
+            description="Un’importazione che supera questa variazione richiede conferma esplicita."
           >
             <div className="flex items-center gap-2">
               <Stepper
@@ -175,8 +175,8 @@ export function SettingsForm({ initialValues }: { initialValues: SettingsValues 
             Intestazione dei documenti
           </h2>
           <p className="mt-1 text-sm text-neutral-500">
-            Finisce in cima a ogni PDF d’ordine: è come il fornitore capisce chi sta ordinando e
-            dove consegnare.
+            Riportata in testa a ogni ordine di acquisto: identifica l’azienda ordinante e
+            l’indirizzo di consegna.
           </p>
         </div>
         <div className="px-5 sm:px-6">
@@ -214,8 +214,8 @@ export function SettingsForm({ initialValues }: { initialValues: SettingsValues 
             Condizioni dell’ordine di acquisto
           </h2>
           <p className="mt-1 text-sm text-neutral-500">
-            Consegna, pagamento e banca finiscono su ogni ordine che mandi. Sono le cose che il
-            fornitore cerca sul documento prima di evaderlo.
+            Consegna, pagamento e coordinate bancarie vengono riportati su ogni ordine di acquisto
+            emesso.
           </p>
         </div>
         <div className="px-5 sm:px-6">
@@ -226,7 +226,7 @@ export function SettingsForm({ initialValues }: { initialValues: SettingsValues 
                 name="consegnaIndirizzo"
                 value={values.consegnaIndirizzo}
                 maxLength={200}
-                placeholder="Lascia vuoto se coincide con la sede"
+                placeholder="Lasciare vuoto se coincide con la sede"
                 disabled={pending}
                 onChange={(e) =>
                   setValues((current) => ({ ...current, consegnaIndirizzo: e.target.value }))
@@ -234,14 +234,15 @@ export function SettingsForm({ initialValues }: { initialValues: SettingsValues 
                 className="focus:border-brand-500 focus:ring-brand-500/30 min-h-11 w-full rounded-lg border border-neutral-300 px-3 text-sm outline-none focus:ring-4 disabled:opacity-60"
               />
               <span className="mt-1 block text-xs text-neutral-500">
-                Il magazzino non è sempre la sede legale, e il camion va dove c’è scritto.
+                Indicare il magazzino se diverso dalla sede legale: è l’indirizzo riportato sul
+                documento.
               </span>
             </span>
           </label>
 
           <SettingRow
             title="Consegna richiesta"
-            description="Fra quanti giorni dalla data dell’ordine. «1» vuol dire il giorno dopo."
+            description="Giorni dalla data dell’ordine. Il valore «1» corrisponde al giorno successivo."
           >
             <div className="flex items-center gap-2">
               <Stepper
@@ -294,8 +295,8 @@ export function SettingsForm({ initialValues }: { initialValues: SettingsValues 
 
       <div className="sticky bottom-3 z-10 mt-6 flex items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-white/95 p-3 shadow-lg shadow-neutral-900/10 backdrop-blur sm:static sm:justify-end sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
         <p className="hidden items-center gap-2 text-xs text-neutral-500 sm:flex">
-          <AppIcon name="check" className="text-brand-600 h-4 w-4" />I valori sono salvati per
-          l’intera organizzazione
+          <AppIcon name="check" className="text-brand-600 h-4 w-4" />
+          Valori validi per l’intera organizzazione
         </p>
         <Button type="submit" size="lg" loading={pending} loadingLabel="Salvataggio…">
           Salva impostazioni

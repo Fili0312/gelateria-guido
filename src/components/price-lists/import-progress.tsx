@@ -102,7 +102,7 @@ export function ImportProgress({
         });
         return;
       }
-      toast({ title: 'Lavorazione fermata', tone: 'success' });
+      toast({ title: 'Elaborazione interrotta', tone: 'success' });
       router.refresh();
     } finally {
       setAttesa(false);

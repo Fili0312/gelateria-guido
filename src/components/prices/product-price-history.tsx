@@ -235,7 +235,7 @@ function PriceEntryDialog({
 
     if (Object.keys(errors).length > 0 || priceList === null || discounts === null) {
       setFields(errors);
-      toast({ title: 'Controlla i campi evidenziati', tone: 'error' });
+      toast({ title: 'Verificare i campi evidenziati', tone: 'error' });
       return;
     }
 
@@ -327,7 +327,7 @@ function PriceEntryDialog({
                 setForm((current) => ({ ...current, priceList: event.target.value }))
               }
               error={fields.priceList?.[0]}
-              hint="In euro, come riportato dal fornitore prima degli sconti. Esempio: 9,50"
+              hint="In euro, come riportato dal fornitore al lordo degli sconti. Es. 9,50"
             />
             <Input
               name={`${formId}-validFrom`}
@@ -353,7 +353,7 @@ function PriceEntryDialog({
               setForm((current) => ({ ...current, discounts: event.target.value }))
             }
             error={fields.discounts?.[0]}
-            hint="Facoltativi. Separali con +, per esempio 5 + 10. Il netto viene calcolato dal sistema."
+            hint="Facoltativi. Separare con «+», es. 5 + 10. Il netto viene calcolato automaticamente."
           />
 
           <Input
@@ -366,7 +366,7 @@ function PriceEntryDialog({
               setForm((current) => ({ ...current, vatRate: event.target.value }))
             }
             error={fields.vatRate?.[0]}
-            hint="Facoltativa. Inserisci solo il numero, per esempio 10."
+            hint="Facoltativa. Indicare il solo valore numerico, es. 10."
           />
 
           <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
@@ -439,7 +439,7 @@ function HistoryCard({
           <PriceHistoryChart entries={history.prices} supplierName={history.supplierName} />
         ) : (
           <p className="rounded-xl border border-dashed border-neutral-300 px-4 py-7 text-center text-sm text-neutral-500">
-            Nessun prezzo registrato. Inserisci il primo per iniziare lo storico.
+            Nessun prezzo registrato. Inserire il primo per avviare lo storico.
           </p>
         )}
 
@@ -461,7 +461,7 @@ function HistoryCard({
                   etichetta no. */}
               <TableHead
                 numeric
-                title="Sul prezzo di listino: lo storico registra il pattuito, non il rimborso di oggi"
+                title="Sul prezzo di listino: lo storico registra il valore pattuito, non il rimborso corrente"
               >
                 Per unità a listino
               </TableHead>
@@ -548,7 +548,7 @@ export function ProductPriceHistory({
   if (histories.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-neutral-300 bg-white px-4 py-8 text-center text-sm text-neutral-500">
-        Collega almeno un’offerta al prodotto per iniziare a registrarne i prezzi.
+        Associare almeno un’offerta al prodotto per registrarne i prezzi.
       </p>
     );
   }

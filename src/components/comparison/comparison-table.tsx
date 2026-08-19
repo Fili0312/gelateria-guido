@@ -98,9 +98,9 @@ export function ComparisonTable({
       <p className="rounded-2xl border border-dashed border-neutral-300 bg-white px-5 py-10 text-center text-sm leading-6 text-neutral-500">
         {confrontiTotali === 0 ? (
           <>
-            Non c’è ancora nessun confronto possibile. Serve che <strong>due fornitori</strong>{' '}
-            vendano lo stesso prodotto: carica e applica il listino di un secondo fornitore, e i
-            prodotti in comune compariranno qui.
+            Nessun confronto disponibile. È necessario che <strong>due fornitori</strong> vendano lo
+            stesso prodotto: carica e applica il listino di un secondo fornitore, e i prodotti in
+            comune compariranno qui.
           </>
         ) : (
           <>
@@ -117,7 +117,9 @@ export function ComparisonTable({
       <TableHeader>
         <TableRow>
           <TableHead>Prodotto</TableHead>
-          <TableHead>Conviene da — controlla che sia lo stesso articolo</TableHead>
+          <TableHead>
+            Offerta più conveniente — verificare che si tratti dello stesso articolo
+          </TableHead>
           <TableHead>Invece che da</TableHead>
           <TableHead className="text-right">Differenza</TableHead>
           <TableHead className="text-right">Risparmio</TableHead>

@@ -183,14 +183,14 @@ export function CatalogToolbar({
             <Interruttore
               attivo={filtri.soloConfrontabili}
               onCambia={(v) => onFiltri({ ...filtri, soloConfrontabili: v })}
-              titolo="Solo dove posso scegliere"
+              titolo="Solo articoli confrontabili"
               spiegazione="Prodotti venduti da più di un fornitore."
             />
             <Interruttore
               attivo={filtri.nascondiNonOrdinabili}
               onCambia={(v) => onFiltri({ ...filtri, nascondiNonOrdinabili: v })}
-              titolo="Nascondi quelli senza prezzo"
-              spiegazione="Restano in catalogo, ma non compaiono qui."
+              titolo="Nascondi articoli senza prezzo"
+              spiegazione="Restano a catalogo ma non compaiono in questo elenco."
             />
 
             {attivi > 0 && (
@@ -199,7 +199,7 @@ export function CatalogToolbar({
                 onClick={() => onFiltri(FILTRI_VUOTI)}
                 className="mt-1 min-h-10 w-full cursor-pointer rounded-xl text-sm font-semibold text-neutral-600 hover:bg-neutral-100"
               >
-                Togli tutti i filtri
+                Rimuovi tutti i filtri
               </button>
             )}
           </div>

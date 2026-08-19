@@ -159,7 +159,7 @@ export function AppShell({
             Ambiente protetto
           </div>
           <p className="mt-2 text-xs leading-5 text-neutral-600">
-            Da ogni ordine confermato ottieni un PDF per fornitore e il riepilogo in Excel.
+            Ogni ordine confermato produce un PDF per fornitore e un riepilogo in Excel.
           </p>
         </div>
         <LogoutButton endpoint={logoutEndpoint} loginPath={loginPath} />

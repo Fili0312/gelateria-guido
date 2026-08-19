@@ -89,7 +89,7 @@ function ExtraDiscountToggle({ offerta, endpoint }: { offerta: SupplierOffer; en
         type="button"
         disabled={attesa}
         onClick={() => void cambia(false)}
-        title="Questa offerta è esclusa dall’accordo col fornitore. Premi per rimetterla dentro."
+        title="Offerta esclusa dallo sconto concordato con il fornitore. Selezionare per reintegrarla."
         className="cursor-pointer rounded border border-neutral-300 px-1.5 py-0.5 text-[11px] font-semibold text-neutral-600 hover:border-neutral-400"
       >
         escluso
@@ -104,7 +104,7 @@ function ExtraDiscountToggle({ offerta, endpoint }: { offerta: SupplierOffer; en
       type="button"
       disabled={attesa}
       onClick={() => void cambia(true)}
-      title="Premi per escludere questa offerta dallo sconto concordato col fornitore."
+      title="Selezionare per escludere l’offerta dallo sconto concordato con il fornitore."
       className="cursor-pointer rounded bg-violet-100 px-1.5 py-0.5 text-[11px] font-semibold text-violet-800 hover:bg-violet-200"
     >
       −{applicato}%
@@ -191,7 +191,7 @@ export function ProductOffers({
             <TableHead>Sconti</TableHead>
             <TableHead>Netto</TableHead>
             <TableHead>Sconto extra</TableHead>
-            <TableHead title="Calcolato sul costo reale, rimborsi compresi: è il numero con cui si confrontano i fornitori">
+            <TableHead title="Calcolato sul costo effettivo, rimborsi inclusi: è il valore utilizzato per il confronto fra fornitori">
               Per unità
             </TableHead>
           </TableRow>

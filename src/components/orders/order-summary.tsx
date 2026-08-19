@@ -113,7 +113,7 @@ export function OrderSummary({
     return (
       <div className="rounded-2xl border border-dashed border-neutral-300 bg-white px-5 py-12 text-center">
         <p className="text-sm leading-6 text-neutral-500">
-          L’ordine è vuoto: non c’è niente da confermare.
+          L’ordine non contiene articoli: non è possibile confermarlo.
         </p>
         <Link
           href="/ordini"
@@ -142,9 +142,10 @@ export function OrderSummary({
           )}
 
           {riepilogo.prezziCambiati.length > 0 && (
-            <Segnalazione tono="attenzione" titolo="Prezzi cambiati dopo l’aggiunta">
+            <Segnalazione tono="attenzione" titolo="Prezzi variati dopo l’inserimento">
               <p className="mb-1">
-                Confermando si usano quelli di adesso, non quelli di quando hai aggiunto la riga.
+                Alla conferma vengono applicati i prezzi correnti, non quelli registrati al momento
+                dell’inserimento.
               </p>
               {riepilogo.prezziCambiati.map((p) => (
                 <p key={p.rigaId}>
@@ -157,7 +158,7 @@ export function OrderSummary({
           )}
 
           {riepilogo.prezziFermi.length > 0 && (
-            <Segnalazione tono="nota" titolo="Prezzi che non si aggiornano da tempo">
+            <Segnalazione tono="nota" titolo="Prezzi non aggiornati di recente">
               {riepilogo.prezziFermi.map((p) => (
                 <p key={p.rigaId}>
                   <strong>{p.name}</strong> · {p.supplierName} — dal{' '}
@@ -243,10 +244,12 @@ export function OrderSummary({
             onChange={(e) => setNota(e.target.value)}
             rows={2}
             maxLength={2000}
-            placeholder="Es. consegnare di mattina, citofonare al laboratorio"
+            placeholder="Es. consegna in mattinata, accesso dal laboratorio"
             className="focus:border-brand-500 focus:ring-brand-500/30 mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-4"
           />
-          <span className="text-xs text-neutral-500">Finirà sul documento per il fornitore.</span>
+          <span className="text-xs text-neutral-500">
+            Riportata sul documento inviato al fornitore.
+          </span>
         </label>
 
         <dl className="mt-4 space-y-1 border-t border-neutral-100 pt-4 text-sm">
@@ -295,7 +298,7 @@ export function OrderSummary({
           </Link>
           <span className="flex items-center gap-1.5 text-xs text-neutral-500">
             <AppIcon name="warning" className="h-3.5 w-3.5" />
-            Dopo la conferma l’ordine non si modifica più: si può solo annullare.
+            Dopo la conferma l’ordine può essere corretto dalla sua scheda oppure annullato.
           </span>
         </div>
       </section>

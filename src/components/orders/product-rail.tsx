@@ -35,7 +35,8 @@ export function ProductRail({
   if (risultati.length === 0) {
     return (
       <p className="rounded-2xl border border-dashed border-neutral-300 bg-white px-5 py-12 text-center text-sm leading-6 text-neutral-500">
-        Nessun prodotto qui. Prova col codice del fornitore, con una parola sola, o togli un filtro.
+        Nessun risultato. Provare con il codice articolo del fornitore, con un termine più breve o
+        rimuovendo un filtro.
       </p>
     );
   }

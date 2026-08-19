@@ -173,7 +173,7 @@ export function TaxonomyManager({
           <strong className="font-semibold">{iniziale.unclassified}</strong>{' '}
           {iniziale.unclassified === 1 ? 'prodotto è' : 'prodotti sono'} senza categoria.{' '}
           <Link href="/prodotti?classification=unclassified" className="underline">
-            Si vedono nel catalogo
+            Visibili a catalogo
           </Link>{' '}
           filtrando per «Da classificare».
         </p>
@@ -365,7 +365,7 @@ export function TaxonomyManager({
           if (!open && !attesa) setModifica(null);
         }}
         title={modifica?.tipo === 'reparto' ? 'Modifica reparto' : 'Modifica categoria'}
-        description="Nome e ordine si riflettono nei filtri e, più avanti, nel giro d’ordine."
+        description="Denominazione e ordinamento sono utilizzati nei filtri e nella sequenza di compilazione dell’ordine."
         footer={
           <>
             <Button
@@ -428,7 +428,7 @@ export function TaxonomyManager({
               step={1}
               required
               value={modifica.sortOrder}
-              hint="I numeri più bassi compaiono prima. Usa intervalli di 10 per lasciare spazio."
+              hint="I valori più bassi compaiono per primi. Si consiglia di procedere per intervalli di 10."
               onChange={(e) => setModifica({ ...modifica, sortOrder: e.target.value })}
             />
           </div>

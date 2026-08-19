@@ -157,7 +157,7 @@ export default async function PriceListPage({ params }: { params: Promise<{ id: 
           {listino.mode === 'PARTIAL' && (
             <Badge
               variant="brand"
-              title="Aggiorna solo le righe presenti nel file: niente viene disattivato"
+              title="Aggiorna le sole righe presenti nel file: nessuna offerta viene disattivata"
             >
               aggiornamento parziale
             </Badge>
@@ -232,7 +232,7 @@ export default async function PriceListPage({ params }: { params: Promise<{ id: 
             {listino.status !== 'APPLIED' && (
               <p className="mb-4 max-w-3xl rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm leading-6 text-neutral-600">
                 <strong className="font-semibold text-neutral-900">
-                  Il catalogo non è ancora stato toccato.
+                  Il catalogo non è ancora stato aggiornato.
                 </strong>{' '}
                 Queste righe stanno solo qui finché non premi <em>Applica al catalogo</em>: non
                 hanno creato prodotti e non hanno cambiato prezzi. E si può annullare.

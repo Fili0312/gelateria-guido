@@ -22,7 +22,7 @@ export function SpendChart({ punti }: { punti: PuntoSpesa[] }) {
     return (
       <div className="grid h-[132px] place-items-center rounded-xl border border-dashed border-neutral-300 px-4 text-center">
         <p className="text-sm leading-6 text-neutral-500">
-          Nessun ordine confermato: qui comparirà la spesa mese per mese.
+          Nessun ordine confermato. La spesa mensile comparirà a partire dal primo ordine.
         </p>
       </div>
     );
@@ -95,7 +95,8 @@ export function DepartmentSplit({
   if (reparti.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-neutral-300 px-4 py-8 text-center text-sm leading-6 text-neutral-500">
-        Niente da ripartire: aggiungi qualcosa all’ordine o conferma il primo.
+        Nessun dato da ripartire: inserire articoli nell’ordine in corso o confermare il primo
+        ordine.
       </p>
     );
   }
@@ -106,7 +107,7 @@ export function DepartmentSplit({
     <div>
       {daBozza && (
         <p className="mb-2 text-xs text-neutral-500">
-          Dall’ordine in corso: non ci sono ancora ordini confermati.
+          Dati dell’ordine in corso: non risultano ordini confermati.
         </p>
       )}
       <div className="flex h-3 w-full overflow-hidden rounded-full bg-neutral-100">

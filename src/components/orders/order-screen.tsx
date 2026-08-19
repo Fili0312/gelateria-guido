@@ -343,7 +343,7 @@ export function OrderScreen({
               value={termine}
               onChange={(e) => setTermine(e.target.value)}
               onKeyDown={tasti}
-              placeholder="Cerca un prodotto…"
+              placeholder="Cerca un articolo…"
               aria-label="Cerca nel catalogo"
               autoComplete="off"
               inputMode="search"
@@ -390,14 +390,14 @@ export function OrderScreen({
           <p className="-mt-1 flex items-center gap-2 px-1 text-[13px] text-neutral-500">
             <span>
               {cercando
-                ? 'Sto cercando…'
+                ? 'Ricerca in corso…'
                 : `${mostrati.length} ${mostrati.length === 1 ? 'prodotto' : 'prodotti'}`}
               {mostrati.length !== risultati.length && ` su ${risultati.length}`}
             </span>
             {/* Solo dove c'è una tastiera: su un telefono «Invio per
                 aggiungere» è un'istruzione per un tasto che non esiste. */}
             <span className="hidden sm:inline">
-              <span className="text-neutral-300">·</span> ↑↓ per scegliere, Invio per aggiungere
+              <span className="text-neutral-300">·</span> ↑↓ per selezionare, Invio per aggiungere
             </span>
           </p>
         </div>
@@ -470,7 +470,7 @@ export function OrderScreen({
                 }`}
               >
                 {t.righe === 0
-                  ? 'Ordine vuoto'
+                  ? 'Nessun articolo'
                   : `${t.righe} ${t.righe === 1 ? 'prodotto' : 'prodotti'} · ${t.confezioni} conf.`}
               </span>
               <span
@@ -479,13 +479,15 @@ export function OrderScreen({
                 }`}
               >
                 {t.righe === 0 ? (
-                  <span className="text-[13px] font-normal">Premi + per cominciare</span>
+                  <span className="text-[13px] font-normal">
+                    Aggiungere un articolo dal catalogo
+                  </span>
                 ) : (
                   <>
                     <span className="tabellare">{euro(t.netto)}</span>
                     <span className="text-[12px] font-normal text-white/75">
                       {Number(t.ritornoAtteso) > 0
-                        ? ` · ${euro(t.ritornoAtteso)} di sconti`
+                        ? ` · ${euro(t.ritornoAtteso)} di sconti a rimborso`
                         : ' · più IVA'}
                     </span>
                   </>
@@ -507,7 +509,7 @@ export function OrderScreen({
           <div className="flex items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 py-3">
             <span>
               <span className="block text-[17px] leading-tight font-bold text-neutral-950">
-                Il tuo ordine
+                Ordine in corso
               </span>
               <span className="block text-[13px] text-neutral-500">
                 {t.righe} {t.righe === 1 ? 'prodotto' : 'prodotti'} · {t.confezioni} conf. ·{' '}

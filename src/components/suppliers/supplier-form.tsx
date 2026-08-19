@@ -119,7 +119,7 @@ export function SupplierForm({
       const nextFields = issuesToFields(parsed.error.issues);
       setFields(nextFields);
       toast({
-        title: 'Controlla i campi evidenziati',
+        title: 'Verificare i campi evidenziati',
         description: 'Uno o più valori non sono validi.',
         tone: 'error',
       });
@@ -159,7 +159,7 @@ export function SupplierForm({
     } catch {
       toast({
         title: 'Server non raggiungibile',
-        description: 'Controlla la connessione e riprova.',
+        description: 'Verificare la connessione e riprovare.',
         tone: 'error',
       });
     } finally {
@@ -230,7 +230,7 @@ export function SupplierForm({
             value={textValue('email')}
             onChange={(event) => setText('email', event.target.value)}
             error={firstError(fields, 'email')}
-            hint="Può essere diversa dall’indirizzo dell’ufficio ordini."
+            hint="Può differire dall’indirizzo dell’ufficio ordini."
             containerClassName="sm:col-span-2"
           />
           <Textarea
@@ -263,7 +263,7 @@ export function SupplierForm({
               }))
             }
             error={firstError(fields, 'pricesIncludeVat')}
-            hint="Non confrontare mai prezzi netti e lordi come se fossero uguali."
+            hint="Necessario per non confrontare prezzi netti e lordi fra loro."
           >
             <option value="excluded">IVA esclusa (prezzi netti)</option>
             <option value="included">IVA inclusa (prezzi lordi)</option>
@@ -287,7 +287,7 @@ export function SupplierForm({
             value={textValue('minOrderValue')}
             onChange={(event) => setText('minOrderValue', event.target.value)}
             error={firstError(fields, 'minOrderValue')}
-            hint="Lascia vuoto se non esiste un minimo."
+            hint="Lasciare vuoto se non previsto."
           />
           <Input
             name="extraDiscountPct"
@@ -298,7 +298,7 @@ export function SupplierForm({
             value={textValue('extraDiscountPct')}
             onChange={(event) => setText('extraDiscountPct', event.target.value)}
             error={firstError(fields, 'extraDiscountPct')}
-            hint="Premio a posteriori su tutti gli articoli. Non abbassa il prezzo dell’ordine — entra nel confronto e si conta a parte."
+            hint="Premio riconosciuto a consuntivo su tutti gli articoli. Non riduce l’importo dell’ordine: viene considerato nel confronto e conteggiato separatamente."
           />
           <Input
             name="extraDiscountNote"
@@ -308,7 +308,7 @@ export function SupplierForm({
             value={textValue('extraDiscountNote')}
             onChange={(event) => setText('extraDiscountNote', event.target.value)}
             error={firstError(fields, 'extraDiscountNote')}
-            hint="Le eccezioni si segnano sulla singola offerta, nella scheda prodotto."
+            hint="Le eccezioni si impostano sulla singola offerta, nella scheda del prodotto."
           />
           <Input
             name="deliveryDays"
@@ -331,7 +331,7 @@ export function SupplierForm({
           <Checkbox
             name="sendOrdersByEmail"
             label="Abilita l’invio degli ordini via email"
-            description="Opzione predisposta per una futura automazione; al momento nessuna email parte dall’app."
+            description="Opzione predisposta per un’automazione futura: al momento l’applicazione non invia email."
             checked={values.sendOrdersByEmail}
             onChange={(event) =>
               setValues((current) => ({ ...current, sendOrdersByEmail: event.target.checked }))
@@ -366,7 +366,7 @@ export function SupplierForm({
             value={textValue('emailNote')}
             onChange={(event) => setText('emailNote', event.target.value)}
             error={firstError(fields, 'emailNote')}
-            placeholder="Es. Codice cliente, indicazioni di consegna…"
+            placeholder="Es. codice cliente, indicazioni di consegna…"
             containerClassName="sm:col-span-2"
           />
         </div>

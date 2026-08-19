@@ -45,7 +45,7 @@ export default async function LoginPage({
         <div className="relative max-w-xl pb-6">
           <span className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/80">
             <AppIcon name="sparkles" className="h-4 w-4 text-lime-300" />
-            Prezzi chiari, ordini più semplici
+            Listini, confronti e ordini
           </span>
           <h1 className="text-5xl leading-[1.05] font-black tracking-[-0.04em] text-balance xl:text-6xl">
             Ogni listino,
@@ -86,7 +86,7 @@ export default async function LoginPage({
                 Bentornati
               </h2>
               <p className="mt-2 leading-6 text-neutral-500">
-                Inserisci la password condivisa per continuare.
+                Inserire la password di accesso per continuare.
               </p>
             </div>
 

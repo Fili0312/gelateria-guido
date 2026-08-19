@@ -104,11 +104,11 @@ export function ProductSearch({ endpoint }: { endpoint: string }) {
       <Input
         id="ricerca-catalogo"
         label="Cerca nel catalogo"
-        hint="Nome, sinonimi, descrizione del fornitore o codice articolo. Ignora accenti e maiuscole."
+        hint="Ricerca su nome, sinonimi, descrizione del fornitore e codice articolo. Accenti e maiuscole non sono rilevanti."
         type="search"
         autoComplete="off"
         className="text-base"
-        placeholder="Per esempio: birra, amaro, LA167…"
+        placeholder="Es. birra, amaro, LA167…"
         value={termine}
         onChange={(e) => setTermine(e.target.value)}
         onKeyDown={tastiera}

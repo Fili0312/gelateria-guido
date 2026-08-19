@@ -152,7 +152,7 @@ function Gruppo({
                   onClick={() => onUnisci(d)}
                   className="bg-brand-600 hover:bg-brand-700 inline-flex min-h-9 cursor-pointer items-center rounded-lg px-3 text-sm font-semibold text-white transition-colors disabled:cursor-wait disabled:opacity-60"
                 >
-                  {inCorso === chiave ? 'Collego…' : 'Sono lo stesso: collegali'}
+                  {inCorso === chiave ? 'Collegamento…' : 'Conferma: stesso articolo'}
                 </button>
               </div>
             </li>
@@ -265,12 +265,12 @@ export function DuplicatesFinder({
             Analizza il catalogo
           </h2>
           <p className="mt-1 max-w-2xl text-xs leading-5 text-neutral-600">
-            Cerca nel catalogo intero, non solo nell’ultimo listino. Il <strong>formato</strong>{' '}
-            deve già coincidere — 33 cl con 33 cl — e lo verifica la regola, non il modello: al
-            modello si chiede solo se «HAVANA CLUB 3 A. RHUM» e «HAVANA CLUB 3Y RON» sono la stessa
-            bottiglia. I pezzi per confezione <strong>non</strong> devono coincidere: un collo da 24
-            e uno da 12 sono lo stesso prodotto, e a dire quale conviene ci pensa il prezzo al
-            litro.
+            Analisi sull’intero catalogo, non limitata all’ultimo listino. Il{' '}
+            <strong>formato</strong> deve già coincidere — 33 cl con 33 cl — e lo verifica la
+            regola, non il modello: al modello si chiede solo se «HAVANA CLUB 3 A. RHUM» e «HAVANA
+            CLUB 3Y RON» sono la stessa bottiglia. I pezzi per confezione <strong>non</strong>{' '}
+            devono coincidere: un collo da 24 e uno da 12 sono lo stesso prodotto, e a dire quale
+            conviene ci pensa il prezzo al litro.
           </p>
         </div>
         <button

@@ -170,7 +170,7 @@ export function ProductForm({
     const analizzato = productInputSchema.safeParse(valori);
     if (!analizzato.success) {
       setCampi(issuesToFields(analizzato.error.issues));
-      toast({ title: 'Controlla i campi evidenziati', tone: 'error' });
+      toast({ title: 'Verificare i campi evidenziati', tone: 'error' });
       return;
     }
 
@@ -242,8 +242,8 @@ export function ProductForm({
           insieme. Ora sono tre gruppi con un titolo, e il titolo risponde
           alla domanda «cosa sto dicendo adesso». */}
       <Sezione
-        titolo="Che cos’è"
-        nota="Il nome è quello che userai tu per cercarlo. Le descrizioni dei fornitori restano le loro, e si collegano sotto."
+        titolo="Identificazione"
+        nota="Il nome utilizzato per la ricerca interna. Le descrizioni dei fornitori restano associate alle rispettive offerte."
       >
         <Input
           name="name"
@@ -252,7 +252,7 @@ export function ProductForm({
           value={valori.name}
           onChange={(e) => cambia('name', e.target.value)}
           error={campi.name?.[0]}
-          hint="Il formato può stare nel nome: viene riconosciuto."
+          hint="Il formato indicato nel nome viene riconosciuto automaticamente."
           maxLength={200}
         />
         {anteprima && (
@@ -271,8 +271,8 @@ export function ProductForm({
       </Sezione>
 
       <Sezione
-        titolo="Quanto ce n’è dentro"
-        nota="È il formato del singolo pezzo, non della cassa: quanti pezzi ci sono in un collo lo dice il listino di ogni fornitore."
+        titolo="Formato"
+        nota="Contenuto del singolo pezzo. Il numero di pezzi per confezione è indicato nel listino di ciascun fornitore."
       >
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
           <Input
@@ -283,7 +283,7 @@ export function ProductForm({
             value={valori.unitSize}
             onChange={(e) => cambia('unitSize', e.target.value)}
             error={campi.unitSize?.[0]}
-            hint="Per una bottiglia da 33 cl scrivi 33 e scegli «cl»."
+            hint="Per una bottiglia da 33 cl indicare 33 e selezionare «cl»."
           />
           <Select
             name="unitOfMeasure"
@@ -313,8 +313,8 @@ export function ProductForm({
       </Sezione>
 
       <Sezione
-        titolo="Dove va"
-        nota="La categoria raggruppa l’ordine per reparto. Si può lasciare vuota e assegnarla dopo, anche in blocco con l’IA."
+        titolo="Classificazione"
+        nota="La categoria determina il raggruppamento per reparto negli ordini. Può essere assegnata successivamente, anche in blocco."
       >
         <CategorySelect
           reparti={reparti}
@@ -328,19 +328,19 @@ export function ProductForm({
           value={valori.gtin ?? ''}
           onChange={(e) => cambia('gtin', e.target.value || null)}
           error={campi.gtin?.[0]}
-          hint="Da 8 a 14 cifre. Nei listini della gelateria non ce n’è nessuno: si compila solo se lo si ha davvero."
+          hint="Da 8 a 14 cifre. Compilare soltanto se disponibile."
           inputMode="numeric"
         />
       </Sezione>
 
       <Sezione
-        titolo="Da chi lo compri"
+        titolo="Fornitura"
         nota={
           fornitori.length === 0
-            ? 'Non c’è ancora nessun fornitore: crealo prima, poi torna qui.'
+            ? 'Nessun fornitore in anagrafica. Registrare prima un fornitore.'
             : mode === 'create'
-              ? 'Facoltativo. Compilandolo il prodotto nasce già ordinabile, con un prezzo e un fornitore — altrimenti resta in catalogo senza prezzo, e nei confronti non compare.'
-              : 'Facoltativo. Aggiunge **un altro** fornitore a questo prodotto: quelli già collegati restano dove sono.'
+              ? 'Facoltativa. Se compilata, il prodotto risulta immediatamente ordinabile e confrontabile. In caso contrario resta a catalogo senza prezzo.'
+              : 'Facoltativa. Associa un ulteriore fornitore al prodotto. Le offerte già collegate non vengono modificate.'
         }
       >
         {fornitori.length > 0 && (
@@ -353,9 +353,7 @@ export function ProductForm({
                 className="text-brand-600 focus:ring-brand-500/30 mt-0.5 h-5 w-5 shrink-0 cursor-pointer rounded border-neutral-300 focus:ring-4"
               />
               <span className="text-sm font-semibold text-neutral-900">
-                {mode === 'create'
-                  ? 'So già da chi lo compro e quanto costa'
-                  : 'Aggiungi un fornitore con il suo prezzo'}
+                {mode === 'create' ? 'Indica fornitore e prezzo' : 'Associa un altro fornitore'}
               </span>
             </label>
 
@@ -383,7 +381,7 @@ export function ProductForm({
                     inputMode="decimal"
                     value={fornitura.priceList}
                     onChange={(e) => setFornitura((f) => ({ ...f, priceList: e.target.value }))}
-                    hint="Quello scritto sul listino, prima degli sconti. Gli sconti concordati si impostano sul fornitore."
+                    hint="Importo riportato a listino, al lordo degli sconti. Gli sconti concordati si impostano sulla scheda del fornitore."
                   />
                 </div>
 
@@ -395,7 +393,7 @@ export function ProductForm({
                     onChange={(e) =>
                       setFornitura((f) => ({ ...f, supplierCode: e.target.value || null }))
                     }
-                    hint="Facoltativo. È l’unico codice che lui sa cercare a magazzino."
+                    hint="Facoltativo. Codice con cui il fornitore identifica l’articolo."
                   />
                   <Input
                     name="packQuantity"
@@ -408,7 +406,7 @@ export function ProductForm({
                         packQuantity: Number(e.target.value.replace(/[^0-9]/g, '')) || 1,
                       }))
                     }
-                    hint="Quante bottiglie ci sono nel collo che ti consegna. 1 se lo compri a pezzo."
+                    hint="Numero di pezzi contenuti nella confezione di vendita. Indicare 1 per l’acquisto a pezzo singolo."
                   />
                 </div>
 
@@ -422,18 +420,18 @@ export function ProductForm({
                     {fornitura.packQuantity > 1 ? (
                       <>
                         Confezione da <strong>{fornitura.packQuantity}</strong>:{' '}
-                        {fornitura.priceList.replace('.', ',')} € il collo, cioè{' '}
+                        {fornitura.priceList.replace('.', ',')} € a confezione, pari a{' '}
                         <strong>
                           {(Number(fornitura.priceList.replace(',', '.')) / fornitura.packQuantity)
                             .toFixed(2)
                             .replace('.', ',')}{' '}
                           €
                         </strong>{' '}
-                        al pezzo.
+                        per pezzo.
                       </>
                     ) : (
                       <>
-                        <strong>{fornitura.priceList.replace('.', ',')} €</strong> al pezzo.
+                        <strong>{fornitura.priceList.replace('.', ',')} €</strong> per pezzo.
                       </>
                     )}
                   </p>
@@ -448,7 +446,7 @@ export function ProductForm({
           solo tornando in fondo fa perdere le modifiche a chi non ci torna. */}
       <div className="sticky bottom-3 z-10 flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white/95 p-3 shadow-lg shadow-neutral-900/10 backdrop-blur sm:flex-row sm:items-center">
         <Button type="submit" disabled={attesa} className="min-h-11">
-          {attesa ? 'Salvo…' : mode === 'create' ? 'Crea prodotto' : 'Salva modifiche'}
+          {attesa ? 'Salvataggio…' : mode === 'create' ? 'Crea prodotto' : 'Salva modifiche'}
         </Button>
         <Button
           type="button"

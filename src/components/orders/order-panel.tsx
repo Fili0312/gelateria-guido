@@ -211,7 +211,8 @@ export function OrderPanel({
         <p className="px-4 py-10 text-center text-sm leading-6 text-neutral-500">
           Ancora vuoto.
           <br />
-          Premi <span className="font-semibold text-neutral-700">+</span> su un prodotto a sinistra.
+          Premi <span className="font-semibold text-neutral-700">+</span> su un articolo del
+          catalogo.
         </p>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -272,7 +273,8 @@ export function OrderPanel({
             totale darebbe un documento che non corrisponde alla fattura. */}
         {Number(t.ritornoAtteso) > 0 && (
           <p className="tabellare mt-1 rounded-lg bg-violet-50 px-2 py-1 text-right text-xs text-violet-800">
-            <strong>{euro(t.ritornoAtteso)}</strong> torneranno indietro per gli sconti concordati
+            <strong>{euro(t.ritornoAtteso)}</strong> verranno rimborsati in base agli sconti
+            concordati
           </p>
         )}
 

@@ -102,7 +102,7 @@ export function OfferAttach({
         (errori[campo] ??= []).push(issue.message);
       }
       setCampi(errori);
-      toast({ title: 'Controlla i campi evidenziati', tone: 'error' });
+      toast({ title: 'Verificare i campi evidenziati', tone: 'error' });
       return;
     }
 
@@ -153,11 +153,12 @@ export function OfferAttach({
       <section className="space-y-3">
         <h2 className="text-xl font-black text-neutral-950">Offerte senza prodotto</h2>
         <p className="text-sm text-neutral-500">
-          Articoli di fornitore già in archivio ma non ancora collegati a nessun prodotto canonico.
+          Articoli di fornitore presenti in archivio e non ancora associati a un prodotto di
+          catalogo.
         </p>
         {orfane.length === 0 ? (
           <p className="rounded-xl border border-dashed border-neutral-300 bg-white px-4 py-6 text-center text-sm text-neutral-500">
-            Nessuna offerta orfana: sono tutte già collegate.
+            Nessuna offerta da collegare: risultano tutte associate a un prodotto.
           </p>
         ) : (
           <ul className="divide-y divide-neutral-100 rounded-xl border border-neutral-200 bg-white">
@@ -218,7 +219,7 @@ export function OfferAttach({
               value={nuova.supplierCode ?? ''}
               onChange={(e) => cambia('supplierCode', e.target.value || null)}
               error={campi.supplierCode?.[0]}
-              hint="È il codice con cui lui evade l’ordine."
+              hint="Codice con cui il fornitore evade l’ordine."
             />
           </div>
 
@@ -229,7 +230,7 @@ export function OfferAttach({
             value={nuova.rawName}
             onChange={(e) => cambia('rawName', e.target.value)}
             error={campi.rawName?.[0]}
-            hint="Copiala com’è, comprese le abbreviazioni: serve a riconoscerla nei listini futuri."
+            hint="Riportarla integralmente, abbreviazioni comprese: serve a riconoscerla nei listini successivi."
             maxLength={300}
           />
 
@@ -272,8 +273,8 @@ export function OfferAttach({
           <Checkbox
             checked={nuova.packQuantityConfirmed}
             onChange={(e) => cambia('packQuantityConfirmed', e.currentTarget.checked)}
-            label="So con certezza quanti pezzi contiene la confezione"
-            description="Se non lo sai, lascia deselezionato: l’offerta resterà fuori dai confronti di prezzo invece di entrarci con un numero inventato."
+            label="Numero di pezzi per confezione verificato"
+            description="Se il dato non è certo, lasciare deselezionato: l’offerta resterà esclusa dai confronti di prezzo anziché entrarvi con un valore presunto."
           />
 
           <div className="grid gap-4 sm:grid-cols-2">

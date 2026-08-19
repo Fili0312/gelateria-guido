@@ -210,7 +210,7 @@ export default async function ProductsPage({
               filtro la si trova solo scorrendo trecento righe. */}
           <Select name="packaging" label="Confezione" defaultValue={filtri.packaging}>
             <option value="all">Tutte</option>
-            <option value="da-definire">Manca il numero di pezzi</option>
+            <option value="da-definire">Numero di pezzi non definito</option>
           </Select>
           <Select name="sort" label="Ordina" defaultValue={filtri.sort}>
             <option value="name-asc">Nome (A→Z)</option>
@@ -240,7 +240,7 @@ export default async function ProductsPage({
             href={`/fornitori/${fornitoreScelto.id}`}
             className="text-brand-700 cursor-pointer font-semibold hover:underline"
           >
-            Impostalo sulla sua scheda →
+            Impostalo nella scheda prodotto →
           </Link>{' '}
           e da qui potrai dire prodotto per prodotto se lo sconto si applica.
         </p>

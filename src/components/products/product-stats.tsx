@@ -180,9 +180,7 @@ function PurchaseChart({ stats }: { stats: ProductPurchaseStats }) {
           </text>
         </g>
       </svg>
-      <p className="sr-only">
-        I valori esatti del grafico sono disponibili nella tabella degli acquisti qui sotto.
-      </p>
+      <p className="sr-only">I valori esatti sono riportati nella tabella degli acquisti.</p>
     </figure>
   );
 }

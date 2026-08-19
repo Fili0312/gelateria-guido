@@ -89,7 +89,7 @@ function Gruppo({ gruppo, endpoint }: { gruppo: GruppoDaDefinire; endpoint: stri
           ` · e altri ${gruppo.quante - gruppo.esempi.length}`}
       </p>
 
-      <p className="mt-3 text-sm font-semibold text-neutral-800">Quanti pezzi ci sono dentro?</p>
+      <p className="mt-3 text-sm font-semibold text-neutral-800">Pezzi per confezione</p>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         {COMUNI.map((n) => (
           <button

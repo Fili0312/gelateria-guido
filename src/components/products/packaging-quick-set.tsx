@@ -52,7 +52,7 @@ export function PackagingQuickSet({
       }
       toast({
         title: pezzi === 1 ? 'Segnata come pezzo singolo' : `Confezione da ${pezzi}`,
-        description: 'Ora entra nei confronti, col prezzo al litro giusto.',
+        description: 'L’offerta rientra nei confronti con il prezzo unitario corretto.',
         tone: 'success',
       });
       setAperto(false);

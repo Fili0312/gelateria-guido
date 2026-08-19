@@ -124,9 +124,9 @@ export function OrderLines({
               {ordine.righeNonDisponibili}{' '}
               {ordine.righeNonDisponibili === 1 ? 'riga esclusa' : 'righe escluse'}
             </strong>{' '}
-            perché il fornitore non le aveva. I totali qui sotto sono già senza. I documenti
-            generati prima le contengono ancora: <strong>rigenerali</strong> qui sotto prima di
-            rimandarli.
+            per indisponibilità dichiarata dal fornitore. I totali riportati di seguito le escludono
+            già. I documenti generati in precedenza le contengono ancora:{' '}
+            <strong>rigenerarli</strong> prima dell’invio.
           </span>
         </p>
       )}
@@ -231,8 +231,8 @@ export function OrderLines({
                     disabled={inCorso !== null}
                     aria-label={
                       riga.nonDisponibile
-                        ? `Rimetti ${riga.name} nell’ordine`
-                        : `${riga.name}: il fornitore non l’ha consegnato`
+                        ? `Ripristina ${riga.name} nell’ordine`
+                        : `Segnala ${riga.name} come non consegnato`
                     }
                     className={`min-h-9 shrink-0 cursor-pointer rounded-lg border px-2.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
                       riga.nonDisponibile
@@ -243,7 +243,7 @@ export function OrderLines({
                     {inCorso === riga.id
                       ? '…'
                       : riga.nonDisponibile
-                        ? 'Rimetti'
+                        ? 'Ripristina'
                         : 'Non disponibile'}
                   </button>
                 )}
@@ -257,19 +257,18 @@ export function OrderLines({
         <section className="rounded-2xl border border-neutral-200 bg-white p-4">
           <h3 className="font-bold text-neutral-950">Aggiungi un articolo</h3>
           <p className="mt-1 mb-3 text-sm leading-5 text-neutral-500">
-            Se ti sei accorto che mancava qualcosa, mettilo qui invece di fare un secondo ordine:
-            resta lo stesso numero, e al fornitore arriva un documento solo. Il prezzo è quello di
-            oggi.
+            L’articolo viene aggiunto a questo ordine, che mantiene lo stesso numero: al fornitore
+            resta un unico documento. Il prezzo applicato è quello corrente a listino.
           </p>
           <input
             type="text"
             value={cerca}
             onChange={(e) => void cercaProdotti(e.target.value)}
-            placeholder="Cerca un prodotto…"
+            placeholder="Cerca un articolo a catalogo…"
             aria-label="Cerca un prodotto da aggiungere all’ordine"
             className="focus:border-brand-500 focus:ring-brand-500/30 h-12 w-full rounded-xl border border-neutral-200 px-3 outline-none focus:ring-4"
           />
-          {cercando && <p className="mt-2 text-xs text-neutral-400">Sto cercando…</p>}
+          {cercando && <p className="mt-2 text-xs text-neutral-400">Ricerca in corso…</p>}
           {trovati.length > 0 && (
             <ul className="mt-2 divide-y divide-neutral-100 rounded-xl border border-neutral-200">
               {trovati.map((r) => {
@@ -325,7 +324,7 @@ export function OrderLines({
               Totale <span className="font-normal text-neutral-500">+ IVA</span>
               {ordine.righeNonDisponibili > 0 && (
                 <span className="ml-2 text-xs font-normal text-amber-700">
-                  senza le righe non consegnate
+                  al netto delle righe non consegnate
                 </span>
               )}
             </dt>

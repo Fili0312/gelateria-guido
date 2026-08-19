@@ -159,7 +159,7 @@ export function UploadDialog({
         open={open}
         onOpenChange={(aperto) => (aperto ? setOpen(true) : chiudi())}
         title="Carica un listino"
-        description="Fornitore e nome del listino sono obbligatori: decidono dove finiranno i prodotti e con quale listino precedente verrà confrontato."
+        description="Fornitore e denominazione del listino sono obbligatori: determinano l’attribuzione dei prodotti e il listino precedente con cui verrà confrontato."
       >
         <form onSubmit={invia} className="space-y-5" noValidate>
           <Select
@@ -187,7 +187,7 @@ export function UploadDialog({
               onChange={(e) => setScopeLabel(e.target.value)}
               error={campi.scopeLabel?.[0]}
               placeholder="liquori, vini e spumanti, gelato 2026…"
-              hint="Dice cosa copre. Serve a confrontare il nuovo listino con il precedente della stessa copertura, e non con tutto il catalogo del fornitore."
+              hint="Indica l’ambito del listino. Consente di confrontarlo con il precedente della stessa copertura anziché con l’intero catalogo del fornitore."
               maxLength={60}
               list="coperture-usate"
             />
@@ -260,7 +260,7 @@ export function UploadDialog({
               lascerebbe a catalogo articoli che non si vendono più. */}
           <fieldset className="grid gap-2">
             <legend className="mb-1 text-sm font-semibold text-neutral-800">
-              Cosa contiene questo file
+              Contenuto del file
             </legend>
             {(
               [

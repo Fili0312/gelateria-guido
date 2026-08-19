@@ -92,7 +92,7 @@ function DaFareList({ daFare }: { daFare: DaFare }) {
     return (
       <p className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
         <AppIcon name="check" className="h-4 w-4 shrink-0" />
-        Non c’è niente in sospeso.
+        Nessuna attività in sospeso.
       </p>
     );
   }
@@ -281,7 +281,7 @@ export default async function DashboardPage() {
 
           <div>
             <p className="mb-2 text-xs leading-5 text-green-900/70">
-              <strong className="font-semibold">Come nasce il numero:</strong> si prendono i tuoi
+              <strong className="font-semibold">Metodo di calcolo:</strong> si prendono i tuoi
               acquisti veri degli ultimi {p.periodo.giorniOsservati} giorni, si portano a dodici
               mesi, e si moltiplicano per la differenza di prezzo di oggi fra il fornitore più
               conveniente e il più caro. È il <strong className="font-semibold">massimo</strong>{' '}
@@ -320,7 +320,7 @@ export default async function DashboardPage() {
         <SchedaDati
           titolo="Prodotti più acquistati"
           href="/ordini/storico?giorni=365"
-          nota="Ordinati per spesa netta: pezzi e confezioni, non omogenei tra articoli, restano visibili."
+          nota="Ordinati per spesa netta. Pezzi e confezioni non sono omogenei fra articoli e restano indicati a titolo informativo."
         >
           {p.prodottiPiuAcquistati.length === 0 ? (
             <NessunDato>Nessun acquisto nel periodo.</NessunDato>

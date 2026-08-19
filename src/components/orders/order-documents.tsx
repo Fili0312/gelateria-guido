@@ -75,7 +75,7 @@ export function OrderDocuments({
       setDocumenti(corpo.data);
       toast({
         title: `${nuovi.length} ${nuovi.length === 1 ? 'documento pronto' : 'documenti pronti'}`,
-        description: 'Scaricali qui sotto, o prendili tutti insieme.',
+        description: 'Disponibili singolarmente o in un unico archivio.',
         tone: 'success',
       });
     } catch {
@@ -126,7 +126,7 @@ export function OrderDocuments({
 
       {documenti.length === 0 ? (
         <p className="mt-4 rounded-xl border border-dashed border-neutral-300 px-4 py-6 text-center text-sm text-neutral-500">
-          Non ci sono ancora documenti per questo ordine.
+          Nessun documento generato per questo ordine.
         </p>
       ) : (
         <ul className="mt-4 divide-y divide-neutral-100 border-t border-neutral-100">
