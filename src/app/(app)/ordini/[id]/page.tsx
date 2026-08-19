@@ -3,8 +3,8 @@ import { notFound } from 'next/navigation';
 import { AppIcon } from '@/components/app-icon';
 import { OrderActions } from '@/components/orders/order-actions';
 import { OrderDocuments } from '@/components/orders/order-documents';
+import { OrderLines } from '@/components/orders/order-lines';
 import { Badge } from '@/components/ui';
-import { euro, formatoConfezione } from '@/features/products/format';
 import { getCurrentUser } from '@/server/auth';
 import { withBasePath } from '@/server/base-path';
 import { orderDocumentsRepository } from '@/server/repositories/order-documents';
@@ -79,60 +79,17 @@ export default async function OrdineStoricoPage({ params }: { params: Promise<{ 
         </span>
       </p>
 
-      {ordine.perFornitore.map((gruppo) => (
-        <section
-          key={gruppo.supplierId}
-          className="overflow-hidden rounded-2xl border border-neutral-200 bg-white"
-        >
-          <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-neutral-100 bg-neutral-50 px-4 py-2.5">
-            <h2 className="font-black text-neutral-950">{gruppo.supplierName}</h2>
-            <p className="tabellare text-sm text-neutral-600">
-              {gruppo.righe.length} righe ·{' '}
-              <strong className="text-neutral-950">{euro(gruppo.netto)}</strong>
-            </p>
-          </header>
-          <ul className="divide-y divide-neutral-100">
-            {gruppo.righe.map((riga) => (
-              <li key={riga.id} className="flex flex-wrap items-baseline gap-x-3 px-4 py-2">
-                <span className="tabellare w-10 shrink-0 font-bold text-neutral-950">
-                  {riga.quantityPacks}×
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="text-sm font-semibold text-neutral-950">{riga.name}</span>
-                  <span className="ml-2 text-xs text-neutral-500">
-                    {formatoConfezione(riga.unitSize, riga.unitOfMeasure, riga.packQuantity)}
-                    {riga.supplierCode && ` · cod. ${riga.supplierCode}`}
-                  </span>
-                  {riga.note && (
-                    <span className="mt-0.5 block text-xs text-neutral-500">{riga.note}</span>
-                  )}
-                </span>
-                <span className="tabellare text-xs text-neutral-500">{euro(riga.priceNet)}</span>
-                <span className="tabellare w-20 text-right text-sm font-bold text-neutral-950">
-                  {euro(riga.lineTotalNet)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
+      <OrderLines
+        ordine={ordine}
+        endpointOrdini={withBasePath('/api/orders')}
+        modificabile={!annullato}
+      />
 
       {ordine.note && (
         <p className="rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm leading-6 text-neutral-700">
           <span className="font-semibold text-neutral-900">Nota:</span> {ordine.note}
         </p>
       )}
-
-      <section className="rounded-2xl border border-neutral-200 bg-white p-5">
-        <dl className="space-y-1 text-sm">
-          <div className="flex items-baseline justify-between">
-            <dt className="font-semibold text-neutral-900">
-              Totale <span className="font-normal text-neutral-500">+ IVA</span>
-            </dt>
-            <dd className="tabellare text-2xl font-black text-neutral-950">{euro(ordine.netto)}</dd>
-          </div>
-        </dl>
-      </section>
 
       <OrderDocuments
         orderId={ordine.id}

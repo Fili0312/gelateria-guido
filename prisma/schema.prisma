@@ -943,6 +943,15 @@ model OrderLine {
   bestAlternativeSnapshot Json?   @map("best_alternative_snapshot")
   overrideReason          String? @map("override_reason")
 
+  /// Quando il fornitore ha detto che quell'articolo non ce l'ha.
+  ///
+  /// La riga **non si cancella**: resta col suo prezzo fotografato, perché
+  /// lo storico deve poter dire cosa era stato ordinato e cosa è arrivato.
+  /// Sparisce invece dai totali e dai documenti rigenerati — è merce che non
+  /// si paga, e mandare al fornitore un ordine con dentro una cosa che lui
+  /// stesso ha detto di non avere fa perdere tempo a tutti e due.
+  unavailableAt DateTime? @map("unavailable_at")
+
   position Int
   note     String?
 

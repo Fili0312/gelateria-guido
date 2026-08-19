@@ -1562,6 +1562,7 @@ export function ordersRepository(organizationId: string) {
               unitPriceNetSnapshot: true,
               lineTotalNet: true,
               note: true,
+              unavailableAt: true,
             },
             orderBy: { position: 'asc' },
           },
@@ -1581,7 +1582,101 @@ export function ordersRepository(organizationId: string) {
         iva: o.totalVat.toString(),
         lordo: o.totalGross.toString(),
         perFornitore: raggruppaRigheStoriche(o.lines),
+        righeNonDisponibili: o.lines.filter((r) => r.unavailableAt !== null).length,
       };
+    },
+
+    /**
+     * Segna una riga come non disponibile, o la rimette in ordine.
+     *
+     * ── Cosa succede davvero ────────────────────────────────────────────
+     * Il fornitore consegna e dice: «questo non ce l'ho». L'ordine è già
+     * confermato e congelato, quindi non si modifica — ma quella merce non
+     * arriva, non si paga, e i documenti che gli si rimandano non devono
+     * più contenerla.
+     *
+     * La riga **resta**, col suo prezzo fotografato. Cancellarla farebbe
+     * sparire dallo storico il fatto che era stata ordinata, che è proprio
+     * la cosa da ricordare quando fra un mese si ricontrolla la fattura o
+     * si decide se cambiare fornitore.
+     *
+     * ── Perché i totali si riscrivono ───────────────────────────────────
+     * `totalNet` e compagni sono la cifra che si pagherà. Lasciarli fermi
+     * al momento della conferma vorrebbe dire tenere in pagina un totale
+     * che non corrisponde a nessuna fattura, e nessuno saprebbe quale dei
+     * due numeri è quello vero.
+     *
+     * Si riscrivono **dentro la stessa transazione** che marca la riga: due
+     * scritture separate lascerebbero, nel mezzo, un ordine con la riga
+     * esclusa e il totale ancora comprensivo.
+     */
+    async segnaDisponibilita(
+      orderId: string,
+      lineId: string,
+      disponibile: boolean,
+    ): Promise<OrdineStorico> {
+      await transactionForOrganization(organizationId, async (tx) => {
+        const ordine = await tx.order.findFirst({
+          where: { id: orderId, status: { not: 'DRAFT' } },
+          select: { id: true, lines: { select: { id: true } } },
+        });
+        if (!ordine) throw new OrderNotFoundError('Ordine inesistente o ancora in bozza.');
+        if (!ordine.lines.some((r) => r.id === lineId)) {
+          throw new OrderNotFoundError('Quella riga non è di questo ordine.');
+        }
+
+        await tx.order.update({
+          where: { id: orderId },
+          data: {
+            lines: {
+              update: {
+                where: { id: lineId },
+                data: { unavailableAt: disponibile ? null : new Date() },
+              },
+            },
+          },
+        });
+
+        const rimaste = await tx.order.findFirstOrThrow({
+          where: { id: orderId },
+          select: {
+            lines: {
+              where: { unavailableAt: null },
+              select: { lineTotalNet: true, lineTotalGross: true },
+            },
+          },
+        });
+
+        let netto = new Decimal(0);
+        let lordo = new Decimal(0);
+        for (const riga of rimaste.lines) {
+          netto = netto.plus(riga.lineTotalNet.toString());
+          lordo = lordo.plus(riga.lineTotalGross.toString());
+        }
+
+        await tx.order.update({
+          where: { id: orderId },
+          data: {
+            totalNet: netto.toFixed(2),
+            totalVat: lordo.minus(netto).toFixed(2),
+            totalGross: lordo.toFixed(2),
+          },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            organizationId,
+            action: disponibile ? 'ORDER_LINE_AVAILABLE' : 'ORDER_LINE_UNAVAILABLE',
+            entityType: 'OrderLine',
+            entityId: lineId,
+            detail: { orderId, nuovoNetto: netto.toFixed(2) },
+          },
+        });
+      });
+
+      const aggiornato = await this.storico(orderId);
+      if (!aggiornato) throw new OrderNotFoundError('Ordine inesistente.');
+      return aggiornato;
     },
 
     /**

@@ -99,6 +99,13 @@ export async function datiOrdine(
       confirmedAt: true,
       organization: { select: { name: true } },
       lines: {
+        // Fuori le righe che il fornitore ha dichiarato di non avere.
+        //
+        // È il motivo per cui i documenti si rigenerano: mandargli un ordine
+        // che contiene una cosa che lui stesso ha detto di non avere fa
+        // perdere tempo a tutti e due, e il totale in fondo non
+        // corrisponderebbe alla merce sul camion.
+        where: { unavailableAt: null },
         select: {
           supplierId: true,
           nameSnapshot: true,

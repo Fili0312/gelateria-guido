@@ -288,9 +288,14 @@ export interface OrdineStorico {
       priceNet: string;
       lineTotalNet: string;
       note: string | null;
+      /** Il fornitore ha detto di non averlo: resta in elenco, fuori dai conti. */
+      nonDisponibile: boolean;
     }[];
+    /** Solo le righe disponibili: è quello che si paga. */
     netto: string;
   }[];
+  /** Quante righe il fornitore ha dichiarato non disponibili. */
+  righeNonDisponibili: number;
 }
 
 /** Cosa è successo riordinando: il pezzo che rende «riordina» affidabile. */

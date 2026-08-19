@@ -18,6 +18,8 @@ export interface RigaStoricaDaRaggruppare {
   unitPriceNetSnapshot: DecimalLike;
   lineTotalNet: DecimalLike;
   note: string | null;
+  /** `null` finché il fornitore non dichiara di non avere l'articolo. */
+  unavailableAt: Date | null;
 }
 
 export type CondizioneRigheStorico =
@@ -80,8 +82,14 @@ export function raggruppaRigheStoriche(
       priceNet: riga.unitPriceNetSnapshot.toString(),
       lineTotalNet: riga.lineTotalNet.toString(),
       note: riga.note,
+      nonDisponibile: riga.unavailableAt !== null,
     });
-    gruppo.netto = new Decimal(gruppo.netto).plus(riga.lineTotalNet.toString()).toString();
+    // Il totale del fornitore conta solo la merce che arriva: una riga che
+    // lui stesso ha detto di non avere non si paga, e lasciarla dentro
+    // darebbe un numero che non corrisponde a nessuna fattura.
+    if (riga.unavailableAt === null) {
+      gruppo.netto = new Decimal(gruppo.netto).plus(riga.lineTotalNet.toString()).toString();
+    }
     gruppi.set(riga.supplierId, gruppo);
   }
   return [...gruppi.values()].sort((a, b) => a.supplierName.localeCompare(b.supplierName, 'it'));
