@@ -215,7 +215,7 @@ export function ProductCard({
           scalano invece coi punti d'interruzione — foto, prezzo e comando
           quantità si stringono tutti — e il nome tiene sempre le sue due
           righe con dentro le parole che distinguono il prodotto. */}
-      <div className="flex items-center gap-2.5 p-3 min-[400px]:gap-3 min-[400px]:p-3.5">
+      <div className="flex items-center gap-3 p-3 min-[400px]:gap-4 min-[400px]:p-4">
         <FotoProdotto
           src={risultato.imageUrl}
           nome={risultato.name}

@@ -44,7 +44,7 @@ function Avviso({
   if (!a || !a.meritaAvviso || riga.avvisoIgnorato) return null;
 
   return (
-    <div className="border-t border-amber-100 bg-amber-50 px-3 py-2">
+    <div className="border-t border-amber-100 bg-amber-50 px-4 py-3">
       <p className="text-xs leading-5 text-amber-900">
         Disponibile a <strong>{euro(a.migliore.priceNet)}</strong> da{' '}
         <strong>{a.migliore.supplierName}</strong>. Risparmieresti{' '}
@@ -105,7 +105,7 @@ function Riga({
 }) {
   return (
     <>
-      <li className="group flex items-center gap-3 px-3.5 py-3">
+      <li className="group flex items-center gap-3 px-4 py-3">
         <div className="min-w-0 flex-1">
           <p className="line-clamp-2 text-[15px] leading-[1.25] font-semibold text-neutral-950">
             {nomeLeggibile(riga.name)}
@@ -196,7 +196,7 @@ export function OrderPanel({
           e ripeterlo toglieva una riga a un elenco che sul telefono ne ha
           poche. Resta il solo comando che serve. */}
       {ordine.righe.length > 0 && (
-        <div className="flex justify-end border-b border-neutral-100 px-3.5 py-2">
+        <div className="flex justify-end border-b border-neutral-100 px-4 py-3">
           <button
             type="button"
             onClick={onSvuota}
@@ -215,7 +215,7 @@ export function OrderPanel({
         <div className="min-h-0 flex-1 overflow-y-auto">
           {ordine.perFornitore.map((gruppo) => (
             <section key={gruppo.supplierId}>
-              <h3 className="sticky top-0 z-10 flex items-baseline justify-between gap-2 border-y border-neutral-200 bg-neutral-100 px-3.5 py-2 text-xs font-bold tracking-wider text-neutral-600 uppercase">
+              <h3 className="sticky top-0 z-10 flex items-baseline justify-between gap-2 border-y border-neutral-200 bg-neutral-100 px-4 py-3 text-xs font-bold tracking-wider text-neutral-600 uppercase">
                 <span className="truncate">{gruppo.supplierName}</span>
                 <span className="tabellare shrink-0 font-normal text-neutral-500">
                   {euro(gruppo.netto)}

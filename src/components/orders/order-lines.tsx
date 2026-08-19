@@ -136,7 +136,7 @@ export function OrderLines({
           key={gruppo.supplierId}
           className="overflow-hidden rounded-2xl border border-neutral-200 bg-white"
         >
-          <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-neutral-100 bg-neutral-50 px-4 py-2.5">
+          <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-neutral-100 bg-neutral-50 px-4 py-3">
             <h2 className="font-black text-neutral-950">{gruppo.supplierName}</h2>
             <p className="tabellare text-sm text-neutral-600">
               {gruppo.righe.filter((r) => !r.nonDisponibile).length} righe ·{' '}
@@ -147,7 +147,7 @@ export function OrderLines({
             {gruppo.righe.map((riga) => (
               <li
                 key={riga.id}
-                className={`flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 ${
+                className={`flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 ${
                   riga.nonDisponibile ? 'bg-neutral-50' : ''
                 }`}
               >
@@ -274,7 +274,7 @@ export function OrderLines({
               {trovati.map((r) => {
                 const offerta = r.offerte[0];
                 return (
-                  <li key={r.productId} className="flex items-center gap-3 px-3 py-2">
+                  <li key={r.productId} className="flex items-center gap-3 px-4 py-3">
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-semibold text-neutral-950">
                         {nomeLeggibile(r.name)}
@@ -317,7 +317,7 @@ export function OrderLines({
         </section>
       )}
 
-      <section className="rounded-2xl border border-neutral-200 bg-white p-5">
+      <section className="rounded-2xl border border-neutral-200 bg-white p-4">
         <dl className="space-y-1 text-sm">
           <div className="flex items-baseline justify-between">
             <dt className="font-semibold text-neutral-900">

@@ -219,7 +219,7 @@ export function OrderSummary({
           key={gruppo.supplierId}
           className="overflow-hidden rounded-2xl border border-neutral-200 bg-white"
         >
-          <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-neutral-100 bg-neutral-50 px-4 py-2.5">
+          <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-neutral-100 bg-neutral-50 px-4 py-3">
             <h2 className="font-black text-neutral-950">{gruppo.supplierName}</h2>
             <p className="tabellare text-sm text-neutral-600">
               {gruppo.righe} righe · {gruppo.confezioni} conf. ·{' '}
@@ -235,7 +235,7 @@ export function OrderSummary({
             {o.righe
               .filter((r) => r.supplierId === gruppo.supplierId)
               .map((riga) => (
-                <li key={riga.id} className="flex items-start gap-3 px-3.5 py-2.5">
+                <li key={riga.id} className="flex items-start gap-3 px-4 py-3">
                   <span className="tabellare w-9 shrink-0 pt-0.5 font-bold text-neutral-950">
                     {riga.quantityPacks}×
                   </span>
@@ -266,7 +266,7 @@ export function OrderSummary({
       ))}
 
       {/* ── Totali e conferma ─────────────────────────────────────────── */}
-      <section className="rounded-2xl border border-neutral-200 bg-white p-5">
+      <section className="rounded-2xl border border-neutral-200 bg-white p-4">
         <label className="block">
           <span className="text-sm font-semibold text-neutral-800">Nota per l’ordine</span>
           <textarea
@@ -275,7 +275,7 @@ export function OrderSummary({
             rows={2}
             maxLength={2000}
             placeholder="Es. consegna in mattinata, accesso dal laboratorio"
-            className="focus:border-brand-500 focus:ring-brand-500/30 mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-4"
+            className="focus:border-brand-500 focus:ring-brand-500/30 mt-1 w-full rounded-lg border border-neutral-300 px-4 py-3 text-sm outline-none focus:ring-4"
           />
           <span className="text-xs text-neutral-500">
             Riportata sul documento inviato al fornitore.

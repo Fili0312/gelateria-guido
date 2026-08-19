@@ -86,7 +86,7 @@ export function OrderDocuments({
   }
 
   return (
-    <section className="rounded-2xl border border-neutral-200 bg-white p-5">
+    <section className="rounded-2xl border border-neutral-200 bg-white p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="font-black text-neutral-950">Documenti per i fornitori</h2>

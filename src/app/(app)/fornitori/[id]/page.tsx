@@ -38,7 +38,7 @@ function DetailCard({
         <h2 className="font-black tracking-tight text-neutral-950">{title}</h2>
         <p className="mt-1 text-xs leading-5 text-neutral-500">{description}</p>
       </header>
-      <dl className="grid gap-5 p-5 sm:grid-cols-2">{children}</dl>
+      <dl className="grid gap-5 p-4 sm:grid-cols-2">{children}</dl>
     </section>
   );
 }

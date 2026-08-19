@@ -134,7 +134,7 @@ export default async function StoricoPage({
               <li key={o.id}>
                 <Link
                   href={`/ordini/${o.id}`}
-                  className="block cursor-pointer rounded-2xl border border-neutral-200 bg-white p-3.5 transition-colors hover:border-neutral-300"
+                  className="block cursor-pointer rounded-2xl border border-neutral-200 bg-white p-4 transition-colors hover:border-neutral-300"
                 >
                   {/* Numero e importo sulla stessa riga, ai due estremi: sono
                       i due dati con cui un ordine si riconosce, e sul
@@ -177,7 +177,7 @@ export default async function StoricoPage({
           {query.pagina > 1 ? (
             <Link
               href={`/ordini/storico?${new URLSearchParams({ ...grezzi, pagina: String(query.pagina - 1) } as Record<string, string>)}`}
-              className="min-h-11 cursor-pointer rounded-lg border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-800 hover:border-neutral-400"
+              className="min-h-11 cursor-pointer rounded-lg border border-neutral-300 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 hover:border-neutral-400"
             >
               ← Precedenti
             </Link>
@@ -187,7 +187,7 @@ export default async function StoricoPage({
           {query.pagina < pagine && (
             <Link
               href={`/ordini/storico?${new URLSearchParams({ ...grezzi, pagina: String(query.pagina + 1) } as Record<string, string>)}`}
-              className="min-h-11 cursor-pointer rounded-lg border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-800 hover:border-neutral-400"
+              className="min-h-11 cursor-pointer rounded-lg border border-neutral-300 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 hover:border-neutral-400"
             >
               Successivi →
             </Link>
