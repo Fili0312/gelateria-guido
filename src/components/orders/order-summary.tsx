@@ -220,7 +220,7 @@ export function OrderSummary({
           className="overflow-hidden rounded-2xl border border-neutral-200 bg-white"
         >
           <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-neutral-100 bg-neutral-50 px-4 py-3">
-            <h2 className="font-black text-neutral-950">{gruppo.supplierName}</h2>
+            <h2 className="font-extrabold text-neutral-950">{gruppo.supplierName}</h2>
             <p className="tabellare text-sm text-neutral-600">
               {gruppo.righe} righe · {gruppo.confezioni} conf. ·{' '}
               <strong className="text-neutral-950">{euro(gruppo.netto)}</strong>
@@ -291,7 +291,7 @@ export function OrderSummary({
             <dt className="font-semibold text-neutral-900">
               Totale <span className="font-normal text-neutral-500">+ IVA</span>
             </dt>
-            <dd className="tabellare text-2xl font-black text-neutral-950">{euro(t.netto)}</dd>
+            <dd className="tabellare text-2xl font-extrabold text-neutral-950">{euro(t.netto)}</dd>
           </div>
           {Number(t.ritornoAtteso) > 0 && (
             <div className="flex justify-between gap-3 rounded-xl bg-violet-50 px-2.5 py-1.5 text-[13px] text-violet-800">

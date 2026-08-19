@@ -111,7 +111,7 @@ function Gruppo({
 }) {
   return (
     <div>
-      <h3 className="flex flex-wrap items-baseline gap-2 text-sm font-black text-neutral-950">
+      <h3 className="flex flex-wrap items-baseline gap-2 text-sm font-extrabold text-neutral-950">
         {titolo}
         <span className="text-xs font-normal text-neutral-500">{spiega}</span>
       </h3>
@@ -260,7 +260,7 @@ export function DuplicatesFinder({
     <section className="rounded-2xl border border-violet-200 bg-violet-50/50 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="flex items-center gap-2 font-black text-neutral-950">
+          <h2 className="flex items-center gap-2 font-extrabold text-neutral-950">
             <AppIcon name="sparkles" className="h-4 w-4 text-violet-600" />
             Analizza il catalogo
           </h2>

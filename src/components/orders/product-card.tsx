@@ -139,7 +139,7 @@ function Prezzo({ offerta, grande }: { offerta: OffertaOrdinabile; grande: boole
           // Un filo più piccolo sui telefoni stretti: a 320 pixel ogni
           // millimetro tolto qui è un millimetro dato al nome, che è
           // l'unica cosa che davvero non può essere troncata.
-          grande ? 'text-[1.3rem] min-[400px]:text-[1.45rem]' : 'text-base'
+          grande ? 'text-[20px] min-[400px]:text-[22px]' : 'text-base'
         }`}
       >
         {euro(offerta.priceNet)}
@@ -226,7 +226,7 @@ export function ProductCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             {risultato.category ? (
-              <span className="truncate rounded-md bg-violet-50 px-1.5 py-0.5 text-[10.5px] font-bold tracking-wide text-violet-600 uppercase">
+              <span className="truncate rounded-md bg-violet-50 px-1.5 py-0.5 text-[11px] font-bold tracking-wide text-violet-600 uppercase">
                 {risultato.category.name}
               </span>
             ) : (
@@ -279,13 +279,13 @@ export function ProductCard({
               restano ottantaquattro pixel: in due righe ci sta «Absolut
               Citron…», che è di nuovo il troncamento da cui siamo partiti.
               Venti pixel di card in più valgono il nome intero. */}
-          <p className="mt-1 line-clamp-3 text-[13px] leading-[1.3] font-bold text-neutral-950 min-[360px]:text-[13.5px] min-[400px]:text-[14.5px]">
+          <p className="mt-1 line-clamp-3 text-[13px] leading-[1.3] font-bold text-neutral-950 min-[360px]:text-[13px] min-[400px]:text-[15px]">
             {nomeLeggibile(risultato.name)}
           </p>
 
           {prima ? (
             <>
-              <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12.5px] text-neutral-500">
+              <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] text-neutral-500">
                 <ColloBadge confezione={prima} />
                 <span className="truncate">{prima.supplierName}</span>
               </p>

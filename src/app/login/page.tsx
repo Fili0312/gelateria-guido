@@ -33,7 +33,7 @@ export default async function LoginPage({
         />
 
         <div className="relative flex items-center gap-3">
-          <span className="bg-brand-500 grid h-12 w-12 place-items-center rounded-2xl text-sm font-black tracking-tight shadow-xl shadow-black/20">
+          <span className="bg-brand-500 grid h-12 w-12 place-items-center rounded-2xl text-sm font-extrabold tracking-tight shadow-xl shadow-black/20">
             GG
           </span>
           <div>
@@ -47,7 +47,7 @@ export default async function LoginPage({
             <AppIcon name="sparkles" className="h-4 w-4 text-lime-300" />
             Listini, confronti e ordini
           </span>
-          <h1 className="text-5xl leading-[1.05] font-black tracking-[-0.04em] text-balance xl:text-6xl">
+          <h1 className="text-5xl leading-[1.05] font-extrabold tracking-[-0.04em] text-balance xl:text-6xl">
             Ogni listino,
             <br />
             finalmente al suo posto.
@@ -68,7 +68,7 @@ export default async function LoginPage({
         />
         <div className="relative w-full max-w-md">
           <div className="mb-10 flex items-center gap-3 lg:hidden">
-            <span className="bg-brand-600 grid h-11 w-11 place-items-center rounded-2xl text-sm font-black text-white">
+            <span className="bg-brand-600 grid h-11 w-11 place-items-center rounded-2xl text-sm font-extrabold text-white">
               GG
             </span>
             <div>
@@ -82,7 +82,7 @@ export default async function LoginPage({
               <span className="bg-brand-50 text-brand-700 mb-5 inline-flex h-11 w-11 items-center justify-center rounded-2xl">
                 <AppIcon name="shield" className="h-5 w-5" />
               </span>
-              <h2 className="text-3xl font-black tracking-[-0.03em] text-neutral-950">
+              <h2 className="text-3xl font-extrabold tracking-[-0.03em] text-neutral-950">
                 Bentornati
               </h2>
               <p className="mt-2 leading-6 text-neutral-500">

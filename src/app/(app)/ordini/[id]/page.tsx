@@ -40,7 +40,7 @@ export default async function OrdineStoricoPage({ params }: { params: Promise<{ 
           ← Ordini fatti
         </Link>
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-black tracking-[-0.035em] text-neutral-950 sm:text-4xl">
+          <h1 className="text-3xl font-extrabold tracking-[-0.035em] text-neutral-950 sm:text-4xl">
             Ordine {ordine.code}
           </h1>
           <Badge variant={annullato ? 'neutral' : 'success'}>

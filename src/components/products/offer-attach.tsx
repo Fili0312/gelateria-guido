@@ -151,7 +151,7 @@ export function OfferAttach({
   return (
     <div className="space-y-8">
       <section className="space-y-3">
-        <h2 className="text-xl font-black text-neutral-950">Offerte senza prodotto</h2>
+        <h2 className="text-xl font-extrabold text-neutral-950">Offerte senza prodotto</h2>
         <p className="text-sm text-neutral-500">
           Articoli di fornitore presenti in archivio e non ancora associati a un prodotto di
           catalogo.
@@ -191,7 +191,7 @@ export function OfferAttach({
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-xl font-black text-neutral-950">Oppure creane una nuova</h2>
+        <h2 className="text-xl font-extrabold text-neutral-950">Oppure creane una nuova</h2>
         <p className="text-sm text-neutral-500">
           Verrà collegata subito a «{productName}». Il contenuto della confezione e l’impronta si
           calcolano da soli: non vanno inseriti.

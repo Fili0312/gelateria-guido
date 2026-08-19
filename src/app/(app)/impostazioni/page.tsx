@@ -19,7 +19,7 @@ export default async function SettingsPage() {
     <div className="space-y-7">
       <header>
         <Badge variant="brand">Configurazione organizzazione</Badge>
-        <h1 className="mt-3 text-3xl font-black tracking-[-0.035em] text-neutral-950 sm:text-4xl">
+        <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.035em] text-neutral-950 sm:text-4xl">
           Impostazioni
         </h1>
         <p className="mt-2 max-w-2xl leading-6 text-neutral-500">
@@ -34,7 +34,7 @@ export default async function SettingsPage() {
           <span className="bg-brand-50 text-brand-700 grid h-11 w-11 place-items-center rounded-2xl">
             <AppIcon name="shield" className="h-5 w-5" />
           </span>
-          <h2 className="mt-4 font-black text-neutral-950">Accesso protetto</h2>
+          <h2 className="mt-4 font-extrabold text-neutral-950">Accesso protetto</h2>
           <p className="mt-2 text-sm leading-6 text-neutral-500">
             La sessione usa il cookie <code className="text-xs">{SESSION_COOKIE_NAME}</code>,
             firmato e non leggibile dal JavaScript della pagina.

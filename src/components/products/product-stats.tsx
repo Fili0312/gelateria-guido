@@ -28,7 +28,7 @@ function Metric({ label, value, note }: { label: string; value: string; note?: s
   return (
     <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3">
       <dt className="text-xs font-semibold tracking-wide text-neutral-500 uppercase">{label}</dt>
-      <dd className="tabellare mt-1 text-2xl font-black text-neutral-950">{value}</dd>
+      <dd className="tabellare mt-1 text-2xl font-extrabold text-neutral-950">{value}</dd>
       {note && <p className="mt-1 text-xs leading-5 text-neutral-500">{note}</p>}
     </div>
   );
@@ -283,7 +283,7 @@ function CurrentComparison({ stats }: { stats: ProductPurchaseStats }) {
       <div className="flex flex-wrap items-center gap-2">
         <strong>Prezzo attuale: {euro(comparison.currentPrice)}</strong>
         <span>{basis}</span>
-        <span className={`tabellare font-black ${tone}`}>
+        <span className={`tabellare font-extrabold ${tone}`}>
           {sign}
           {numero(comparison.percentageChange, 2)}%
         </span>
@@ -384,7 +384,7 @@ export function ProductStats({
     <section id="statistiche-acquisti" className="scroll-mt-6 space-y-4" aria-busy={loading}>
       <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
-          <h2 className="text-lg font-black text-neutral-950">Statistiche acquisti</h2>
+          <h2 className="text-lg font-extrabold text-neutral-950">Statistiche acquisti</h2>
           <p className="mt-1 text-sm text-neutral-500">
             Solo ordini confermati; prezzi, confezioni e quantità sono gli snapshot del momento
             dell’acquisto.

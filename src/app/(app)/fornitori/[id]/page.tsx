@@ -35,7 +35,7 @@ function DetailCard({
   return (
     <section className="rounded-2xl border border-neutral-200 bg-white shadow-sm">
       <header className="border-b border-neutral-100 px-5 py-4">
-        <h2 className="font-black tracking-tight text-neutral-950">{title}</h2>
+        <h2 className="font-extrabold tracking-tight text-neutral-950">{title}</h2>
         <p className="mt-1 text-xs leading-5 text-neutral-500">{description}</p>
       </header>
       <dl className="grid gap-5 p-4 sm:grid-cols-2">{children}</dl>

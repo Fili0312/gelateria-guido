@@ -47,7 +47,7 @@ export default async function StoricoPage({
     <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black tracking-[-0.03em] text-neutral-950 sm:text-3xl">
+          <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-neutral-950 sm:text-3xl">
             Ordini fatti
           </h1>
           <p className="mt-1 text-sm leading-6 text-neutral-500">

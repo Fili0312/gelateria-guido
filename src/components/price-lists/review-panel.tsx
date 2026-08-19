@@ -61,7 +61,7 @@ function Numero({
   return (
     <div className={`rounded-xl border px-4 py-3 ${colore}`}>
       <dt className="text-xs text-neutral-600">{etichetta}</dt>
-      <dd className="tabellare mt-1 text-2xl font-black text-neutral-950">{valore}</dd>
+      <dd className="tabellare mt-1 text-2xl font-extrabold text-neutral-950">{valore}</dd>
     </div>
   );
 }
@@ -172,7 +172,7 @@ export function ReviewPanel({
   return (
     <section className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-black text-neutral-950">
+        <h2 className="text-lg font-extrabold text-neutral-950">
           {applicato ? 'Import applicato' : 'Cosa succederà al catalogo'}
         </h2>
         {applicato && <Badge variant="success">applicato</Badge>}

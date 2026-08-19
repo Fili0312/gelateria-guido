@@ -23,7 +23,7 @@ export default async function SupplierPriceListsPage({
         <Badge variant="success" dot>
           Importazione operativa
         </Badge>
-        <h2 className="mt-3 text-xl font-black tracking-tight text-neutral-950">
+        <h2 className="mt-3 text-xl font-extrabold tracking-tight text-neutral-950">
           Listini di {supplier.name}
         </h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-500">

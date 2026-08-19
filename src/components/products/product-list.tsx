@@ -249,7 +249,7 @@ function Riga({
 function Vuoto({ conFiltri }: { conFiltri: boolean }) {
   return (
     <div className="rounded-2xl border border-dashed border-neutral-300 bg-white px-5 py-12 text-center">
-      <h2 className="text-lg font-black text-neutral-950">
+      <h2 className="text-lg font-extrabold text-neutral-950">
         {conFiltri ? 'Nessun prodotto corrisponde ai filtri' : 'Il catalogo è vuoto'}
       </h2>
       <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-neutral-500">

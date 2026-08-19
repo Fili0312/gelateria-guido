@@ -98,7 +98,7 @@ export default async function ConfrontiPage({
         <Badge variant="brand" dot>
           Confronto prezzi
         </Badge>
-        <h1 className="mt-3 text-3xl font-black tracking-[-0.035em] text-neutral-950 sm:text-4xl">
+        <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.035em] text-neutral-950 sm:text-4xl">
           Confronti
         </h1>
         <p className="mt-2 max-w-2xl leading-6 text-neutral-500">
@@ -108,7 +108,7 @@ export default async function ConfrontiPage({
       </header>
 
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 rounded-2xl border border-neutral-200 bg-white px-5 py-4">
-        <span className="tabellare text-3xl font-black tracking-[-0.03em] text-neutral-950">
+        <span className="tabellare text-3xl font-extrabold tracking-[-0.03em] text-neutral-950">
           {euro(t.savingPerPack)}
         </span>
         <span className="text-sm text-neutral-600">
@@ -140,7 +140,7 @@ export default async function ConfrontiPage({
       {coda.totale > 0 && (
         <section className="space-y-3">
           <div>
-            <h2 className="text-lg font-black text-neutral-950">
+            <h2 className="text-lg font-extrabold text-neutral-950">
               {coda.daRivedere} righe di listino aspettano una decisione
             </h2>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-neutral-500">
@@ -164,7 +164,7 @@ export default async function ConfrontiPage({
       {/* 3. Guarda: il risultato. */}
       <section className="space-y-3">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="text-lg font-black text-neutral-950">
+          <h2 className="text-lg font-extrabold text-neutral-950">
             {report.comparisons.length === t.compared
               ? `${t.compared} confronti`
               : `${report.comparisons.length} confronti su ${t.compared}`}

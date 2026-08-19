@@ -36,7 +36,7 @@ export function FutureSupplierSection({
         <Badge variant="neutral" className="mt-5">
           Operativa nella Fase {phase}
         </Badge>
-        <h2 className="mt-3 text-xl font-black tracking-tight text-neutral-950">{title}</h2>
+        <h2 className="mt-3 text-xl font-extrabold tracking-tight text-neutral-950">{title}</h2>
         <p className="mt-2 text-sm leading-6 text-neutral-500">{description}</p>
         {linkedLabel && (
           <p className="bg-brand-50 text-brand-900 mt-5 rounded-xl px-4 py-3 text-sm font-semibold">

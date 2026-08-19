@@ -33,7 +33,7 @@ export default async function SupplierOrdersPage({ params }: { params: Promise<{
       <section className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
         <header className="flex flex-wrap items-start justify-between gap-3 border-b border-neutral-100 p-5 sm:p-6">
           <div>
-            <h2 className="text-xl font-black tracking-tight text-neutral-950">
+            <h2 className="text-xl font-extrabold tracking-tight text-neutral-950">
               Ordini a {supplier.name}
             </h2>
             <p className="mt-1 text-sm leading-6 text-neutral-500">

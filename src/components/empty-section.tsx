@@ -19,7 +19,7 @@ export function EmptySection({
     <div className="space-y-7">
       <header>
         <Badge variant="neutral">Fase {phase}</Badge>
-        <h1 className="mt-3 text-3xl font-black tracking-[-0.035em] text-neutral-950 sm:text-4xl">
+        <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.035em] text-neutral-950 sm:text-4xl">
           {title}
         </h1>
         <p className="mt-2 max-w-2xl leading-6 text-neutral-500">{description}</p>
@@ -31,7 +31,7 @@ export function EmptySection({
           <span className="bg-brand-50 text-brand-700 mx-auto grid h-16 w-16 place-items-center rounded-3xl">
             <AppIcon name={icon} className="h-8 w-8" />
           </span>
-          <h2 className="mt-5 text-xl font-black tracking-tight">Sezione predisposta</h2>
+          <h2 className="mt-5 text-xl font-extrabold tracking-tight">Sezione predisposta</h2>
           <p className="mt-2 text-sm leading-6 text-neutral-500">
             Rotta, navigazione, autenticazione, caricamento ed errori sono già collegati. Le
             funzioni operative entrano nella fase indicata, senza dover rifare il guscio.

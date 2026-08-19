@@ -44,7 +44,7 @@ export function SupplierDetailShell({
       <header className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-start">
           <div className="flex min-w-0 items-start gap-4">
-            <span className="bg-brand-50 text-brand-700 grid h-14 w-14 shrink-0 place-items-center rounded-2xl text-lg font-black">
+            <span className="bg-brand-50 text-brand-700 grid h-14 w-14 shrink-0 place-items-center rounded-2xl text-lg font-extrabold">
               {supplierInitials(supplier.name)}
             </span>
             <div className="min-w-0">
@@ -54,7 +54,7 @@ export function SupplierDetailShell({
                 </Badge>
                 {supplier.code && <Badge variant="neutral">Codice {supplier.code}</Badge>}
               </div>
-              <h1 className="mt-3 break-words text-3xl font-black tracking-[-0.035em] text-neutral-950 sm:text-4xl">
+              <h1 className="mt-3 break-words text-3xl font-extrabold tracking-[-0.035em] text-neutral-950 sm:text-4xl">
                 {supplier.name}
               </h1>
               <p className="mt-2 text-sm text-neutral-500">

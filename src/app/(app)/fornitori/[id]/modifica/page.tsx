@@ -26,7 +26,7 @@ export default async function EditSupplierPage({ params }: { params: Promise<{ i
           <Badge variant={supplier.active ? 'success' : 'neutral'} dot>
             {supplier.active ? 'Fornitore attivo' : 'Fornitore inattivo'}
           </Badge>
-          <h1 className="mt-3 text-3xl font-black tracking-[-0.035em] text-neutral-950 sm:text-4xl">
+          <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.035em] text-neutral-950 sm:text-4xl">
             Modifica {supplier.name}
           </h1>
           <p className="mt-2 max-w-2xl leading-6 text-neutral-500">

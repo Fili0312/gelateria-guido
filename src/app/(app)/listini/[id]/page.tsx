@@ -144,7 +144,7 @@ export default async function PriceListPage({ params }: { params: Promise<{ id: 
         <Link href="/listini" className="text-sm text-neutral-500 hover:underline">
           ← Listini
         </Link>
-        <h1 className="mt-2 text-3xl font-black tracking-[-0.035em] text-neutral-950 sm:text-4xl">
+        <h1 className="mt-2 text-3xl font-extrabold tracking-[-0.035em] text-neutral-950 sm:text-4xl">
           {listino.supplierName} · {listino.scopeLabel}
         </h1>
         <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-neutral-500">
@@ -220,7 +220,7 @@ export default async function PriceListPage({ params }: { params: Promise<{ id: 
           {listino.fonteProfilo && <ProfiloRiconosciuto listino={listino} />}
 
           <div>
-            <h2 className="text-lg font-black text-neutral-950">Righe del listino</h2>
+            <h2 className="text-lg font-extrabold text-neutral-950">Righe del listino</h2>
             <p className="mt-1 mb-3 max-w-3xl text-sm leading-6 text-neutral-500">
               Come l’app ha letto il documento, riga per riga. Serve a giudicare se l’ha letto bene{' '}
               <strong>prima</strong> di importare qualsiasi cosa: la casella qui sotto mostra le

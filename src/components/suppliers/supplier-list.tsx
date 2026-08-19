@@ -24,7 +24,7 @@ function EmptySuppliers({ hasFilters }: { hasFilters: boolean }) {
       <span className="bg-brand-50 text-brand-700 mx-auto grid h-12 w-12 place-items-center rounded-2xl">
         <AppIcon name="suppliers" className="h-6 w-6" />
       </span>
-      <h2 className="mt-4 text-lg font-black text-neutral-950">
+      <h2 className="mt-4 text-lg font-extrabold text-neutral-950">
         {hasFilters ? 'Nessun fornitore corrisponde ai filtri' : 'Aggiungi il primo fornitore'}
       </h2>
       <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-neutral-500">
@@ -61,12 +61,12 @@ export function SupplierList({
               className="focus-visible:ring-brand-600 block rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition-colors hover:border-neutral-300 hover:bg-neutral-50 focus-visible:ring-2 focus-visible:outline-none"
             >
               <div className="flex items-start gap-3">
-                <span className="bg-brand-50 text-brand-700 grid h-11 w-11 shrink-0 place-items-center rounded-xl text-sm font-black">
+                <span className="bg-brand-50 text-brand-700 grid h-11 w-11 shrink-0 place-items-center rounded-xl text-sm font-extrabold">
                   {supplierInitials(supplier.name)}
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="truncate font-black text-neutral-950">{supplier.name}</h2>
+                    <h2 className="truncate font-extrabold text-neutral-950">{supplier.name}</h2>
                     <Badge variant={supplier.active ? 'success' : 'neutral'} size="sm" dot>
                       {supplier.active ? 'Attivo' : 'Inattivo'}
                     </Badge>

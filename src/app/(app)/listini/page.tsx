@@ -81,7 +81,7 @@ export default async function PriceListsPage({
           <Badge variant="brand" dot>
             Importazione
           </Badge>
-          <h1 className="mt-3 text-3xl font-black tracking-[-0.035em] text-neutral-950 sm:text-4xl">
+          <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.035em] text-neutral-950 sm:text-4xl">
             Listini
           </h1>
           <p className="mt-2 max-w-2xl leading-6 text-neutral-500">
@@ -140,7 +140,7 @@ export default async function PriceListsPage({
 
       {risultato.items.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-neutral-300 bg-white px-5 py-12 text-center">
-          <h2 className="text-lg font-black text-neutral-950">
+          <h2 className="text-lg font-extrabold text-neutral-950">
             {conFiltri ? 'Nessun listino corrisponde ai filtri' : 'Nessun listino caricato'}
           </h2>
           <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-neutral-500">

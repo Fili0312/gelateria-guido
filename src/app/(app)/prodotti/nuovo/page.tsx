@@ -27,7 +27,7 @@ export default async function NewProductPage() {
         <Badge variant="brand" dot>
           Catalogo
         </Badge>
-        <h1 className="mt-3 text-3xl font-black tracking-[-0.035em] text-neutral-950">
+        <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.035em] text-neutral-950">
           Nuovo prodotto
         </h1>
         <p className="mt-2 leading-6 text-neutral-500">

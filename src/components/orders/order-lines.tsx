@@ -137,7 +137,7 @@ export function OrderLines({
           className="overflow-hidden rounded-2xl border border-neutral-200 bg-white"
         >
           <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-neutral-100 bg-neutral-50 px-4 py-3">
-            <h2 className="font-black text-neutral-950">{gruppo.supplierName}</h2>
+            <h2 className="font-extrabold text-neutral-950">{gruppo.supplierName}</h2>
             <p className="tabellare text-sm text-neutral-600">
               {gruppo.righe.filter((r) => !r.nonDisponibile).length} righe ·{' '}
               <strong className="text-neutral-950">{euro(gruppo.netto)}</strong>
@@ -328,7 +328,9 @@ export function OrderLines({
                 </span>
               )}
             </dt>
-            <dd className="tabellare text-2xl font-black text-neutral-950">{euro(ordine.netto)}</dd>
+            <dd className="tabellare text-2xl font-extrabold text-neutral-950">
+              {euro(ordine.netto)}
+            </dd>
           </div>
         </dl>
       </section>

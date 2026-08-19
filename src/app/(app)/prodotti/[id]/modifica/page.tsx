@@ -36,7 +36,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
         <Badge variant="brand" dot>
           Catalogo
         </Badge>
-        <h1 className="mt-3 text-3xl font-black tracking-[-0.035em] text-neutral-950">
+        <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.035em] text-neutral-950">
           Modifica prodotto
         </h1>
         <p className="mt-2 text-sm text-neutral-500">{prodotto.name}</p>

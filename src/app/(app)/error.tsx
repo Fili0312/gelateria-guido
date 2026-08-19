@@ -21,7 +21,7 @@ export default function ErrorPage({
         <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-red-50 text-red-700">
           <AppIcon name="warning" className="h-7 w-7" />
         </span>
-        <h1 className="mt-5 text-2xl font-black tracking-tight">Si è verificato un errore</h1>
+        <h1 className="mt-5 text-2xl font-extrabold tracking-tight">Si è verificato un errore</h1>
         <p className="mx-auto mt-2 max-w-md leading-6 text-neutral-500">
           I dati non sono stati modificati. Puoi riprovare; se il problema continua, controlla i log
           del servizio.

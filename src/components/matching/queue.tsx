@@ -68,7 +68,7 @@ export function MatchingQueue({
   if (iniziale.totale === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-neutral-300 bg-white px-5 py-12 text-center">
-        <h2 className="text-lg font-black text-neutral-950">Niente da decidere</h2>
+        <h2 className="text-lg font-extrabold text-neutral-950">Niente da decidere</h2>
         <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-neutral-500">
           Nessuna riga è rimasta in dubbio. Le righe che l’app ha saputo abbinare da sola, e quelle
           che diventeranno prodotti nuovi, si vedono dalla scheda del listino.

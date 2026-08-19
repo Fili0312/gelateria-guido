@@ -40,7 +40,7 @@ export default async function SupplierPricesPage({ params }: { params: Promise<{
           <Badge variant="success" dot>
             Storico operativo
           </Badge>
-          <h2 className="mt-3 text-xl font-black tracking-tight text-neutral-950">
+          <h2 className="mt-3 text-xl font-extrabold tracking-tight text-neutral-950">
             Prezzi di {supplier.name}
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-500">

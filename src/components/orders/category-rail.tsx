@@ -79,7 +79,7 @@ function Card({
         {disegno}
       </span>
       <span
-        className={`line-clamp-2 text-center text-[11.5px] leading-[1.2] font-semibold ${
+        className={`line-clamp-2 text-center text-[11px] leading-[1.2] font-semibold ${
           attiva ? 'text-brand-900' : 'text-neutral-700'
         }`}
       >

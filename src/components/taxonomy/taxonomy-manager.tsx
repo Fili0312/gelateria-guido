@@ -193,7 +193,7 @@ export function TaxonomyManager({
                   className="size-3 shrink-0 rounded-full"
                   style={{ backgroundColor: reparto.color ?? '#475569' }}
                 />
-                <h3 className="truncate font-black text-neutral-950">{reparto.name}</h3>
+                <h3 className="truncate font-extrabold text-neutral-950">{reparto.name}</h3>
                 <Badge variant="neutral">{reparto.productsCount} prodotti</Badge>
                 {!reparto.active && <Badge variant="neutral">disattivato</Badge>}
               </div>

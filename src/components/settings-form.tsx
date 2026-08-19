@@ -48,7 +48,9 @@ export function SettingsForm({ initialValues }: { initialValues: SettingsValues 
     <form action={action}>
       <section className="rounded-2xl border border-neutral-200 bg-white shadow-sm shadow-neutral-900/[0.025]">
         <div className="border-b border-neutral-100 px-5 py-5 sm:px-6">
-          <h2 className="text-lg font-black tracking-tight text-neutral-950">Prezzi e ordini</h2>
+          <h2 className="text-lg font-extrabold tracking-tight text-neutral-950">
+            Prezzi e ordini
+          </h2>
           <p className="mt-1 text-sm text-neutral-500">
             Valori predefiniti usati nei calcoli e nei nuovi ordini.
           </p>
@@ -98,7 +100,9 @@ export function SettingsForm({ initialValues }: { initialValues: SettingsValues 
 
       <section className="mt-6 rounded-2xl border border-neutral-200 bg-white shadow-sm shadow-neutral-900/[0.025]">
         <div className="border-b border-neutral-100 px-5 py-5 sm:px-6">
-          <h2 className="text-lg font-black tracking-tight text-neutral-950">Soglie di avviso</h2>
+          <h2 className="text-lg font-extrabold tracking-tight text-neutral-950">
+            Soglie di avviso
+          </h2>
           <p className="mt-1 text-sm text-neutral-500">
             La segnalazione di offerta più conveniente compare soltanto quando sono superate
             entrambe le soglie.
@@ -171,7 +175,7 @@ export function SettingsForm({ initialValues }: { initialValues: SettingsValues 
 
       <section className="mt-6 rounded-2xl border border-neutral-200 bg-white shadow-sm shadow-neutral-900/[0.025]">
         <div className="border-b border-neutral-100 px-5 py-5 sm:px-6">
-          <h2 className="text-lg font-black tracking-tight text-neutral-950">
+          <h2 className="text-lg font-extrabold tracking-tight text-neutral-950">
             Intestazione dei documenti
           </h2>
           <p className="mt-1 text-sm text-neutral-500">
@@ -210,7 +214,7 @@ export function SettingsForm({ initialValues }: { initialValues: SettingsValues 
 
       <section className="mt-6 rounded-2xl border border-neutral-200 bg-white shadow-sm shadow-neutral-900/[0.025]">
         <div className="border-b border-neutral-100 px-5 py-5 sm:px-6">
-          <h2 className="text-lg font-black tracking-tight text-neutral-950">
+          <h2 className="text-lg font-extrabold tracking-tight text-neutral-950">
             Condizioni dell’ordine di acquisto
           </h2>
           <p className="mt-1 text-sm text-neutral-500">

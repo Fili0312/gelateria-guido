@@ -29,7 +29,7 @@ export default async function ConfezioniPage() {
           ← Catalogo
         </Link>
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-black tracking-[-0.035em] text-neutral-950 sm:text-4xl">
+          <h1 className="text-3xl font-extrabold tracking-[-0.035em] text-neutral-950 sm:text-4xl">
             Confezioni da definire
           </h1>
           {articoli > 0 && <Badge variant="warning">{articoli} articoli</Badge>}

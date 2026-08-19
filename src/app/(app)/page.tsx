@@ -43,7 +43,7 @@ function Riquadro({
       className={`focus-visible:ring-brand-600 block cursor-pointer rounded-xl border px-4 py-3 transition-colors focus-visible:ring-2 focus-visible:outline-none ${colore}`}
     >
       <p className="text-xs text-neutral-600">{etichetta}</p>
-      <p className="tabellare mt-1 text-2xl font-black tracking-[-0.03em] text-neutral-950">
+      <p className="tabellare mt-1 text-2xl font-extrabold tracking-[-0.03em] text-neutral-950">
         {valore}
       </p>
       <p className="mt-0.5 text-xs leading-4 text-neutral-500">{nota}</p>
@@ -106,7 +106,7 @@ function DaFareList({ daFare }: { daFare: DaFare }) {
             className="focus-visible:ring-brand-600 flex cursor-pointer items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 transition-colors hover:border-neutral-300 focus-visible:ring-2 focus-visible:outline-none"
           >
             <AppIcon name={v.icona} className="h-4 w-4 shrink-0 text-neutral-400" />
-            <span className="tabellare text-lg font-black text-neutral-950">{v.quante}</span>
+            <span className="tabellare text-lg font-extrabold text-neutral-950">{v.quante}</span>
             <span className="min-w-0 flex-1 text-sm text-neutral-600">{v.testo}</span>
             <AppIcon name="chevron" className="h-4 w-4 shrink-0 text-neutral-300" />
           </Link>
@@ -139,7 +139,7 @@ function SchedaDati({
       <header className="border-b border-neutral-100 px-5 py-4">
         <Link
           href={href}
-          className="focus-visible:ring-brand-600 flex items-center gap-2 rounded font-black text-neutral-950 hover:underline focus-visible:ring-2 focus-visible:outline-none"
+          className="focus-visible:ring-brand-600 flex items-center gap-2 rounded font-extrabold text-neutral-950 hover:underline focus-visible:ring-2 focus-visible:outline-none"
         >
           <span className="min-w-0 flex-1">{titolo}</span>
           <AppIcon name="chevron" className="h-4 w-4 shrink-0 text-neutral-300" />
@@ -179,7 +179,7 @@ export default async function DashboardPage() {
           <Badge variant="brand" dot>
             Situazione
           </Badge>
-          <h1 className="mt-3 text-3xl font-black tracking-[-0.035em] text-neutral-950 sm:text-4xl">
+          <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.035em] text-neutral-950 sm:text-4xl">
             Panoramica
           </h1>
         </div>
@@ -230,7 +230,7 @@ export default async function DashboardPage() {
           <div className="mb-4 flex items-baseline justify-between gap-3">
             <Link
               href="/ordini/storico?giorni=365"
-              className="focus-visible:ring-brand-600 rounded font-black text-neutral-950 hover:underline focus-visible:ring-2 focus-visible:outline-none"
+              className="focus-visible:ring-brand-600 rounded font-extrabold text-neutral-950 hover:underline focus-visible:ring-2 focus-visible:outline-none"
             >
               Spesa negli ultimi 12 mesi
             </Link>
@@ -246,7 +246,7 @@ export default async function DashboardPage() {
         <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
           <Link
             href="/prodotti"
-            className="focus-visible:ring-brand-600 mb-4 inline-block rounded font-black text-neutral-950 hover:underline focus-visible:ring-2 focus-visible:outline-none"
+            className="focus-visible:ring-brand-600 mb-4 inline-block rounded font-extrabold text-neutral-950 hover:underline focus-visible:ring-2 focus-visible:outline-none"
           >
             Dove va la spesa
           </Link>
@@ -267,7 +267,7 @@ export default async function DashboardPage() {
                 stima
               </span>
             </span>
-            <span className="tabellare mt-2 block text-4xl font-black tracking-[-0.04em] text-green-950 group-hover:underline">
+            <span className="tabellare mt-2 block text-4xl font-extrabold tracking-[-0.04em] text-green-950 group-hover:underline">
               {Number(p.risparmioPotenziale.importoAnnuo) > 0
                 ? euro(p.risparmioPotenziale.importoAnnuo)
                 : '—'}
@@ -421,7 +421,7 @@ export default async function DashboardPage() {
       </div>
 
       <section className="space-y-3">
-        <h2 className="font-black text-neutral-950">Da sistemare</h2>
+        <h2 className="font-extrabold text-neutral-950">Da sistemare</h2>
         <p className="-mt-1 text-sm text-neutral-500">
           Ogni voce toglie un pezzo di catalogo dai confronti: finché restano, su quei prodotti
           l’app non sa dirti chi conviene.

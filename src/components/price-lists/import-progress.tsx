@@ -118,7 +118,7 @@ export function ImportProgress({
     <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <h2 className="font-black text-neutral-950">{etichetta}</h2>
+          <h2 className="font-extrabold text-neutral-950">{etichetta}</h2>
           {lavorazione.fase === 'DONE' && <Badge variant="success">pronto</Badge>}
           {lavorazione.fase === 'FAILED' && <Badge variant="danger">errore</Badge>}
           {lavorazione.fase === 'CANCELLED' && <Badge variant="neutral">annullata</Badge>}

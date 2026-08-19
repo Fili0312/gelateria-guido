@@ -38,7 +38,7 @@ export default async function AttachOfferPage({ params }: { params: Promise<{ id
         <Badge variant="brand" dot className="mt-3 block w-fit">
           Catalogo
         </Badge>
-        <h1 className="mt-3 text-3xl font-black tracking-[-0.035em] text-neutral-950">
+        <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.035em] text-neutral-950">
           Collega un’offerta
         </h1>
       </header>

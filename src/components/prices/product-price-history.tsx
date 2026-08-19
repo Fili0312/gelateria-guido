@@ -409,7 +409,7 @@ function HistoryCard({
       <header className="flex flex-col justify-between gap-4 border-b border-neutral-200 p-4 sm:flex-row sm:items-start sm:p-5">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-black text-neutral-950">{history.supplierName}</h3>
+            <h3 className="font-extrabold text-neutral-950">{history.supplierName}</h3>
             {history.supplierCode && <Badge variant="neutral">{history.supplierCode}</Badge>}
           </div>
           <p className="mt-1 truncate text-sm text-neutral-500" title={history.rawName}>
@@ -424,7 +424,7 @@ function HistoryCard({
         <div className="flex shrink-0 flex-wrap items-center gap-3 sm:justify-end">
           <div className="text-left sm:text-right">
             <p className="text-xs text-neutral-500">Netto corrente</p>
-            <p className="tabellare text-lg font-black text-neutral-950">
+            <p className="tabellare text-lg font-extrabold text-neutral-950">
               {current ? euro(current.priceNet) : '—'}
             </p>
           </div>

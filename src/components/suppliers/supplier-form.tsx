@@ -70,7 +70,7 @@ function firstError(fields: Record<string, string[]>, field: string): string | u
 function SectionHeader({ title, description }: { title: string; description: string }) {
   return (
     <div className="border-b border-neutral-100 px-5 py-5 sm:px-6">
-      <h2 className="text-lg font-black tracking-tight text-neutral-950">{title}</h2>
+      <h2 className="text-lg font-extrabold tracking-tight text-neutral-950">{title}</h2>
       <p className="mt-1 text-sm leading-5 text-neutral-500">{description}</p>
     </div>
   );

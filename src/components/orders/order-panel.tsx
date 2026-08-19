@@ -252,7 +252,7 @@ export function OrderPanel({
             {t.righe} {t.righe === 1 ? 'prodotto' : 'prodotti'} · {t.confezioni}{' '}
             {t.confezioni === 1 ? 'conf.' : 'conf.'}
           </span>
-          <span className="tabellare text-2xl font-black tracking-[-0.03em] text-neutral-950">
+          <span className="tabellare text-2xl font-extrabold tracking-[-0.03em] text-neutral-950">
             {euro(t.netto)}
           </span>
         </div>

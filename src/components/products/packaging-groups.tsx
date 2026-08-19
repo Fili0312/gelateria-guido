@@ -75,7 +75,7 @@ function Gruppo({ gruppo, endpoint }: { gruppo: GruppoDaDefinire; endpoint: stri
   return (
     <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-black text-neutral-950">
+        <h2 className="font-extrabold text-neutral-950">
           Un {imballo} di {formato} — {gruppo.supplierName}
         </h2>
         <span className="text-sm font-semibold text-amber-700">
@@ -147,7 +147,7 @@ export function PackagingGroups({
   if (gruppi.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-green-300 bg-green-50/60 px-5 py-12 text-center">
-        <h2 className="text-lg font-black text-green-950">Nessuna confezione da definire</h2>
+        <h2 className="text-lg font-extrabold text-green-950">Nessuna confezione da definire</h2>
         <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-green-900/75">
           Per ogni offerta a catalogo si sa quanti pezzi contiene la confezione, quindi il prezzo al
           litro è reale e tutti i prodotti possono entrare nei confronti.

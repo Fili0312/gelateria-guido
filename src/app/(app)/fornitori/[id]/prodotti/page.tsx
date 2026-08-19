@@ -23,7 +23,7 @@ export default async function SupplierProductsPage({
         <Badge variant="success" dot>
           Catalogo operativo
         </Badge>
-        <h2 className="mt-3 text-xl font-black tracking-tight text-neutral-950">
+        <h2 className="mt-3 text-xl font-extrabold tracking-tight text-neutral-950">
           Prodotti del fornitore
         </h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-500">

@@ -44,7 +44,7 @@ function Sezione({
 }) {
   return (
     <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm shadow-neutral-900/[0.025]">
-      <h2 className="font-black text-neutral-950">{titolo}</h2>
+      <h2 className="font-extrabold text-neutral-950">{titolo}</h2>
       <p className="mt-1 mb-4 max-w-2xl text-sm leading-5 text-neutral-500">{nota}</p>
       <div className="space-y-4">{children}</div>
     </section>

@@ -42,7 +42,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           <Link href="/prodotti" className="text-sm text-neutral-500 hover:underline">
             ← Catalogo
           </Link>
-          <h1 className="mt-2 text-3xl font-black tracking-[-0.035em] text-neutral-950 sm:text-4xl">
+          <h1 className="mt-2 text-3xl font-extrabold tracking-[-0.035em] text-neutral-950 sm:text-4xl">
             {prodotto.name}
           </h1>
           <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-neutral-500">
@@ -81,7 +81,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       />
 
       <section id="storico-prezzi" className="scroll-mt-6 space-y-3">
-        <h2 className="text-lg font-black text-neutral-950">Storico prezzi</h2>
+        <h2 className="text-lg font-extrabold text-neutral-950">Storico prezzi</h2>
         <ProductPriceHistory
           histories={storiciPrezzo}
           endpoint={withBasePath('/api/supplier-products')}

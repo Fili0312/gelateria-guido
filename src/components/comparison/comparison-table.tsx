@@ -156,7 +156,7 @@ export function ComparisonTable({
               {`${euro(riga.unitDifference!, 4)}${etichettaBasis(riga.best!.unitPriceBasis).slice(1)}`}
             </TableCell>
             <TableCell className="text-right">
-              <span className="tabellare block font-black text-neutral-950">
+              <span className="tabellare block font-extrabold text-neutral-950">
                 {euro(riga.savingPerPack!)}
               </span>
               <span className="tabellare block text-xs text-neutral-500">
