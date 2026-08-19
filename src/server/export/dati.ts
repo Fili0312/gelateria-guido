@@ -10,15 +10,22 @@ import type { DatiDocumento, GruppoFornitore } from './template';
  * Da un ordine confermato ai dati che i template stampano.
  *
  * ── Cosa si congela e cosa no ───────────────────────────────────────────
- * **Righe, prezzi, nomi degli articoli e nome del fornitore: dagli snapshot.**
- * Sono l'accordo commerciale, e devono restare quelli di allora anche se poi
- * il listino cambia. Una join di comodo al catalogo, qui, farebbe uscire un
- * PDF con i prezzi di oggi sotto un numero d'ordine di tre mesi fa.
+ * **Righe, prezzi e nomi degli articoli: dagli snapshot.** Sono l'accordo
+ * commerciale, e devono restare quelli di allora anche se poi il listino
+ * cambia. Una join di comodo al catalogo, qui, farebbe uscire un PDF con i
+ * prezzi di oggi sotto un numero d'ordine di tre mesi fa.
  *
- * **Indirizzo, partita IVA ed email del fornitore: da adesso.** Non sono
- * l'accordo, sono il recapito — e il documento serve a mandarlo, quindi va
- * mandato dove il fornitore sta oggi. Congelare l'indirizzo significherebbe
- * ristampare un ordine e spedirlo alla sede vecchia.
+ * **Ragione sociale, indirizzo, partita IVA, telefono ed email del
+ * fornitore: da adesso.** Non sono l'accordo, sono l'intestatario — e il
+ * documento serve a mandarglielo, quindi va intestato a come si chiama
+ * oggi. Congelare l'indirizzo significherebbe spedire alla sede vecchia; e
+ * congelare il nome ha prodotto un caso vero: le ragioni sociali sono state
+ * completate dopo la conferma di un ordine, e quel PDF continuava a dire
+ * «AD Beverage» quando la società si chiama «AD Beverage Spa». Su un ordine
+ * di acquisto l'intestatario sbagliato non è un dettaglio grafico.
+ *
+ * Il nome congelato resta come rete: se il fornitore viene cancellato
+ * dall'anagrafica, l'ordine deve restare leggibile.
  */
 
 export type { DatiDocumento };
@@ -136,6 +143,7 @@ export async function datiOrdine(
       where: { id: { in: [...new Set(ordine.lines.map((l) => l.supplierId))] } },
       select: {
         id: true,
+        name: true,
         address: true,
         vatNumber: true,
         email: true,
@@ -156,7 +164,8 @@ export async function datiOrdine(
       const recapito = recapiti.get(riga.supplierId);
       g = {
         supplierId: riga.supplierId,
-        supplierName: riga.supplierNameSnapshot,
+        // Come si chiama **oggi**, col nome congelato come ripiego.
+        supplierName: oppureNull(recapito?.name) ?? riga.supplierNameSnapshot,
         indirizzo: oppureNull(recapito?.address),
         partitaIva: oppureNull(recapito?.vatNumber),
         // L'indirizzo per gli ordini vince su quello generico: il commerciale
