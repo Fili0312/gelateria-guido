@@ -475,9 +475,19 @@ export function ordersRepository(organizationId: string) {
    * si perderebbe — o peggio, il totale finirebbe scritto da chi ha letto per
    * primo e non ha visto la riga dell'altro.
    */
+  /**
+   * Prende il lock sull'ordine e ci lavora dentro.
+   *
+   * `stati` dice quali stati sono ammessi. Le bozze si modificano dalla
+   * schermata d'ordine e non devono poter essere toccate dai comandi
+   * dell'ordine confermato — e viceversa: sono due schermate diverse con due
+   * significati diversi, e confonderle vorrebbe dire aggiungere righe alla
+   * bozza di qualcun altro credendo di correggere un ordine spedito.
+   */
   async function conOrdineBloccato<T>(
     orderId: string,
     operazione: (tx: OrganizationPrismaClient) => Promise<T>,
+    stati: readonly ('DRAFT' | 'CONFIRMED' | 'SENT' | 'RECEIVED')[] = ['DRAFT'],
   ): Promise<T> {
     return transactionForOrganization(
       organizationId,
@@ -488,18 +498,34 @@ export function ordersRepository(organizationId: string) {
         // fila. Toccare `updatedAt` è anche corretto nel merito: l'ordine sta
         // per cambiare.
         const bloccata = await tx.order.updateMany({
-          where: { id: orderId, status: 'DRAFT' },
+          where: { id: orderId, status: { in: [...stati] } },
           data: { updatedAt: new Date() },
         });
         if (bloccata.count !== 1) {
           throw new OrderValidationError(
-            'L’ordine non è più una bozza: ricarica la pagina prima di modificarlo.',
+            stati.includes('DRAFT')
+              ? 'L’ordine non è più una bozza: ricarica la pagina prima di modificarlo.'
+              : 'Questo ordine non si può modificare: ricarica la pagina.',
           );
         }
         return operazione(tx);
       },
       { isolamento: 'riga-bloccata' },
     );
+  }
+
+  /**
+   * Come sopra, ma per un ordine **già uscito**.
+   *
+   * Gli stati ammessi sono quelli in cui una consegna è ancora possibile:
+   * un ordine annullato non si tocca, perché non c'è più niente da
+   * consegnare a cui aggiungere o togliere.
+   */
+  async function conOrdineConfermatoBloccato<T>(
+    orderId: string,
+    operazione: (tx: OrganizationPrismaClient) => Promise<T>,
+  ): Promise<T> {
+    return conOrdineBloccato(orderId, operazione, ['CONFIRMED', 'SENT', 'RECEIVED']);
   }
 
   async function leggi(
@@ -1647,7 +1673,7 @@ export function ordersRepository(organizationId: string) {
       if (!offerta) throw new OrderNotFoundError('L’offerta indicata non esiste.');
       richiediOffertaOrdinabile(offerta, 'Questa offerta');
 
-      await conOrdineBloccato(orderId, async (tx) => {
+      await conOrdineConfermatoBloccato(orderId, async (tx) => {
         const ordine = await tx.order.findFirst({
           where: { id: orderId },
           select: {
@@ -1735,7 +1761,7 @@ export function ordersRepository(organizationId: string) {
       lineId: string,
       quantityPacks: number,
     ): Promise<OrdineStorico> {
-      await conOrdineBloccato(orderId, async (tx) => {
+      await conOrdineConfermatoBloccato(orderId, async (tx) => {
         const ordine = await tx.order.findFirst({
           where: { id: orderId },
           select: { status: true, lines: { where: { id: lineId }, select: { id: true } } },
@@ -1829,9 +1855,9 @@ export function ordersRepository(organizationId: string) {
       lineId: string,
       disponibile: boolean,
     ): Promise<OrdineStorico> {
-      await transactionForOrganization(organizationId, async (tx) => {
+      await conOrdineConfermatoBloccato(orderId, async (tx) => {
         const ordine = await tx.order.findFirst({
-          where: { id: orderId, status: { not: 'DRAFT' } },
+          where: { id: orderId },
           select: { id: true, lines: { select: { id: true } } },
         });
         if (!ordine) throw new OrderNotFoundError('Ordine inesistente o ancora in bozza.');
