@@ -1570,6 +1570,26 @@ export function ordersRepository(organizationId: string) {
       });
       if (!o) return null;
 
+      // La ragione sociale **di oggi**, col nome fotografato come ripiego.
+      //
+      // Stessa regola dei documenti, e per lo stesso motivo: il nome del
+      // fornitore non è l'accordo commerciale, è l'intestatario. Se le due
+      // fonti divergessero, la pagina direbbe «AD Beverage» e il PDF
+      // scaricato da quella stessa pagina «AD Beverage Spa» — e chi le
+      // guarda non avrebbe modo di sapere quale delle due è quella buona.
+      const anagrafica = new Map(
+        (
+          await db.supplier.findMany({
+            where: { id: { in: [...new Set(o.lines.map((r) => r.supplierId))] } },
+            select: { id: true, name: true },
+          })
+        ).map((f) => [f.id, f.name] as const),
+      );
+      const righe = o.lines.map((r) => ({
+        ...r,
+        supplierNameSnapshot: anagrafica.get(r.supplierId) ?? r.supplierNameSnapshot,
+      }));
+
       return {
         id: o.id,
         code: o.code,
@@ -1581,7 +1601,7 @@ export function ordersRepository(organizationId: string) {
         netto: o.totalNet.toString(),
         iva: o.totalVat.toString(),
         lordo: o.totalGross.toString(),
-        perFornitore: raggruppaRigheStoriche(o.lines),
+        perFornitore: raggruppaRigheStoriche(righe),
         righeNonDisponibili: o.lines.filter((r) => r.unavailableAt !== null).length,
       };
     },
