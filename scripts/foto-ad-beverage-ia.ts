@@ -64,7 +64,11 @@ async function caricaProdotti(massimo: number, tutti: boolean) {
         select: { supplier: { select: { name: true } } },
       },
     },
-    orderBy: { name: 'asc' },
+    // Chi è stato esaminato meno di recente per primo, e i mai visti prima di
+    // tutti. In ordine alfabetico il giro ripartiva sempre dalla stessa testa:
+    // le bocciature vengono segnate ma restano senza foto, quindi la finestra
+    // non avanzava e rilanciare il comando riesaminava gli stessi quaranta.
+    orderBy: [{ imageUpdatedAt: { sort: 'asc', nulls: 'first' } }, { name: 'asc' }],
     take: massimo,
   });
 }
