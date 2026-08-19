@@ -3,7 +3,13 @@ import { Decimal } from 'decimal.js';
 import { describe, it } from 'node:test';
 import { analizzaDescrizione } from '../packaging/parse';
 import { decidiDaArbitrato, decidiDaPunteggio, SOGLIE_PREDEFINITE } from './decide';
-import { formatiCompatibili, punteggioAbbinamento, sovrapposizioneParole } from './score';
+import {
+  abbreviazioneDi,
+  formatiCompatibili,
+  nucleoPerAbbinamento,
+  punteggioAbbinamento,
+  sovrapposizioneParole,
+} from './score';
 
 /** Dal testo di un listino ai due dati che servono al confronto. */
 function formatoDi(testo: string) {
@@ -232,6 +238,64 @@ describe('decidiDaArbitrato — l’IA non decide mai da sola', () => {
     assert.equal(
       decidiDaArbitrato({ stesso: true, confidenza: 0.9 }, 0.8, severe).esito,
       'PENDING',
+    );
+  });
+});
+
+describe('nomi sporcati dalle note del listino', () => {
+  it('le note commerciali non nascondono lo stesso prodotto', () => {
+    // Caso vero: la stessa birra scritta due volte, con undici parole di
+    // appunto in coda. La sovrapposizione crollava a 0,08 e la coppia non
+    // arrivava mai al modello.
+    const pulito = 'corona cl 33x24';
+    const sporco = 'corona cl 33x24 prezzo errato ft 28.07.26 inviato mess assodrink 03/08';
+    assert.ok(
+      sovrapposizioneParole(pulito, sporco) >= 0.25,
+      'una nota appiccicata al nome non deve nascondere il doppione',
+    );
+  });
+
+  it('non toglie marca e variante insieme al rumore', () => {
+    // «in sostituz.» va via, «barcelo» e «kingstone» no: sono due rum
+    // diversi e devono restare tali.
+    const a = nucleoPerAbbinamento('barcelo rum bianco litro in sostituz kingstone white');
+    assert.ok(a.includes('barcelo'), 'la marca resta');
+    assert.ok(!a.includes('sostituz'), 'la nota se ne va');
+  });
+});
+
+describe('abbreviazione di un nome più lungo', () => {
+  it('riconosce il nome corto contenuto in quello lungo', () => {
+    // «KAHLUA LITRO» contro «KAHLUA LICOR DE CAFFE 20% LT 1»: due parole
+    // contro sette, la sovrapposizione non può che uscire bassa.
+    assert.equal(abbreviazioneDi('kahlua litro', 'kahlua licor de caffe 20 lt 1'), true);
+  });
+
+  it('non basta condividere una parola: devono esserci tutte', () => {
+    assert.equal(
+      abbreviazioneDi(
+        'monin liquore fiori di sambuco cl 70',
+        'st germain liquore al sambuco 20 cl 70',
+      ),
+      false,
+      'produttori diversi non sono abbreviazioni l’uno dell’altro',
+    );
+    assert.equal(
+      abbreviazioneDi('barcelo rum bianco litro', 'kingstone 62 gold rum 40 lt 1'),
+      false,
+    );
+  });
+
+  it('non si applica fra due nomi entrambi lunghi', () => {
+    // Lì decide la sovrapposizione: due nomi ricchi che si somigliano hanno
+    // già il loro punteggio, e questa scorciatoia li farebbe passare senza
+    // essere stati confrontati davvero.
+    assert.equal(
+      abbreviazioneDi(
+        'absolut citron vodka svezia bottiglia',
+        'absolut citron vodka svezia bottiglia grande formato',
+      ),
+      false,
     );
   });
 });
