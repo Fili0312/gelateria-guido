@@ -71,7 +71,7 @@ export function PriceHistoryChart({
                 className="text-neutral-200"
                 strokeDasharray="4 5"
               />
-              <text x="42" y={y + 4} textAnchor="end" className="fill-neutral-500 text-[11px]">
+              <text x="42" y={y + 4} textAnchor="end" className="fill-neutral-500 text-xs">
                 {euro(tick)}
               </text>
             </g>
@@ -104,7 +104,7 @@ export function PriceHistoryChart({
           />
         ))}
 
-        <g aria-hidden="true" className="fill-neutral-500 text-[11px]">
+        <g aria-hidden="true" className="fill-neutral-500 text-xs">
           <text x={first.x} y="216" textAnchor={model.points.length === 1 ? 'middle' : 'start'}>
             {dateOnly(first.date)}
           </text>

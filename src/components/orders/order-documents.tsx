@@ -138,7 +138,7 @@ export function OrderDocuments({
                 className={`flex flex-wrap items-center gap-x-3 gap-y-1 py-3 ${vecchio ? 'opacity-55' : ''}`}
               >
                 <span
-                  className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg text-[10px] font-extrabold ${
+                  className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg text-xs font-extrabold ${
                     d.format === 'PDF' ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'
                   }`}
                 >

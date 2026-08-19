@@ -146,7 +146,7 @@ export default async function StoricoPage({
                       {euro(o.netto)}
                     </span>
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-neutral-500">
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-neutral-500">
                     <span>
                       {new Date(quando).toLocaleDateString('it-IT', {
                         day: 'numeric',
@@ -161,7 +161,7 @@ export default async function StoricoPage({
                     <Badge variant={etichetta.variante}>{etichetta.testo}</Badge>
                   </div>
                   {o.fornitori.length > 0 && (
-                    <p className="mt-1 truncate text-[13px] text-neutral-400">
+                    <p className="mt-1 truncate text-sm text-neutral-400">
                       {o.fornitori.join(' · ')}
                     </p>
                   )}

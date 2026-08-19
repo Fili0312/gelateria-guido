@@ -200,7 +200,7 @@ export function OrderLines({
                     {riga.supplierCode && ` · cod. ${riga.supplierCode}`}
                   </span>
                   {riga.nonDisponibile && (
-                    <span className="ml-2 rounded-md bg-amber-100 px-1.5 py-0.5 text-[11px] font-bold whitespace-nowrap text-amber-800">
+                    <span className="ml-2 rounded-md bg-amber-100 px-1.5 py-0.5 text-xs font-bold whitespace-nowrap text-amber-800">
                       non consegnato
                     </span>
                   )}

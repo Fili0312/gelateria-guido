@@ -39,9 +39,7 @@ export function ColloBadge({
 
   return (
     <span className={`inline-flex items-baseline gap-1.5 text-xs ${className}`}>
-      <span
-        className={`rounded-md border px-1.5 py-0.5 text-[11px] leading-4 font-semibold ${tono}`}
-      >
+      <span className={`rounded-md border px-1.5 py-0.5 text-xs leading-4 font-semibold ${tono}`}>
         {collo.titolo}
       </span>
       {collo.dettaglio && <span className="text-neutral-500">{collo.dettaglio}</span>}

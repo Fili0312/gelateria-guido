@@ -304,7 +304,7 @@ export function ProductForm({
               vedere l'errore, «70 cl» sì — ed è la stringa che finirà su ogni
               schermata e sui confronti. */}
           <p className="sm:pb-2">
-            <span className="block text-[11px] tracking-wide text-neutral-400 uppercase">
+            <span className="block text-xs tracking-wide text-neutral-400 uppercase">
               Verrà scritto
             </span>
             <span className="text-sm font-bold text-neutral-950">{anteprimaFormato ?? '—'}</span>

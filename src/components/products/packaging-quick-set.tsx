@@ -69,7 +69,7 @@ export function PackagingQuickSet({
       <button
         type="button"
         onClick={() => setAperto(true)}
-        className="cursor-pointer rounded-md border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[11px] leading-4 font-semibold text-amber-800 transition-colors hover:bg-amber-100"
+        className="cursor-pointer rounded-md border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-xs leading-4 font-semibold text-amber-800 transition-colors hover:bg-amber-100"
         title={`${supplierName} non dichiara quanti pezzi contiene: finché manca, questo articolo resta fuori dai confronti`}
       >
         quanti pezzi? →

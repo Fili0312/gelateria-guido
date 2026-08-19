@@ -135,12 +135,7 @@ function PurchaseChart({ stats }: { stats: ProductPurchaseStats }) {
                 className="fill-brand-300"
               />
               {(index % labelEvery === 0 || index === points.length - 1) && (
-                <text
-                  x={x(index)}
-                  y="199"
-                  textAnchor="middle"
-                  className="fill-neutral-500 text-[10px]"
-                >
+                <text x={x(index)} y="199" textAnchor="middle" className="fill-neutral-500 text-xs">
                   {point.label}
                 </text>
               )}
@@ -171,7 +166,7 @@ function PurchaseChart({ stats }: { stats: ProductPurchaseStats }) {
             aria-hidden="true"
           />
         ))}
-        <g aria-hidden="true" className="fill-neutral-500 text-[10px]">
+        <g aria-hidden="true" className="fill-neutral-500 text-xs">
           <text x="48" y={top + 4} textAnchor="end">
             {euro(maxSpend)}
           </text>

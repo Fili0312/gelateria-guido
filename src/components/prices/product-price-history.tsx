@@ -175,7 +175,7 @@ function WindowVariations({ windows }: { windows: PriceWindowVariationDTO[] }) {
                 <span className="text-sm font-semibold text-neutral-400">nessun dato</span>
               )}
               {hasData && (
-                <span className="mt-1 block text-[11px] leading-4 text-neutral-500">
+                <span className="mt-1 block text-xs leading-4 text-neutral-500">
                   da {euro(window.basePrice!)} a {euro(window.currentPrice!)}
                 </span>
               )}

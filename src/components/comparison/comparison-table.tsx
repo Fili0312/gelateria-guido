@@ -33,9 +33,7 @@ function Offerta({ offerta, tono }: { offerta: ComparedOffer; tono: 'buono' | 'n
           {offerta.supplierName}
         </span>
         {offerta.supplierCode && (
-          <span className="tabellare text-[11px] text-neutral-400">
-            cod. {offerta.supplierCode}
-          </span>
+          <span className="tabellare text-xs text-neutral-400">cod. {offerta.supplierCode}</span>
         )}
         {offerta.stale && (
           <Badge
@@ -64,7 +62,7 @@ function Offerta({ offerta, tono }: { offerta: ComparedOffer; tono: 'buono' | 'n
             quello che si paga, il secondo quanto costa davvero. Mostrarne uno
             solo farebbe scegliere sul dato sbagliato in un verso o nell'altro. */}
         {Number(offerta.extraDiscountPct) > 0 && (
-          <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[11px] font-semibold text-violet-800">
+          <span className="rounded bg-violet-100 px-1.5 py-0.5 text-xs font-semibold text-violet-800">
             {euro(offerta.priceEffective)} con −{numero(offerta.extraDiscountPct, 2)}%
           </span>
         )}
@@ -74,7 +72,7 @@ function Offerta({ offerta, tono }: { offerta: ComparedOffer; tono: 'buono' | 'n
         <ColloBadge confezione={offerta} />
         {/* Il prezzo per litro resta **qui**: è il numero su cui il confronto
             si regge, ed è l'unico posto in cui serve davvero. */}
-        <span className="tabellare text-[11px] text-neutral-500">
+        <span className="tabellare text-xs text-neutral-500">
           {`${euro(offerta.unitPrice, 4)}${etichettaBasis(offerta.unitPriceBasis).slice(1)}`}
         </span>
       </div>

@@ -71,7 +71,7 @@ export function DiscountToggle({
           ? `${offerta.supplierName} non applica lo sconto su questo articolo. Premi per rimetterlo dentro.`
           : `${offerta.supplierName} applica lo sconto del ${offerta.pct}% su questo articolo. Premi per escluderlo.`
       }
-      className={`inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-1 rounded-lg border px-2 text-[11px] font-semibold transition-colors disabled:opacity-60 ${
+      className={`inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-1 rounded-lg border px-2 text-xs font-semibold transition-colors disabled:opacity-60 ${
         esclusa
           ? 'border-neutral-300 bg-white text-neutral-500 hover:border-neutral-400'
           : 'border-violet-300 bg-violet-100 text-violet-800 hover:bg-violet-200'

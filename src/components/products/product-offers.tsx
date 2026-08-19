@@ -90,7 +90,7 @@ function ExtraDiscountToggle({ offerta, endpoint }: { offerta: SupplierOffer; en
         disabled={attesa}
         onClick={() => void cambia(false)}
         title="Offerta esclusa dallo sconto concordato con il fornitore. Selezionare per reintegrarla."
-        className="cursor-pointer rounded border border-neutral-300 px-1.5 py-0.5 text-[11px] font-semibold text-neutral-600 hover:border-neutral-400"
+        className="cursor-pointer rounded border border-neutral-300 px-1.5 py-0.5 text-xs font-semibold text-neutral-600 hover:border-neutral-400"
       >
         escluso
       </button>
@@ -105,7 +105,7 @@ function ExtraDiscountToggle({ offerta, endpoint }: { offerta: SupplierOffer; en
       disabled={attesa}
       onClick={() => void cambia(true)}
       title="Selezionare per escludere l’offerta dallo sconto concordato con il fornitore."
-      className="cursor-pointer rounded bg-violet-100 px-1.5 py-0.5 text-[11px] font-semibold text-violet-800 hover:bg-violet-200"
+      className="cursor-pointer rounded bg-violet-100 px-1.5 py-0.5 text-xs font-semibold text-violet-800 hover:bg-violet-200"
     >
       −{applicato}%
     </button>

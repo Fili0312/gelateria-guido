@@ -63,7 +63,7 @@ export function SpendChart({ punti }: { punti: PuntoSpesa[] }) {
       </div>
       <div className="mt-1 flex gap-1">
         {punti.map((p) => (
-          <span key={p.chiave} className="flex-1 text-center text-[10px] text-neutral-400">
+          <span key={p.chiave} className="flex-1 text-center text-xs text-neutral-400">
             {p.etichetta}
           </span>
         ))}

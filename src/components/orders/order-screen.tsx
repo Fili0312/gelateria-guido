@@ -387,7 +387,7 @@ export function OrderScreen({
             }}
           />
 
-          <p className="-mt-1 flex items-center gap-2 px-1 text-[13px] text-neutral-500">
+          <p className="-mt-1 flex items-center gap-2 px-1 text-sm text-neutral-500">
             <span>
               {cercando
                 ? 'Ricerca in corso…'
@@ -457,7 +457,7 @@ export function OrderScreen({
                 </svg>
               </span>
               {t.confezioni > 0 && (
-                <span className="tabellare absolute -top-1.5 -right-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-neutral-900 px-1 text-[11px] font-bold text-white">
+                <span className="tabellare absolute -top-1.5 -right-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-neutral-900 px-1 text-xs font-bold text-white">
                   {t.confezioni}
                 </span>
               )}
@@ -465,7 +465,7 @@ export function OrderScreen({
 
             <span className="min-w-0 flex-1">
               <span
-                className={`block truncate text-[12px] ${
+                className={`block truncate text-xs ${
                   t.righe === 0 ? 'text-neutral-500' : 'text-white/80'
                 }`}
               >
@@ -474,18 +474,16 @@ export function OrderScreen({
                   : `${t.righe} ${t.righe === 1 ? 'prodotto' : 'prodotti'} · ${t.confezioni} conf.`}
               </span>
               <span
-                className={`block truncate text-[15px] leading-tight font-bold ${
+                className={`block truncate text-base leading-tight font-bold ${
                   t.righe === 0 ? 'text-neutral-400' : 'text-white'
                 }`}
               >
                 {t.righe === 0 ? (
-                  <span className="text-[13px] font-normal">
-                    Aggiungere un articolo dal catalogo
-                  </span>
+                  <span className="text-sm font-normal">Aggiungere un articolo dal catalogo</span>
                 ) : (
                   <>
                     <span className="tabellare">{euro(t.netto)}</span>
-                    <span className="text-[12px] font-normal text-white/75">
+                    <span className="text-xs font-normal text-white/75">
                       {Number(t.ritornoAtteso) > 0
                         ? ` · ${euro(t.ritornoAtteso)} di sconti a rimborso`
                         : ' · più IVA'}
@@ -508,10 +506,10 @@ export function OrderScreen({
         <div className="fixed inset-0 z-40 flex flex-col bg-neutral-50">
           <div className="flex items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 py-3">
             <span>
-              <span className="block text-[17px] leading-tight font-bold text-neutral-950">
+              <span className="block text-lg leading-tight font-bold text-neutral-950">
                 Ordine in corso
               </span>
-              <span className="block text-[13px] text-neutral-500">
+              <span className="block text-sm text-neutral-500">
                 {t.righe} {t.righe === 1 ? 'prodotto' : 'prodotti'} · {t.confezioni} conf. ·{' '}
                 {euro(t.netto)} più IVA
               </span>
@@ -543,7 +541,7 @@ export function OrderScreen({
           <div className="pb-sicuro border-t border-neutral-200 bg-white px-4 pt-3">
             <Link
               href="/ordini/riepilogo"
-              className="bg-brand-600 hover:bg-brand-700 flex min-h-13 w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-bold text-white transition-colors"
+              className="bg-brand-600 hover:bg-brand-700 flex min-h-13 w-full items-center justify-center gap-2 rounded-2xl text-base font-bold text-white transition-colors"
             >
               Vai al riepilogo
               <AppIcon name="arrow-right" className="h-4 w-4" />

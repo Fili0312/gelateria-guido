@@ -98,7 +98,7 @@ function Quantita({
           }
         }}
         aria-label={`Confezioni di ${nome}`}
-        className="tabellare focus:bg-brand-100 h-11 w-7 cursor-text rounded-r-full bg-transparent pr-0.5 text-center text-[15px] font-bold text-neutral-950 outline-none"
+        className="tabellare focus:bg-brand-100 h-11 w-7 cursor-text rounded-r-full bg-transparent pr-0.5 text-center text-base font-bold text-neutral-950 outline-none"
       />
     </span>
   );
@@ -139,7 +139,7 @@ function Prezzo({ offerta, grande }: { offerta: OffertaOrdinabile; grande: boole
           // Un filo più piccolo sui telefoni stretti: a 320 pixel ogni
           // millimetro tolto qui è un millimetro dato al nome, che è
           // l'unica cosa che davvero non può essere troncata.
-          grande ? 'text-[20px] min-[400px]:text-[22px]' : 'text-base'
+          grande ? 'text-xl min-[400px]:text-2xl' : 'text-base'
         }`}
       >
         {euro(offerta.priceNet)}
@@ -147,13 +147,13 @@ function Prezzo({ offerta, grande }: { offerta: OffertaOrdinabile; grande: boole
       {/* Il prezzo per unità solo se la confezione è dichiarata: altrimenti
           sarebbe diviso per un numero inventato e sembrerebbe un dato vero. */}
       {offerta.unitPrice && offerta.packQuantityConfirmed && (
-        <span className="tabellare text-[12px] font-normal text-neutral-400 min-[360px]:text-[13px]">
+        <span className="tabellare text-xs font-normal text-neutral-400 min-[360px]:text-sm">
           {euro(offerta.unitPrice)}/{offerta.unitPriceBasis === 'PER_KG' ? 'kg' : 'L'}
         </span>
       )}
       {sconto && (
         <span
-          className="rounded-lg bg-violet-50 px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap text-violet-700"
+          className="rounded-lg bg-violet-50 px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap text-violet-700"
           title={`Sconto concordato: paghi ${euro(offerta.priceNet)} e ti tornano indietro ${euro(
             Number(offerta.priceNet) - Number(offerta.prezzoEffettivo),
           )}`}
@@ -226,7 +226,7 @@ export function ProductCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             {risultato.category ? (
-              <span className="truncate rounded-md bg-violet-50 px-1.5 py-0.5 text-[11px] font-bold tracking-wide text-violet-600 uppercase">
+              <span className="truncate rounded-md bg-violet-50 px-1.5 py-0.5 text-xs font-bold tracking-wide text-violet-600 uppercase">
                 {risultato.category.name}
               </span>
             ) : (
@@ -242,7 +242,7 @@ export function ProductCard({
                     ? `Nascondi gli altri fornitori di ${risultato.name}`
                     : `Mostra gli altri ${altre.length} fornitori di ${risultato.name}`
                 }
-                className="-my-1.5 -mr-1 inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-0.5 rounded-lg px-1 text-[11px] font-semibold whitespace-nowrap text-neutral-400 transition-colors hover:text-neutral-700"
+                className="-my-1.5 -mr-1 inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-0.5 rounded-lg px-1 text-xs font-semibold whitespace-nowrap text-neutral-400 transition-colors hover:text-neutral-700"
               >
                 {/* Il numero, non una freccia muta: da chiusa la card deve
                     dire che sotto c'è un confronto, o nessuno la apre. Ma in
@@ -279,24 +279,24 @@ export function ProductCard({
               restano ottantaquattro pixel: in due righe ci sta «Absolut
               Citron…», che è di nuovo il troncamento da cui siamo partiti.
               Venti pixel di card in più valgono il nome intero. */}
-          <p className="mt-1 line-clamp-3 text-[13px] leading-[1.3] font-bold text-neutral-950 min-[360px]:text-[13px] min-[400px]:text-[15px]">
+          <p className="mt-1 line-clamp-3 text-sm leading-[1.35] font-bold text-neutral-950 min-[400px]:line-clamp-2 min-[400px]:text-base">
             {nomeLeggibile(risultato.name)}
           </p>
 
           {prima ? (
             <>
-              <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] text-neutral-500">
+              <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-neutral-500">
                 <ColloBadge confezione={prima} />
                 <span className="truncate">{prima.supplierName}</span>
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
                 {prima.migliore && (
-                  <span className="inline-flex items-center gap-0.5 rounded-lg bg-green-50 px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap text-green-700">
+                  <span className="inline-flex items-center gap-0.5 rounded-lg bg-green-50 px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap text-green-700">
                     <span aria-hidden>★</span> conviene
                   </span>
                 )}
                 {prima.stale && (
-                  <span className="rounded-lg bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700">
+                  <span className="rounded-lg bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-700">
                     prezzo fermo
                   </span>
                 )}

@@ -118,7 +118,7 @@ export function CatalogToolbar({
           type="button"
           onClick={() => setAperto((v) => !v)}
           aria-expanded={aperto}
-          className={`inline-flex h-11 cursor-pointer items-center gap-2 rounded-[0.9rem] border px-3 text-[13px] font-semibold transition-colors ${
+          className={`inline-flex h-11 cursor-pointer items-center gap-2 rounded-[0.9rem] border px-3 text-sm font-semibold transition-colors ${
             attivi > 0
               ? 'border-brand-400 bg-brand-50 text-brand-800'
               : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300'
@@ -137,7 +137,7 @@ export function CatalogToolbar({
           </svg>
           Filtri
           {attivi > 0 && (
-            <span className="bg-brand-600 tabellare grid h-5 min-w-5 place-items-center rounded-full px-1 text-[11px] font-bold text-white">
+            <span className="bg-brand-600 tabellare grid h-5 min-w-5 place-items-center rounded-full px-1 text-xs font-bold text-white">
               {attivi}
             </span>
           )}
@@ -214,7 +214,7 @@ export function CatalogToolbar({
           value={ordinamento}
           onChange={(e) => onOrdinamento(e.target.value as Ordinamento)}
           aria-label="Ordina i prodotti"
-          className="focus:border-brand-500 focus:ring-brand-500/30 h-11 w-full cursor-pointer appearance-none rounded-[0.9rem] border border-neutral-200 bg-white py-0 pr-9 pl-3.5 text-[13px] font-semibold text-neutral-600 outline-none focus:ring-4"
+          className="focus:border-brand-500 focus:ring-brand-500/30 h-11 w-full cursor-pointer appearance-none rounded-[0.9rem] border border-neutral-200 bg-white py-0 pr-9 pl-3.5 text-sm font-semibold text-neutral-600 outline-none focus:ring-4"
         >
           {(Object.keys(ETICHETTE) as Ordinamento[]).map((o) => (
             <option key={o} value={o}>

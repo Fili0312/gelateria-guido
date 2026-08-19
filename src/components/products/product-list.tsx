@@ -75,20 +75,20 @@ function Prezzo({ prodotto }: { prodotto: ProductListItem }) {
     <span className="flex items-baseline justify-end gap-2">
       {p.compared && p.savingPct && Number(p.savingPct) > 0 && (
         <span
-          className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-[11px] font-bold text-emerald-800"
+          className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-xs font-bold text-emerald-800"
           title={`Il più conveniente fra ${p.offersWithPrice}: costa il ${numero(p.savingPct, 1)}% in meno del più caro`}
         >
           −{numero(p.savingPct, 1)}%
         </span>
       )}
       <span className="text-right">
-        <span className="tabellare block text-[15px] leading-5 font-bold text-neutral-950">
+        <span className="tabellare block text-base leading-5 font-bold text-neutral-950">
           {euro(p.priceNet)}
         </span>
         {/* A cosa si riferisce la cifra. Senza, «4,72 €» può essere la
             bottiglia o il collo da ventiquattro: due letture che differiscono
             di ventiquattro volte. */}
-        <span className="block text-[11px] leading-4 text-neutral-400">{aCosaSiRiferisce(p)}</span>
+        <span className="block text-xs leading-4 text-neutral-400">{aCosaSiRiferisce(p)}</span>
       </span>
     </span>
   );

@@ -135,18 +135,18 @@ export function OrderSummary({
       <section className="rounded-2xl border border-neutral-200 bg-white p-4">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <p className="text-[13px] text-neutral-500">
+            <p className="text-sm text-neutral-500">
               {t.righe} {t.righe === 1 ? 'articolo' : 'articoli'} · {t.confezioni} confezioni ·{' '}
               {o.perFornitore.length} {o.perFornitore.length === 1 ? 'fornitore' : 'fornitori'}
             </p>
-            <p className="mt-0.5 text-[13px] text-neutral-500">Totale al netto dell’IVA</p>
+            <p className="mt-0.5 text-sm text-neutral-500">Totale al netto dell’IVA</p>
           </div>
           <p className="tabellare text-3xl leading-none font-extrabold text-neutral-950">
             {euro(t.netto)}
           </p>
         </div>
 
-        <ul className="mt-3 divide-y divide-neutral-100 border-t border-neutral-100 text-[13px]">
+        <ul className="mt-3 divide-y divide-neutral-100 border-t border-neutral-100 text-sm">
           {o.perFornitore.map((g) => (
             <li key={g.supplierId} className="flex items-baseline justify-between gap-3 py-1.5">
               <span className="min-w-0 truncate text-neutral-700">{g.supplierName}</span>
@@ -240,16 +240,16 @@ export function OrderSummary({
                     {riga.quantityPacks}×
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[15px] leading-[1.25] font-semibold text-neutral-950">
+                    <span className="block text-base leading-[1.25] font-semibold text-neutral-950">
                       {nomeLeggibile(riga.name)}
                     </span>
-                    <span className="mt-0.5 block text-[13px] text-neutral-500">
+                    <span className="mt-0.5 block text-sm text-neutral-500">
                       {formatoConfezione(riga.unitSize, riga.unitOfMeasure, riga.packQuantity)} ·{' '}
                       {euro(riga.priceNet)} a confezione
                       {riga.supplierCode && ` · cod. ${riga.supplierCode}`}
                     </span>
                     {riga.avviso?.meritaAvviso && !riga.avvisoIgnorato && (
-                      <span className="mt-1 block text-[13px] text-amber-700">
+                      <span className="mt-1 block text-sm text-amber-700">
                         Disponibile a {euro(riga.avviso.migliore.priceNet)} da{' '}
                         {riga.avviso.migliore.supplierName}: {euro(riga.avviso.risparmioTotale)} in
                         meno su questa riga
@@ -294,13 +294,13 @@ export function OrderSummary({
             <dd className="tabellare text-2xl font-extrabold text-neutral-950">{euro(t.netto)}</dd>
           </div>
           {Number(t.ritornoAtteso) > 0 && (
-            <div className="flex justify-between gap-3 rounded-xl bg-violet-50 px-2.5 py-1.5 text-[13px] text-violet-800">
+            <div className="flex justify-between gap-3 rounded-xl bg-violet-50 px-2.5 py-1.5 text-sm text-violet-800">
               <dt>Sconti concordati, a rimborso</dt>
               <dd className="tabellare font-semibold">{euro(t.ritornoAtteso)}</dd>
             </div>
           )}
           {t.righeConAvviso > 0 && (
-            <div className="flex justify-between gap-3 rounded-xl bg-amber-50 px-2.5 py-1.5 text-[13px] text-amber-900">
+            <div className="flex justify-between gap-3 rounded-xl bg-amber-50 px-2.5 py-1.5 text-sm text-amber-900">
               <dt>
                 Risparmio disponibile cambiando fornitore su {t.righeConAvviso}{' '}
                 {t.righeConAvviso === 1 ? 'riga' : 'righe'}
@@ -310,7 +310,7 @@ export function OrderSummary({
           )}
         </dl>
 
-        <p className="mt-3 flex items-start gap-1.5 text-[13px] leading-5 text-neutral-500">
+        <p className="mt-3 flex items-start gap-1.5 text-sm leading-5 text-neutral-500">
           <AppIcon name="warning" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           Dopo la conferma l’ordine può essere corretto dalla sua scheda oppure annullato.
         </p>
@@ -326,12 +326,12 @@ export function OrderSummary({
           <div className="border-brand-200 flex items-center gap-2 rounded-2xl border bg-white/95 p-2 shadow-lg shadow-neutral-900/10 backdrop-blur">
             <Link
               href="/ordini"
-              className="focus-visible:ring-brand-600 inline-flex min-h-12 shrink-0 cursor-pointer items-center rounded-xl px-3 text-[13px] font-semibold text-neutral-600 transition-colors hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-none"
+              className="focus-visible:ring-brand-600 inline-flex min-h-12 shrink-0 cursor-pointer items-center rounded-xl px-3 text-sm font-semibold text-neutral-600 transition-colors hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-none"
             >
               Modifica
             </Link>
             <span className="min-w-0 flex-1 text-right">
-              <span className="block text-[12px] text-neutral-500">
+              <span className="block text-xs text-neutral-500">
                 {t.righe} {t.righe === 1 ? 'articolo' : 'articoli'} · più IVA
               </span>
               <span className="tabellare block text-lg leading-tight font-extrabold text-neutral-950">

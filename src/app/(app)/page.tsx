@@ -263,7 +263,7 @@ export default async function DashboardPage() {
             <span className="flex items-center gap-2 text-sm font-semibold text-green-800">
               <AppIcon name="savings" className="h-5 w-5" />
               Risparmio potenziale annuo
-              <span className="rounded-md border border-green-300 bg-white/70 px-1.5 py-0.5 text-[11px] font-bold tracking-wide text-green-800 uppercase">
+              <span className="rounded-md border border-green-300 bg-white/70 px-1.5 py-0.5 text-xs font-bold tracking-wide text-green-800 uppercase">
                 stima
               </span>
             </span>

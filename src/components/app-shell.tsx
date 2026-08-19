@@ -45,7 +45,7 @@ function Brand() {
         GG
       </span>
       <span className="min-w-0 leading-tight">
-        <span className="block text-[15px] font-bold tracking-tight text-neutral-950">
+        <span className="block text-base font-bold tracking-tight text-neutral-950">
           Gelateria Guido
         </span>
         <span className="block text-xs text-neutral-500">Listini e ordini</span>
