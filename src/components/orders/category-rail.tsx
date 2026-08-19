@@ -14,6 +14,12 @@ import type { Gruppo } from './catalog-filters';
  * coda dell'occhio mentre il pollice scorre, ed è la differenza fra
  * scegliere e cercare.
  *
+ * ── Allineata al resto della pagina ─────────────────────────────────────
+ * Niente margini negativi qui: li mette già il contenitore che la ospita,
+ * insieme a ricerca, filtri ed elenco. Applicandoli una seconda volta la
+ * barra sporgeva di sedici pixel più a sinistra di tutto il resto, e la
+ * prima card sembrava fuori squadra.
+ *
  * ── Ma piccole ──────────────────────────────────────────────────────────
  * Novantadue pixel di larghezza, non centoquattro: sono un filtro, non il
  * contenuto della pagina. Ogni pixel speso qui è tolto ai prodotti, che
@@ -106,7 +112,7 @@ export function CategoryRail({
 
   return (
     <div
-      className="scrollbar-none -mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-0.5 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0"
+      className="scrollbar-none flex snap-x gap-2 overflow-x-auto pb-0.5"
       role="group"
       aria-label="Filtra per categoria"
     >
