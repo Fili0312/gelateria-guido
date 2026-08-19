@@ -289,6 +289,21 @@ export function ProductCard({
                 <ColloBadge confezione={prima} />
                 <span className="truncate">{prima.supplierName}</span>
               </p>
+              {/* La nota, sotto il nome e prima dei badge.
+              È l'informazione che evita la telefonata già fatta una volta,
+              quindi deve stare dove cade l'occhio mentre si sceglie — non
+              in una scheda che si apre a parte. Una riga sola: il testo
+              intero resta nella scheda del prodotto. */}
+              {risultato.note && (
+                <p
+                  className="mt-1.5 flex items-start gap-1 truncate text-xs text-amber-800"
+                  title={risultato.note}
+                >
+                  <AppIcon name="warning" className="mt-0.5 h-3 w-3 shrink-0" />
+                  <span className="truncate">{risultato.note}</span>
+                </p>
+              )}
+
               <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
                 {prima.migliore && (
                   <span className="inline-flex items-center gap-0.5 rounded-lg bg-green-50 px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap text-green-700">

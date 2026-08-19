@@ -767,11 +767,12 @@ export function ordersRepository(organizationId: string) {
         // significherebbe toccare la query di ricerca — che è la cosa più
         // delicata del catalogo — per una figura.
         db.product.findMany({
-          where: { id: { in: ids }, imagePath: { not: null } },
-          select: { id: true },
+          where: { id: { in: ids } },
+          select: { id: true, imagePath: true, notes: true },
         }),
       ]);
-      const hannoFoto = new Set(conFoto.map((p) => p.id));
+      const hannoFoto = new Set(conFoto.filter((p) => p.imagePath).map((p) => p.id));
+      const note = new Map(conFoto.map((p) => [p.id, p.notes] as const));
 
       const nellOrdine = new Map<string, number>();
       for (const riga of ordine.righe) {
@@ -825,6 +826,7 @@ export function ordersRepository(organizationId: string) {
           unitSize: hit.unitSize,
           unitOfMeasure: hit.unitOfMeasure,
           imageUrl: hannoFoto.has(hit.id) ? urlImmagine(hit.id) : null,
+          note: note.get(hit.id)?.trim() || null,
           offerte,
           nonOrdinabile:
             offerte.length === 0 ? (confronto.reason ?? 'Nessun prezzo corrente.') : null,

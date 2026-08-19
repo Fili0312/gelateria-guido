@@ -11,6 +11,7 @@ const FIELD_LIMITS = {
   brand: 120,
   category: 120,
   gtin: 14,
+  notes: 2_000,
   supplierCode: 60,
   rawName: 300,
   description: 1_000,
@@ -70,6 +71,14 @@ const productFields = {
   unitSize: unitSizeSchema,
   unitOfMeasure: unitOfMeasureSchema,
   gtin: gtinSchema,
+  /**
+   * Testo libero: quello che si impara al telefono e non sta altrove.
+   *
+   * Il tetto è alto apposta. Una nota che va troncata a centoventi caratteri
+   * costringe ad abbreviare proprio la parte che serviva ricordare, e chi
+   * abbrevia poi non si fida più di quello che ha scritto.
+   */
+  notes: nullableTrimmedString(FIELD_LIMITS.notes, 'La nota'),
 } as const;
 
 export const productInputSchema = z
@@ -78,6 +87,7 @@ export const productInputSchema = z
     brand: productFields.brand.default(null),
     categoryId: productFields.categoryId.default(null),
     gtin: productFields.gtin.default(null),
+    notes: productFields.notes.default(null),
   })
   .strict();
 

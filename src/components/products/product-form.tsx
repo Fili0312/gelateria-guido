@@ -22,6 +22,7 @@ const VUOTO: ProductInput = {
   unitSize: '1',
   unitOfMeasure: 'PIECE',
   gtin: null,
+  notes: null,
 };
 
 function issuesToFields(issues: { path: PropertyKey[]; message: string }[]) {
@@ -330,6 +331,22 @@ export function ProductForm({
           error={campi.gtin?.[0]}
           hint="Da 8 a 14 cifre. Compilare soltanto se disponibile."
           inputMode="numeric"
+        />
+      </Sezione>
+
+      <Sezione
+        titolo="Note"
+        nota="Testo libero, visibile anche mentre si compila l’ordine. Utile per annotare quello che si apprende dai fornitori e non risulta dai listini."
+      >
+        <textarea
+          name="notes"
+          value={valori.notes ?? ''}
+          maxLength={2000}
+          rows={3}
+          placeholder="Es. Barzetti non lo tratta. Cecconi lo porta solo su ordinazione."
+          disabled={attesa}
+          onChange={(e) => cambia('notes', e.target.value || null)}
+          className="focus:border-brand-500 focus:ring-brand-500/30 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm leading-6 outline-none focus:ring-4 disabled:opacity-60"
         />
       </Sezione>
 

@@ -51,6 +51,14 @@ export interface RisultatoOrdinabile {
    * dedurre il catalogo guardando a chi chiediamo le figure.
    */
   imageUrl: string | null;
+  /**
+   * La nota scritta sul prodotto, se c'è.
+   *
+   * Viaggia fino alla schermata d'ordine apposta: è lì che serve. Una nota
+   * come «Barzetti non lo tratta» letta nella scheda prodotto arriva troppo
+   * tardi — la telefonata la si fa mentre si compila l'ordine.
+   */
+  note: string | null;
   unitSize: string;
   unitOfMeasure: UnitOfMeasureValue;
   /** Le offerte ordinabili, dalla più conveniente. Vuota = non ordinabile. */

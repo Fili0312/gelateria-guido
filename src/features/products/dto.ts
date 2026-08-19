@@ -98,6 +98,8 @@ export interface ProductListItem {
   baseUnit: BaseUnitValue;
   normalizedName: string;
   gtin: string | null;
+  /** Testo libero: quello che si impara dai fornitori e non sta nei listini. */
+  notes: string | null;
   createdBy: 'USER' | 'AI' | 'IMPORT';
   updatedAt: string;
   offersCount: number;

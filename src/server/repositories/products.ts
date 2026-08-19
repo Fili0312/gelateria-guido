@@ -55,6 +55,7 @@ const LIST_SELECT = {
   baseUnit: true,
   normalizedName: true,
   gtin: true,
+  notes: true,
   createdBy: true,
   createdAt: true,
   updatedAt: true,
@@ -75,6 +76,7 @@ interface ProductRecord {
   baseUnit: string;
   normalizedName: string;
   gtin: string | null;
+  notes: string | null;
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
@@ -135,6 +137,7 @@ function mapList(record: ProductRecord, offers: SupplierOffer[]): ProductListIte
     baseUnit: record.baseUnit as ProductListItem['baseUnit'],
     normalizedName: record.normalizedName,
     gtin: record.gtin,
+    notes: record.notes,
     createdBy: record.createdBy as ProductListItem['createdBy'],
     updatedAt: record.updatedAt.toISOString(),
     offersCount: offers.length,
@@ -404,6 +407,7 @@ export function productsRepository(organizationId: string) {
           brand: dati.brand,
           categoryId,
           gtin: dati.gtin,
+          notes: dati.notes,
           unitSize: dati.unitSize,
           unitOfMeasure: dati.unitOfMeasure,
           baseUnit: dati.baseUnit,
@@ -431,6 +435,7 @@ export function productsRepository(organizationId: string) {
         categoryId:
           patch.categoryId !== undefined ? patch.categoryId : (corrente.category?.id ?? null),
         gtin: patch.gtin !== undefined ? patch.gtin : corrente.gtin,
+        notes: patch.notes !== undefined ? patch.notes : corrente.notes,
         unitSize: patch.unitSize ?? corrente.unitSize.toString(),
         unitOfMeasure: patch.unitOfMeasure ?? corrente.unitOfMeasure,
       };
@@ -454,6 +459,7 @@ export function productsRepository(organizationId: string) {
           brand: dati.brand,
           categoryId,
           gtin: dati.gtin,
+          notes: dati.notes,
           unitSize: dati.unitSize,
           unitOfMeasure: dati.unitOfMeasure,
           baseUnit: dati.baseUnit,

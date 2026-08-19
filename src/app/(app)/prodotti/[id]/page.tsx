@@ -4,6 +4,7 @@ import { ProductPriceHistory } from '@/components/prices/product-price-history';
 import { ProductAliases } from '@/components/products/product-aliases';
 import { ProductOffers } from '@/components/products/product-offers';
 import { ProductStats } from '@/components/products/product-stats';
+import { AppIcon } from '@/components/app-icon';
 import { Badge } from '@/components/ui';
 import { CategoryBadge } from '@/components/taxonomy/category-badge';
 import { formatoUnitario } from '@/features/products/format';
@@ -52,6 +53,12 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             {prodotto.gtin && <span className="tabellare text-xs">EAN {prodotto.gtin}</span>}
             {prodotto.createdBy === 'AI' && <Badge variant="neutral">creato dall’IA</Badge>}
           </p>
+          {prodotto.notes && (
+            <p className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+              <AppIcon name="warning" className="mt-0.5 h-4 w-4 shrink-0" />
+              <span className="whitespace-pre-line">{prodotto.notes}</span>
+            </p>
+          )}
         </div>
         <div className="flex shrink-0 gap-2">
           <Link

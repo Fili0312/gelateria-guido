@@ -56,6 +56,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           unitSize: prodotto.unitSize,
           unitOfMeasure: prodotto.unitOfMeasure,
           gtin: prodotto.gtin,
+          notes: prodotto.notes,
         }}
       />
 

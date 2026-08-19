@@ -583,6 +583,18 @@ model Product {
 
   gtin String?
 
+  /// Quello che si impara al telefono e non sta da nessun'altra parte.
+  ///
+  /// «Barzetti non lo tratta», «Cecconi lo porta solo su ordinazione», «il
+  /// formato da 5 litri è fuori produzione». Sono informazioni che oggi
+  /// restano in testa a chi ha fatto la telefonata: la volta dopo si
+  /// richiama lo stesso fornitore per sentirsi dire la stessa cosa.
+  ///
+  /// Non ha struttura apposta. Un campo «fornitori che non lo trattano»
+  /// sembrerebbe più ordinato e coprirebbe un caso solo: la realtà di un
+  /// bar arriva in frasi, e una frase scritta si rilegge.
+  notes String?
+
   /// ── La foto del prodotto ────────────────────────────────────────────
   /// Il file sta **sul nostro disco**, non su un dominio esterno: la CSP
   /// consente immagini solo da `self`, e un `<img>` verso openfoodfacts.org
