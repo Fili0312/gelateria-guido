@@ -18,7 +18,7 @@ import { systemPrisma } from '../src/server/database/system-client.js';
  * Non interroga Open Food Facts e lavora in piccoli lotti sequenziali.
  *
  *   ./scripts/con-variabili.sh pnpm exec tsx --conditions=react-server \
- *     scripts/foto-ad-beverage-ia.ts --scrivi [--quanti 300]
+ *     scripts/foto-ad-beverage-ia.ts --scrivi [--quanti 300] [--tutti]
  */
 
 const LOTTO_IA = 6;
@@ -30,16 +30,25 @@ function argomento(nome: string): string | null {
 
 type ProdottoLocale = Awaited<ReturnType<typeof caricaProdotti>>[number];
 
-async function caricaProdotti(massimo: number) {
+async function caricaProdotti(massimo: number, tutti: boolean) {
   return systemPrisma.product.findMany({
     where: {
       imagePath: null,
-      supplierProducts: {
-        some: {
-          active: true,
-          supplier: { name: { equals: 'AD Beverage', mode: 'insensitive' } },
-        },
-      },
+      // Di norma solo i prodotti che AD vende davvero: è il giro breve, quello
+      // che si rilancia dopo un import. Con `--tutti` si guarda l'intero
+      // catalogo, perché la foto di una bottiglia è la stessa chiunque la
+      // venda — «Kingston 62 Gold» sta nelle schede AD anche se da noi lo
+      // porta solo Cecconi. È un giro lungo e si chiede apposta.
+      ...(tutti
+        ? {}
+        : {
+            supplierProducts: {
+              some: {
+                active: true,
+                supplier: { name: { equals: 'AD Beverage', mode: 'insensitive' } },
+              },
+            },
+          }),
     },
     select: {
       id: true,
@@ -103,7 +112,7 @@ async function main() {
   const massimo = Number(argomento('--quanti') ?? '300');
   if (!Number.isInteger(massimo) || massimo <= 0) throw new Error('--quanti non valido.');
 
-  const prodotti = await caricaProdotti(massimo);
+  const prodotti = await caricaProdotti(massimo, process.argv.includes('--tutti'));
   const catalogo = await catalogoAdBeverageConCache();
   console.log(
     `${prodotti.length} prodotti AD senza foto · ${catalogo.length} schede ufficiali` +

@@ -4,7 +4,6 @@ import { prismaForOrganization } from '@/server/db';
 import {
   cercaAdBeverage,
   estraiImmagineAdBeverage,
-  isFornitoreAdBeverage,
   scaricaImmagineAdBeverage,
 } from './ad-beverage';
 import { matchAdBeverageConIa } from './ad-beverage-ai';
@@ -81,7 +80,23 @@ export async function cercaImmagine(
 ): Promise<EsitoImmagine> {
   const dati: ProdottoNormalizzato = normalizza(prodotto);
 
-  if (prodotto.fornitori?.some(isFornitoreAdBeverage)) {
+  // ── Il catalogo AD si guarda per **tutti** i prodotti ─────────────────
+  //
+  // Prima lo si consultava solo per i prodotti che AD Beverage vende. La
+  // ragione era giusta ma riguardava un'altra cosa: AD è autorevole sul
+  // *prezzo* e sull'*articolo* solo per la merce sua, e una riga di Cecconi
+  // non va abbinata al suo listino.
+  //
+  // Per una **foto** non vale: una bottiglia di Kingston 62 Gold è la stessa
+  // bottiglia chiunque la venda. Col filtro, «KINGSTONE 62 GOLD RUM» di
+  // Cecconi restava senza figura mentre la scheda con la foto era lì, e
+  // l'identico prodotto White — che vende anche AD — ce l'aveva. Due card
+  // vicine, una con la foto e una senza, per una ragione che non si vede.
+  //
+  // Quello che tiene fuori le foto sbagliate non è chi vende il prodotto: è
+  // il confronto, che pretende marca, variante, formato, contenitore e
+  // famiglia. Quello resta intatto.
+  {
     let ad = await cercaAdBeverage(prodotto);
     if (
       prodotto.organizationId &&

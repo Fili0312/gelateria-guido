@@ -13,7 +13,10 @@ import {
 } from './ad-beverage';
 import type { DatiProdotto } from './normalizza';
 
-const VERSIONE_PROMPT = 'immagini-ad-v3';
+// v4: il prompt non dà più per scontato che il prodotto stia nel listino AD.
+// La versione fa parte della chiave di cache, quindi cambiandola le risposte
+// date sotto la vecchia premessa non vengono riusate sotto la nuova.
+const VERSIONE_PROMPT = 'immagini-ad-v4';
 const MASSIMI_CANDIDATI = 10;
 const SOGLIA_IA = 0.82;
 
@@ -32,7 +35,7 @@ const rispostaSchema = z.object({
 
 const SISTEMA = `Sei un esperto del catalogo beverage italiano e devi associare descrizioni di un listino AD Beverage alle schede del catalogo ufficiale AD Beverage.
 
-Ogni prodotto locale proviene davvero da un listino AD Beverage. Per ciascuno ricevi un elenco corto di schede REALI del catalogo: scegli la scheda dello stesso prodotto oppure null.
+Il prodotto locale PUÒ NON ESISTERE nel catalogo AD Beverage: spesso arriva dal listino di un altro fornitore e serve solo la fotografia della bottiglia. Per ciascuno ricevi un elenco corto di schede REALI del catalogo: scegli la scheda dello stesso prodotto oppure null. Rispondere null è l'esito normale quando il prodotto non c'è, non un fallimento.
 
 Regole:
 - Refusi, abbreviazioni, ordine delle parole, gradazione, note commerciali e sinonimi come RHUM/RUM/RON non cambiano il prodotto.
