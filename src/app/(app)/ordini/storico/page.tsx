@@ -48,7 +48,7 @@ export default async function StoricoPage({
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-neutral-950 sm:text-3xl">
-            Ordini fatti
+            Storico ordini
           </h1>
           <p className="mt-1 text-sm leading-6 text-neutral-500">
             Ogni ordine conserva prezzi, descrizioni e confezioni registrati alla conferma.

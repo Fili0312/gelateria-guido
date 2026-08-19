@@ -12,7 +12,7 @@ const NAV_ITEMS: { href: string; label: string; icon: AppIconName }[] = [
   { href: '/listini', label: 'Listini', icon: 'lists' },
   { href: '/convenienti', label: 'Confronti', icon: 'savings' },
   { href: '/ordini', label: 'Ordini', icon: 'orders' },
-  { href: '/ordini/storico', label: 'Ordini fatti', icon: 'history' },
+  { href: '/ordini/storico', label: 'Storico ordini', icon: 'history' },
   { href: '/impostazioni', label: 'Impostazioni', icon: 'settings' },
 ];
 
@@ -26,7 +26,7 @@ function combacia(pathname: string, href: string) {
 /**
  * La voce attiva è la **più specifica** fra quelle che combaciano.
  *
- * Con «Ordini» su `/ordini` e «Ordini fatti» su `/ordini/storico`, il
+ * Con «Ordini» su `/ordini` e «Storico ordini» su `/ordini/storico`, il
  * confronto per prefisso ne accende due: stando sullo storico si
  * illuminerebbe anche la voce dell'ordine in corso, e il menu smetterebbe
  * di dire dove ci si trova.

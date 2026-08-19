@@ -37,7 +37,7 @@ export default async function OrdineStoricoPage({ params }: { params: Promise<{ 
     <div className="space-y-5">
       <header>
         <Link href="/ordini/storico" className="text-sm text-neutral-500 hover:underline">
-          ← Ordini fatti
+          ← Storico ordini
         </Link>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-extrabold tracking-[-0.035em] text-neutral-950 sm:text-4xl">
