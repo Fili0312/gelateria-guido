@@ -220,7 +220,7 @@ export function ProductCard({
           src={risultato.imageUrl}
           nome={risultato.name}
           categoria={risultato.category?.name}
-          className="h-[5.5rem] w-[4.25rem] min-[360px]:h-[6.25rem] min-[360px]:w-[4.75rem] min-[400px]:h-[6.75rem] min-[400px]:w-[5.25rem]"
+          className="h-[5.5rem] w-16 min-[360px]:h-[6rem] min-[360px]:w-[4.25rem] min-[400px]:h-[6.5rem] min-[400px]:w-[4.75rem]"
         />
 
         <div className="min-w-0 flex-1">
@@ -279,7 +279,7 @@ export function ProductCard({
               restano ottantaquattro pixel: in due righe ci sta «Absolut
               Citron…», che è di nuovo il troncamento da cui siamo partiti.
               Venti pixel di card in più valgono il nome intero. */}
-          <p className="mt-1 line-clamp-3 text-sm leading-[1.35] font-bold text-neutral-950 min-[400px]:line-clamp-2 min-[400px]:text-base">
+          <p className="mt-1 line-clamp-3 text-sm leading-[1.35] font-bold text-neutral-950 min-[400px]:text-base">
             {nomeLeggibile(risultato.name)}
           </p>
 
@@ -319,7 +319,7 @@ export function ProductCard({
             tocco finiva altrove. Lo spazio del comando c'è già prima che
             serva, quindi non si muove niente. */}
         {prima && (
-          <div className="ml-auto flex w-[6.5rem] shrink-0 flex-col items-end gap-2 min-[400px]:w-[7.5rem]">
+          <div className="ml-auto flex w-[6.25rem] shrink-0 flex-col items-end gap-2 min-[400px]:w-[6.75rem]">
             <Prezzo offerta={prima} grande />
             <div className="flex items-center gap-1.5">
               {gia && (
