@@ -12,14 +12,30 @@ const NAV_ITEMS: { href: string; label: string; icon: AppIconName }[] = [
   { href: '/listini', label: 'Listini', icon: 'lists' },
   { href: '/convenienti', label: 'Confronti', icon: 'savings' },
   { href: '/ordini', label: 'Ordini', icon: 'orders' },
+  { href: '/ordini/storico', label: 'Ordini fatti', icon: 'history' },
   { href: '/impostazioni', label: 'Impostazioni', icon: 'settings' },
 ];
 
 const LABELS = new Map(NAV_ITEMS.map((item) => [item.href, item.label]));
 
-function isActive(pathname: string, href: string) {
+function combacia(pathname: string, href: string) {
   if (href === '/') return pathname === '/' || pathname.endsWith('/gelateria');
   return pathname === href || pathname.endsWith(href) || pathname.includes(`${href}/`);
+}
+
+/**
+ * La voce attiva è la **più specifica** fra quelle che combaciano.
+ *
+ * Con «Ordini» su `/ordini` e «Ordini fatti» su `/ordini/storico`, il
+ * confronto per prefisso ne accende due: stando sullo storico si
+ * illuminerebbe anche la voce dell'ordine in corso, e il menu smetterebbe
+ * di dire dove ci si trova.
+ */
+function isActive(pathname: string, href: string) {
+  if (!combacia(pathname, href)) return false;
+  return !NAV_ITEMS.some(
+    (altro) => altro.href !== href && altro.href.startsWith(href) && combacia(pathname, altro.href),
+  );
 }
 
 function Brand() {

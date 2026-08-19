@@ -7,7 +7,7 @@ import { AppIcon } from '@/components/app-icon';
 import { Button, useToast } from '@/components/ui';
 import type { EsitoConferma, OrderApiBody, RiepilogoOrdine } from '@/features/orders/dto';
 import { haSegnalazioniRiepilogo } from '@/features/orders/summary';
-import { euro, formatoConfezione } from '@/features/products/format';
+import { euro, formatoConfezione, nomeLeggibile } from '@/features/products/format';
 
 /**
  * L'ultima schermata prima che l'ordine diventi un documento.
@@ -126,7 +126,38 @@ export function OrderSummary({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 pb-28">
+      {/* ── Cosa si sta per confermare, in testa ──────────────────────── */}
+      {/* Il totale era in fondo, dopo l'elenco di tutte le righe: su un
+          ordine da cinquanta articoli bisognava scorrere fino in fondo per
+          sapere quanto si stava per impegnare. È il primo dato che serve, e
+          sta al primo posto. */}
+      <section className="rounded-2xl border border-neutral-200 bg-white p-4">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-[13px] text-neutral-500">
+              {t.righe} {t.righe === 1 ? 'articolo' : 'articoli'} · {t.confezioni} confezioni ·{' '}
+              {o.perFornitore.length} {o.perFornitore.length === 1 ? 'fornitore' : 'fornitori'}
+            </p>
+            <p className="mt-0.5 text-[13px] text-neutral-500">Totale al netto dell’IVA</p>
+          </div>
+          <p className="tabellare text-3xl leading-none font-extrabold text-neutral-950">
+            {euro(t.netto)}
+          </p>
+        </div>
+
+        <ul className="mt-3 divide-y divide-neutral-100 border-t border-neutral-100 text-[13px]">
+          {o.perFornitore.map((g) => (
+            <li key={g.supplierId} className="flex items-baseline justify-between gap-3 py-1.5">
+              <span className="min-w-0 truncate text-neutral-700">{g.supplierName}</span>
+              <span className="tabellare shrink-0 font-semibold text-neutral-950">
+                {euro(g.netto)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
       {/* ── Le segnalazioni, prima delle righe ────────────────────────── */}
       {haSegnalazioniRiepilogo(riepilogo) && (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -174,8 +205,8 @@ export function OrderSummary({
               titolo={`${riepilogo.senzaConfronto.length} righe senza confronto`}
             >
               <p>
-                Per questi articoli non ci sono almeno due offerte confrontabili, quindi non si sa
-                se convengono. Non è un problema: è una cosa che non si sa.
+                Per questi articoli non sono disponibili almeno due offerte confrontabili: la
+                convenienza non è verificabile.
               </p>
             </Segnalazione>
           )}
@@ -195,7 +226,7 @@ export function OrderSummary({
               <strong className="text-neutral-950">{euro(gruppo.netto)}</strong>
               {Number(gruppo.ritornoAtteso) > 0 && (
                 <span className="ml-2 text-violet-700">
-                  {euro(gruppo.ritornoAtteso)} torneranno indietro
+                  {euro(gruppo.ritornoAtteso)} a rimborso
                 </span>
               )}
             </p>
@@ -204,29 +235,28 @@ export function OrderSummary({
             {o.righe
               .filter((r) => r.supplierId === gruppo.supplierId)
               .map((riga) => (
-                <li
-                  key={riga.id}
-                  className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-2"
-                >
-                  <span className="tabellare w-10 shrink-0 font-bold text-neutral-950">
+                <li key={riga.id} className="flex items-start gap-3 px-3.5 py-2.5">
+                  <span className="tabellare w-9 shrink-0 pt-0.5 font-bold text-neutral-950">
                     {riga.quantityPacks}×
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="text-sm font-semibold text-neutral-950">{riga.name}</span>
-                    <span className="ml-2 text-xs text-neutral-500">
-                      {formatoConfezione(riga.unitSize, riga.unitOfMeasure, riga.packQuantity)}
+                    <span className="block text-[15px] leading-[1.25] font-semibold text-neutral-950">
+                      {nomeLeggibile(riga.name)}
+                    </span>
+                    <span className="mt-0.5 block text-[13px] text-neutral-500">
+                      {formatoConfezione(riga.unitSize, riga.unitOfMeasure, riga.packQuantity)} ·{' '}
+                      {euro(riga.priceNet)} a confezione
                       {riga.supplierCode && ` · cod. ${riga.supplierCode}`}
                     </span>
                     {riga.avviso?.meritaAvviso && !riga.avvisoIgnorato && (
-                      <span className="mt-0.5 block text-xs text-amber-700">
-                        {riga.avviso.migliore.supplierName} lo fa a{' '}
-                        {euro(riga.avviso.migliore.priceNet)} — {euro(riga.avviso.risparmioTotale)}{' '}
-                        in meno su questa riga
+                      <span className="mt-1 block text-[13px] text-amber-700">
+                        Disponibile a {euro(riga.avviso.migliore.priceNet)} da{' '}
+                        {riga.avviso.migliore.supplierName}: {euro(riga.avviso.risparmioTotale)} in
+                        meno su questa riga
                       </span>
                     )}
                   </span>
-                  <span className="tabellare text-xs text-neutral-500">{euro(riga.priceNet)}</span>
-                  <span className="tabellare w-20 text-right text-sm font-bold text-neutral-950">
+                  <span className="tabellare w-20 shrink-0 pt-0.5 text-right font-bold text-neutral-950">
                     {euro(riga.lineTotalNet)}
                   </span>
                 </li>
@@ -253,12 +283,6 @@ export function OrderSummary({
         </label>
 
         <dl className="mt-4 space-y-1 border-t border-neutral-100 pt-4 text-sm">
-          <div className="flex justify-between">
-            <dt className="text-neutral-600">
-              {t.righe} prodotti · {t.confezioni} confezioni
-            </dt>
-            <dd className="tabellare font-semibold text-neutral-950">{euro(t.netto)}</dd>
-          </div>
           {/* Il totale è il **netto**, e accanto c'è scritto «+ IVA».
               Sommare un'IVA calcolata sull'aliquota predefinita darebbe un
               numero dall'aria esatta e sbagliato ogni volta che un articolo
@@ -270,38 +294,56 @@ export function OrderSummary({
             <dd className="tabellare text-2xl font-black text-neutral-950">{euro(t.netto)}</dd>
           </div>
           {Number(t.ritornoAtteso) > 0 && (
-            <div className="flex justify-between rounded-lg bg-violet-50 px-2 py-1 text-xs text-violet-800">
+            <div className="flex justify-between gap-3 rounded-xl bg-violet-50 px-2.5 py-1.5 text-[13px] text-violet-800">
               <dt>Sconti concordati, a rimborso</dt>
               <dd className="tabellare font-semibold">{euro(t.ritornoAtteso)}</dd>
             </div>
           )}
           {t.righeConAvviso > 0 && (
-            <div className="flex justify-between rounded-lg bg-amber-50 px-2 py-1 text-xs text-amber-900">
+            <div className="flex justify-between gap-3 rounded-xl bg-amber-50 px-2.5 py-1.5 text-[13px] text-amber-900">
               <dt>
-                Cambiando fornitore su {t.righeConAvviso}{' '}
-                {t.righeConAvviso === 1 ? 'riga' : 'righe'} risparmieresti
+                Risparmio disponibile cambiando fornitore su {t.righeConAvviso}{' '}
+                {t.righeConAvviso === 1 ? 'riga' : 'righe'}
               </dt>
               <dd className="tabellare font-semibold">{euro(t.risparmioPotenziale)}</dd>
             </div>
           )}
         </dl>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <Button onClick={() => void conferma()} disabled={attesa} className="min-h-11">
-            {attesa ? 'Sto confermando…' : 'Conferma l’ordine'}
-          </Button>
-          <Link
-            href="/ordini"
-            className="focus-visible:ring-brand-600 inline-flex min-h-11 cursor-pointer items-center rounded-lg border border-neutral-300 bg-white px-4 text-sm font-semibold text-neutral-800 hover:border-neutral-400 focus-visible:ring-2 focus-visible:outline-none"
-          >
-            Torna a modificare
-          </Link>
-          <span className="flex items-center gap-1.5 text-xs text-neutral-500">
-            <AppIcon name="warning" className="h-3.5 w-3.5" />
-            Dopo la conferma l’ordine può essere corretto dalla sua scheda oppure annullato.
-          </span>
-        </div>
+        <p className="mt-3 flex items-start gap-1.5 text-[13px] leading-5 text-neutral-500">
+          <AppIcon name="warning" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          Dopo la conferma l’ordine può essere corretto dalla sua scheda oppure annullato.
+        </p>
       </section>
+
+      {/* ── La conferma, sempre raggiungibile ─────────────────────────── */}
+      {/* Stava in fondo, dopo l'elenco: su un ordine da cinquanta righe
+          bisognava scorrere fino in fondo per confermarlo, e per rileggere
+          una riga si tornava su perdendo il pulsante. In barra fissa si
+          controlla e si conferma senza rincorrere niente. */}
+      <div className="pb-sicuro fixed inset-x-0 bottom-0 z-30 px-3 sm:px-6 lg:pl-72">
+        <div className="mx-auto w-full max-w-[94rem] sm:px-1 xl:px-4">
+          <div className="border-brand-200 flex items-center gap-2 rounded-2xl border bg-white/95 p-2 shadow-lg shadow-neutral-900/10 backdrop-blur">
+            <Link
+              href="/ordini"
+              className="focus-visible:ring-brand-600 inline-flex min-h-12 shrink-0 cursor-pointer items-center rounded-xl px-3 text-[13px] font-semibold text-neutral-600 transition-colors hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-none"
+            >
+              Modifica
+            </Link>
+            <span className="min-w-0 flex-1 text-right">
+              <span className="block text-[12px] text-neutral-500">
+                {t.righe} {t.righe === 1 ? 'articolo' : 'articoli'} · più IVA
+              </span>
+              <span className="tabellare block text-lg leading-tight font-extrabold text-neutral-950">
+                {euro(t.netto)}
+              </span>
+            </span>
+            <Button onClick={() => void conferma()} disabled={attesa} className="min-h-12 shrink-0">
+              {attesa ? 'Conferma…' : 'Conferma l’ordine'}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

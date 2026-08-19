@@ -45,20 +45,21 @@ export default async function StoricoPage({
 
   return (
     <div className="space-y-5">
-      <header>
-        <Link href="/ordini" className="text-sm text-neutral-500 hover:underline">
-          ← Ordine in corso
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-black tracking-[-0.03em] text-neutral-950 sm:text-3xl">
+            Ordini fatti
+          </h1>
+          <p className="mt-1 text-sm leading-6 text-neutral-500">
+            Ogni ordine conserva prezzi, descrizioni e confezioni registrati alla conferma.
+          </p>
+        </div>
+        <Link
+          href="/ordini"
+          className="bg-brand-600 hover:bg-brand-700 inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white transition-colors"
+        >
+          Ordine in corso
         </Link>
-        <Badge variant="brand" dot className="mt-2 block w-fit">
-          Storico
-        </Badge>
-        <h1 className="mt-3 text-3xl font-black tracking-[-0.035em] text-neutral-950 sm:text-4xl">
-          Ordini fatti
-        </h1>
-        <p className="mt-2 max-w-2xl leading-6 text-neutral-500">
-          Ogni ordine resta com’era il giorno in cui è stato confermato: prezzi, descrizioni e
-          confezioni di allora, anche se nel frattempo il catalogo è cambiato.
-        </p>
       </header>
 
       <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" role="search">
@@ -118,11 +119,11 @@ export default async function StoricoPage({
           <p className="text-sm leading-6 text-neutral-500">
             {conFiltri
               ? 'Nessun ordine corrisponde ai filtri.'
-              : 'Nessun ordine confermato. Quando ne confermi uno, resta qui per sempre.'}
+              : 'Nessun ordine confermato. Gli ordini confermati vengono conservati in questo elenco.'}
           </p>
         </div>
       ) : (
-        <ul className="divide-y divide-neutral-100 overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+        <ul className="space-y-2">
           {elenco.items.map((o) => {
             const etichetta = ETICHETTE[o.status] ?? {
               testo: o.status,
@@ -133,25 +134,37 @@ export default async function StoricoPage({
               <li key={o.id}>
                 <Link
                   href={`/ordini/${o.id}`}
-                  className="flex cursor-pointer flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 transition-colors hover:bg-neutral-50"
+                  className="block cursor-pointer rounded-2xl border border-neutral-200 bg-white p-3.5 transition-colors hover:border-neutral-300"
                 >
-                  <span className="tabellare w-24 shrink-0 font-bold text-neutral-950">
-                    {o.code ?? '—'}
-                  </span>
-                  <span className="w-28 shrink-0 text-sm text-neutral-600">
-                    {new Date(quando).toLocaleDateString('it-IT', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    })}
-                  </span>
-                  <Badge variant={etichetta.variante}>{etichetta.testo}</Badge>
-                  <span className="min-w-0 flex-1 truncate text-sm text-neutral-500">
-                    {o.righe} righe · {o.confezioni} conf. · {o.fornitori.join(', ')}
-                  </span>
-                  <span className="tabellare shrink-0 text-sm font-bold text-neutral-950">
-                    {euro(o.netto)}
-                  </span>
+                  {/* Numero e importo sulla stessa riga, ai due estremi: sono
+                      i due dati con cui un ordine si riconosce, e sul
+                      telefono devono restare leggibili senza incolonnamenti
+                      che si schiacciano. */}
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="tabellare font-bold text-neutral-950">{o.code ?? '—'}</span>
+                    <span className="tabellare text-lg font-extrabold text-neutral-950">
+                      {euro(o.netto)}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-neutral-500">
+                    <span>
+                      {new Date(quando).toLocaleDateString('it-IT', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })}
+                    </span>
+                    <span className="text-neutral-300">·</span>
+                    <span>
+                      {o.righe} {o.righe === 1 ? 'riga' : 'righe'} · {o.confezioni} conf.
+                    </span>
+                    <Badge variant={etichetta.variante}>{etichetta.testo}</Badge>
+                  </div>
+                  {o.fornitori.length > 0 && (
+                    <p className="mt-1 truncate text-[13px] text-neutral-400">
+                      {o.fornitori.join(' · ')}
+                    </p>
+                  )}
                 </Link>
               </li>
             );
