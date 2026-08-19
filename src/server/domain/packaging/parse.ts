@@ -188,10 +188,33 @@ const REGOLE: { nome: string; re: RegExp; leggi: (m: RegExpExecArray) => Partial
     leggi: (m) => ({ pack: Number(m[1]) * Number(m[2]) }),
   },
   {
-    // "LITRO" scritto per esteso e da solo, senza numero: nei listini vale
-    // una bottiglia da un litro ("SAN BENEDETTO LITRO GAS PETX12").
+    // "LITRO" per esteso o "LT" abbreviato, da soli e senza numero: nei
+    // listini valgono una bottiglia da un litro ("SAN BENEDETTO LITRO GAS
+    // PETX12", "CARPANO PUNT E MES LT").
+    //
+    // ── Perché «lt» può stare qui senza fare danni ──────────────────────
+    // Le regole consumano il testo in ordine, e tutte quelle numeriche
+    // girano prima: «LT.1», «LT 1» e «0,7 LT» sono già stati presi quando
+    // si arriva qui. Resta solo l'abbreviazione orfana, che in un listino
+    // di bevande non significa altro.
+    //
+    // Senza questa parola «CARPANO PUNT E MES LT» diventava «1 pezzo» e
+    // «CARPANO PUNT E MES LITRO» «1 litro»: due prodotti distinti per il
+    // catalogo, e il confronto fra i due fornitori non partiva.
     nome: 'litro-parola',
-    re: /(?<![\d,.])\b(litro|litri)\b(?![\s.,]*\d)/gi,
+    //
+    // Il vincolo sul numero che precede vale **solo per l'abbreviazione**.
+    // «CODICE 500 LT ARTICOLO» non è una bottiglia da un litro: cinquecento
+    // litri li scarta la verifica di plausibilità, e senza questo vincolo la
+    // sigla sopravvissuta verrebbe raccolta qui diventando «1 L» — un
+    // formato inventato, che è peggio di nessun formato.
+    //
+    // La parola per esteso non lo può avere: «CACHACA 51 LITRO» e
+    // «APERITIVO GREEN P31 LITRO» hanno una cifra attaccata al *nome*, e
+    // applicando lo stesso vincolo a «litro» tornerebbero a essere pezzi —
+    // rompendo due prodotti che oggi sono letti bene. Una sigla di due
+    // lettere è ambigua, una parola intera no.
+    re: /(?<![\d,.])\b(?:litro|litri)\b(?![\s.,]*\d)|(?<![\d,.]\s{0,3})\blt\b\.?(?![\s.,]*\d)/gi,
     leggi: () => ({ unitSize: new Decimal(1), uom: 'L' as UnitOfMeasure }),
   },
   {

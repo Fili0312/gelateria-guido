@@ -97,6 +97,20 @@ describe('analizzaFormato — casi che devono restare fermi', () => {
     assert.equal(f.unitOfMeasure, 'PIECE');
   });
 
+  it('«LT» da solo è un litro, con un numero davanti no', () => {
+    // «CARPANO PUNT E MES LT» e «CARPANO PUNT E MES LITRO» sono la stessa
+    // bottiglia: letti come pezzo e come litro diventavano due prodotti
+    // distinti, e il confronto fra i due fornitori non partiva.
+    assert.equal(analizzaFormato('CARPANO PUNT E MES LT').unitOfMeasure, 'L');
+    assert.equal(analizzaFormato('MIDORI LT LIQUORE').unitOfMeasure, 'L');
+    // Con un numero davanti la sigla appartiene a quel numero, e se il
+    // numero è implausibile non si inventa un litro al suo posto.
+    assert.equal(analizzaFormato('CODICE 500 LT ARTICOLO').unitOfMeasure, 'PIECE');
+    // Le forme già corrette restano tali.
+    assert.equal(analizzaFormato('AMARETTO DI SARONNO LT 1').unitSize.toString(), '1');
+    assert.equal(analizzaFormato('GIN MALT 0,7 LT').unitSize.toString(), '0.7');
+  });
+
   it('i pezzi sono confezione, non formato', () => {
     const f = analizzaFormato('Palettine conf. 1000 pz');
     assert.equal(f.packQuantity, 1000);
