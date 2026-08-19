@@ -279,7 +279,7 @@ export function ProductCard({
               restano ottantaquattro pixel: in due righe ci sta «Absolut
               Citron…», che è di nuovo il troncamento da cui siamo partiti.
               Venti pixel di card in più valgono il nome intero. */}
-          <p className="mt-1 line-clamp-3 text-sm leading-[1.35] font-bold text-neutral-950 min-[400px]:text-base">
+          <p className="mt-1 line-clamp-4 text-sm leading-[1.35] font-bold text-neutral-950 min-[360px]:line-clamp-3 min-[400px]:text-base">
             {nomeLeggibile(risultato.name)}
           </p>
 
