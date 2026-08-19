@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppIcon } from '@/components/app-icon';
 import { useToast } from '@/components/ui';
-import type { OrderApiBody, OrdineStorico } from '@/features/orders/dto';
+import type { OrderApiBody, OrdineStorico, RisultatoOrdinabile } from '@/features/orders/dto';
 import { euro, formatoConfezione, nomeLeggibile } from '@/features/products/format';
 
 /**
@@ -34,8 +34,56 @@ export function OrderLines({
 }) {
   const [ordine, setOrdine] = useState(iniziale);
   const [inCorso, setInCorso] = useState<string | null>(null);
+  const [cerca, setCerca] = useState('');
+  const [trovati, setTrovati] = useState<RisultatoOrdinabile[]>([]);
+  const [cercando, setCercando] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+
+  /** Una mutazione qualunque sull'ordine: stessa gestione dell'esito. */
+  async function muta(chiave: string, url: string, init: RequestInit) {
+    if (inCorso) return;
+    setInCorso(chiave);
+    try {
+      const risposta = await fetch(url, {
+        ...init,
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      });
+      const corpo = (await risposta.json()) as OrderApiBody<OrdineStorico>;
+      if (!corpo.ok) {
+        toast({ title: 'Modifica non riuscita', description: corpo.error, tone: 'error' });
+        return;
+      }
+      setOrdine(corpo.data);
+      router.refresh();
+    } catch {
+      toast({ title: 'Server non raggiungibile', tone: 'error' });
+    } finally {
+      setInCorso(null);
+    }
+  }
+
+  async function cercaProdotti(q: string) {
+    setCerca(q);
+    if (q.trim().length < 2) {
+      setTrovati([]);
+      return;
+    }
+    setCercando(true);
+    try {
+      const url = new URL(`${endpointOrdini}/current/search`, window.location.origin);
+      url.searchParams.set('q', q.trim());
+      url.searchParams.set('limite', '8');
+      const corpo = (await (
+        await fetch(url, { headers: { Accept: 'application/json' } })
+      ).json()) as OrderApiBody<RisultatoOrdinabile[]>;
+      if (corpo.ok) setTrovati(corpo.data);
+    } catch {
+      setTrovati([]);
+    } finally {
+      setCercando(false);
+    }
+  }
 
   async function segna(lineId: string, disponibile: boolean) {
     if (inCorso) return;
@@ -103,13 +151,42 @@ export function OrderLines({
                   riga.nonDisponibile ? 'bg-neutral-50' : ''
                 }`}
               >
-                <span
-                  className={`tabellare w-10 shrink-0 font-bold ${
-                    riga.nonDisponibile ? 'text-neutral-400' : 'text-neutral-950'
-                  }`}
-                >
-                  {riga.quantityPacks}×
-                </span>
+                {modificabile && !riga.nonDisponibile ? (
+                  // La quantità si corregge qui: fra la conferma e la
+                  // consegna ci si accorge che due casse erano tre, e finora
+                  // l'unica via era un secondo ordine per una riga sola.
+                  // Zero la toglie — è una nostra correzione, non una
+                  // mancata consegna, che ha il suo comando apposta.
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    defaultValue={String(riga.quantityPacks)}
+                    onBlur={(e) => {
+                      const q = Number(e.target.value.replace(/[^0-9]/g, ''));
+                      if (!Number.isFinite(q) || q === riga.quantityPacks) {
+                        e.target.value = String(riga.quantityPacks);
+                        return;
+                      }
+                      void muta(riga.id, `${endpointOrdini}/${ordine.id}/lines/${riga.id}`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({ quantityPacks: q }),
+                      });
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') e.currentTarget.blur();
+                    }}
+                    aria-label={`Confezioni di ${riga.name}`}
+                    className="tabellare focus:border-brand-500 w-11 shrink-0 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-bold text-neutral-950 hover:border-neutral-300 focus:bg-white focus:outline-none"
+                  />
+                ) : (
+                  <span
+                    className={`tabellare w-11 shrink-0 text-center font-bold ${
+                      riga.nonDisponibile ? 'text-neutral-400' : 'text-neutral-950'
+                    }`}
+                  >
+                    {riga.quantityPacks}×
+                  </span>
+                )}
                 <span className="min-w-0 flex-1">
                   <span
                     className={`text-sm font-semibold ${
@@ -175,6 +252,71 @@ export function OrderLines({
           </ul>
         </section>
       ))}
+
+      {modificabile && (
+        <section className="rounded-2xl border border-neutral-200 bg-white p-4">
+          <h3 className="font-bold text-neutral-950">Aggiungi un articolo</h3>
+          <p className="mt-1 mb-3 text-sm leading-5 text-neutral-500">
+            Se ti sei accorto che mancava qualcosa, mettilo qui invece di fare un secondo ordine:
+            resta lo stesso numero, e al fornitore arriva un documento solo. Il prezzo è quello di
+            oggi.
+          </p>
+          <input
+            type="text"
+            value={cerca}
+            onChange={(e) => void cercaProdotti(e.target.value)}
+            placeholder="Cerca un prodotto…"
+            aria-label="Cerca un prodotto da aggiungere all’ordine"
+            className="focus:border-brand-500 focus:ring-brand-500/30 h-12 w-full rounded-xl border border-neutral-200 px-3 outline-none focus:ring-4"
+          />
+          {cercando && <p className="mt-2 text-xs text-neutral-400">Sto cercando…</p>}
+          {trovati.length > 0 && (
+            <ul className="mt-2 divide-y divide-neutral-100 rounded-xl border border-neutral-200">
+              {trovati.map((r) => {
+                const offerta = r.offerte[0];
+                return (
+                  <li key={r.productId} className="flex items-center gap-3 px-3 py-2">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-neutral-950">
+                        {nomeLeggibile(r.name)}
+                      </span>
+                      <span className="text-xs text-neutral-500">
+                        {offerta
+                          ? `${euro(offerta.priceNet)} · ${offerta.supplierName}`
+                          : (r.nonOrdinabile ?? 'senza prezzo')}
+                      </span>
+                    </span>
+                    {offerta && (
+                      <button
+                        type="button"
+                        disabled={inCorso !== null}
+                        onClick={() =>
+                          void muta(r.productId, `${endpointOrdini}/${ordine.id}/lines`, {
+                            method: 'POST',
+                            body: JSON.stringify({
+                              supplierProductId: offerta.supplierProductId,
+                              quantityPacks: 1,
+                            }),
+                          }).then(() => {
+                            setCerca('');
+                            setTrovati([]);
+                          })
+                        }
+                        aria-label={`Aggiungi ${r.name} all’ordine`}
+                        className="bg-brand-600 hover:bg-brand-700 grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-full text-white disabled:opacity-50"
+                      >
+                        <span aria-hidden className="text-xl leading-none">
+                          +
+                        </span>
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      )}
 
       <section className="rounded-2xl border border-neutral-200 bg-white p-5">
         <dl className="space-y-1 text-sm">

@@ -375,6 +375,10 @@ async function ricalcolaTotali(tx: OrganizationPrismaClient, orderId: string): P
     where: { id: orderId },
     select: {
       lines: {
+        // Fuori ciò che il fornitore ha dichiarato di non avere: il totale è
+        // la cifra che si pagherà, e quella merce non arriva. Sulle bozze non
+        // cambia niente — lì non c'è ancora nessuna consegna da cui mancare.
+        where: { unavailableAt: null },
         select: { quantityPacks: true, unitPriceNetSnapshot: true, vatRateSnapshot: true },
       },
     },
@@ -1607,6 +1611,196 @@ export function ordersRepository(organizationId: string) {
     },
 
     /**
+     * Aggiunge un articolo a un ordine **già confermato**.
+     *
+     * ── Perché si può, su un documento che si dice congelato ────────────
+     * Congelato vuol dire che quello che c'è dentro non cambia da solo: i
+     * prezzi restano quelli concordati anche se il listino cambia domani.
+     * Non vuol dire che l'ordine sia finito — fra la conferma e la consegna
+     * ci si accorge di aver dimenticato una cassa, e finora l'unica via era
+     * fare un secondo ordine con un secondo numero per una riga sola. Il
+     * fornitore si ritrova due documenti per la stessa consegna, e la
+     * telefonata la fa comunque.
+     *
+     * ── Il prezzo della riga nuova è quello di **oggi** ─────────────────
+     * Non quello del giorno della conferma. È una riga che si sta ordinando
+     * adesso, e usare il prezzo di allora vorrebbe dire pretendere da un
+     * listino scaduto. Se nel frattempo è cambiato, cambia — e si vede,
+     * perché la riga porta il suo prezzo scritto accanto.
+     *
+     * Un ordine annullato non si tocca: lì non c'è più nessuna consegna a
+     * cui aggiungere niente.
+     */
+    async aggiungiRigaAOrdine(
+      orderId: string,
+      supplierProductId: string,
+      quantityPacks: number,
+    ): Promise<OrdineStorico> {
+      if (!confezioniValide(quantityPacks)) {
+        throw new OrderValidationError('La quantità richiesta non è valida.');
+      }
+
+      const offerta = await db.supplierProduct.findFirst({
+        where: { id: supplierProductId },
+        select: OFFERTA_ORDINE_SELECT,
+      });
+      if (!offerta) throw new OrderNotFoundError('L’offerta indicata non esiste.');
+      richiediOffertaOrdinabile(offerta, 'Questa offerta');
+
+      await conOrdineBloccato(orderId, async (tx) => {
+        const ordine = await tx.order.findFirst({
+          where: { id: orderId },
+          select: {
+            status: true,
+            _count: { select: { lines: true } },
+            lines: {
+              where: { supplierProductId },
+              select: { id: true, quantityPacks: true, unavailableAt: true },
+            },
+          },
+        });
+        if (!ordine) throw new OrderNotFoundError('Ordine inesistente.');
+        if (ordine.status === 'DRAFT') {
+          throw new OrderValidationError(
+            'Questo ordine è ancora una bozza: usa la schermata d’ordine.',
+          );
+        }
+        if (ordine.status === 'CANCELLED') {
+          throw new OrderValidationError('Un ordine annullato non si modifica.');
+        }
+
+        const corrente = await tx.supplierProduct.findFirst({
+          where: { id: supplierProductId },
+          select: OFFERTA_ORDINE_SELECT,
+        });
+        if (!corrente) throw new OrderNotFoundError('L’offerta indicata non esiste.');
+        richiediOffertaOrdinabile(corrente, 'Questa offerta');
+
+        const riga = ordine.lines[0];
+        // Riaggiungere un articolo segnato «non consegnato» vuol dire che il
+        // fornitore l'ha ritrovato: la riga torna in vita con la quantità
+        // nuova, invece di nascerne una seconda identica accanto.
+        const partenza = riga && riga.unavailableAt === null ? riga.quantityPacks : 0;
+        const quantita = partenza + quantityPacks;
+        if (!confezioniValide(quantita)) {
+          throw new OrderValidationError(
+            'La quantità complessiva supera il massimo di 9.999 confezioni.',
+          );
+        }
+        const snapshot = snapshotDaOfferta(corrente, quantita, await ivaPredefinita(tx));
+
+        await tx.order.update({
+          where: { id: orderId },
+          data: riga
+            ? {
+                lines: {
+                  update: {
+                    where: { id: riga.id },
+                    data: { quantityPacks: quantita, unavailableAt: null, ...snapshot },
+                  },
+                },
+              }
+            : {
+                lines: {
+                  create: {
+                    supplierProductId: corrente.id,
+                    quantityPacks: quantita,
+                    ...snapshot,
+                    position: ordine._count.lines,
+                  },
+                },
+              },
+        });
+
+        await ricalcolaTotali(tx, orderId);
+        await tx.auditLog.create({
+          data: {
+            organizationId,
+            action: 'ORDER_LINE_ADDED_AFTER_CONFIRM',
+            entityType: 'Order',
+            entityId: orderId,
+            detail: { supplierProductId, quantityPacks },
+          },
+        });
+      });
+
+      const aggiornato = await this.storico(orderId);
+      if (!aggiornato) throw new OrderNotFoundError('Ordine inesistente.');
+      return aggiornato;
+    },
+
+    /** Cambia le confezioni di una riga di un ordine già confermato. */
+    async cambiaQuantitaOrdine(
+      orderId: string,
+      lineId: string,
+      quantityPacks: number,
+    ): Promise<OrdineStorico> {
+      await conOrdineBloccato(orderId, async (tx) => {
+        const ordine = await tx.order.findFirst({
+          where: { id: orderId },
+          select: { status: true, lines: { where: { id: lineId }, select: { id: true } } },
+        });
+        if (!ordine || ordine.lines.length === 0) {
+          throw new OrderNotFoundError('Quella riga non è di questo ordine.');
+        }
+        if (ordine.status === 'CANCELLED') {
+          throw new OrderValidationError('Un ordine annullato non si modifica.');
+        }
+
+        if (quantityPacks <= 0) {
+          // Zero confezioni vuol dire «toglila»: la riga sparisce davvero,
+          // perché è una nostra correzione e non una mancata consegna. Chi
+          // vuole tenere traccia che il fornitore non l'aveva usa «non
+          // disponibile», che la lascia in elenco sbarrata.
+          await tx.order.update({
+            where: { id: orderId },
+            data: { lines: { delete: { id: lineId } } },
+          });
+        } else {
+          if (!confezioniValide(quantityPacks)) {
+            throw new OrderValidationError('La quantità richiesta non è valida.');
+          }
+          const riga = await tx.order.findFirstOrThrow({
+            where: { id: orderId },
+            select: {
+              lines: {
+                where: { id: lineId },
+                select: { unitPriceNetSnapshot: true, vatRateSnapshot: true },
+              },
+            },
+          });
+          const r = riga.lines[0]!;
+          const totali = totaliRiga({
+            prezzoConfezione: r.unitPriceNetSnapshot.toString(),
+            confezioni: quantityPacks,
+            aliquotaIva: r.vatRateSnapshot?.toString() ?? null,
+          });
+          await tx.order.update({
+            where: { id: orderId },
+            data: {
+              lines: {
+                update: {
+                  where: { id: lineId },
+                  data: {
+                    quantityPacks,
+                    lineTotalNet: totali.netto.toString(),
+                    lineTotalGross: totali.lordo.toString(),
+                  },
+                },
+              },
+            },
+          });
+        }
+
+        await ricalcolaTotali(tx, orderId);
+      });
+
+      const aggiornato = await this.storico(orderId);
+      if (!aggiornato) throw new OrderNotFoundError('Ordine inesistente.');
+      return aggiornato;
+    },
+
+    /**
      * Segna una riga come non disponibile, o la rimette in ordine.
      *
      * ── Cosa succede davvero ────────────────────────────────────────────
@@ -1657,31 +1851,9 @@ export function ordersRepository(organizationId: string) {
           },
         });
 
-        const rimaste = await tx.order.findFirstOrThrow({
-          where: { id: orderId },
-          select: {
-            lines: {
-              where: { unavailableAt: null },
-              select: { lineTotalNet: true, lineTotalGross: true },
-            },
-          },
-        });
-
-        let netto = new Decimal(0);
-        let lordo = new Decimal(0);
-        for (const riga of rimaste.lines) {
-          netto = netto.plus(riga.lineTotalNet.toString());
-          lordo = lordo.plus(riga.lineTotalGross.toString());
-        }
-
-        await tx.order.update({
-          where: { id: orderId },
-          data: {
-            totalNet: netto.toFixed(2),
-            totalVat: lordo.minus(netto).toFixed(2),
-            totalGross: lordo.toFixed(2),
-          },
-        });
+        // Lo stesso ricalcolo che usano bozze e modifiche: una regola sola
+        // su cosa entra nel totale, invece di due che possono divergere.
+        await ricalcolaTotali(tx, orderId);
 
         await tx.auditLog.create({
           data: {
@@ -1689,7 +1861,7 @@ export function ordersRepository(organizationId: string) {
             action: disponibile ? 'ORDER_LINE_AVAILABLE' : 'ORDER_LINE_UNAVAILABLE',
             entityType: 'OrderLine',
             entityId: lineId,
-            detail: { orderId, nuovoNetto: netto.toFixed(2) },
+            detail: { orderId },
           },
         });
       });
