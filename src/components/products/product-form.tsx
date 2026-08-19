@@ -6,6 +6,12 @@ import { Button, Input, Select, useToast } from '@/components/ui';
 import type { ProductApiBody, ProductDetail } from '@/features/products/dto';
 import { productInputSchema, UNITA_DI_MISURA, type ProductInput } from '@/features/products/schema';
 import { etichettaUnita, formatoUnitario } from '@/features/products/format';
+import {
+  FORNITURA_VUOTA,
+  fornituraSchema,
+  oggiCalendario,
+  type Fornitura,
+} from '@/features/products/fornitura';
 import { CategorySelect } from '@/components/taxonomy/category-select';
 import type { DepartmentItem } from '@/features/taxonomy/dto';
 
@@ -50,17 +56,29 @@ export function ProductForm({
   endpoint,
   iniziale,
   reparti,
+  fornitori,
+  endpointOfferte,
+  endpointPrezzi,
 }: {
   mode: 'create' | 'edit';
   endpoint: string;
   iniziale?: ProductInput;
   reparti: readonly DepartmentItem[];
+  /** I fornitori attivi, per la sezione «da chi lo compri». */
+  fornitori: readonly { id: string; name: string }[];
+  endpointOfferte: string;
+  /** `{id}` viene sostituito con l'offerta appena creata. */
+  endpointPrezzi: string;
 }) {
   const router = useRouter();
   const { toast } = useToast();
   const [valori, setValori] = useState<ProductInput>(() => iniziale ?? VUOTO);
   const [campi, setCampi] = useState<Record<string, string[]>>({});
   const [attesa, setAttesa] = useState(false);
+  // La fornitura è **facoltativa**: si apre solo se la si vuole compilare, e
+  // un prodotto senza fornitore resta un prodotto legittimo.
+  const [conFornitura, setConFornitura] = useState(false);
+  const [fornitura, setFornitura] = useState<Fornitura>(FORNITURA_VUOTA);
 
   function cambia<K extends keyof ProductInput>(chiave: K, valore: ProductInput[K]) {
     setValori((precedente) => ({ ...precedente, [chiave]: valore }));
@@ -73,6 +91,77 @@ export function ProductForm({
    * trova perché il nome è tutto formato e niente sostanza.
    */
   const anteprima = useMemo(() => valori.name.trim(), [valori.name]);
+
+  /**
+   * Crea l'offerta del fornitore e ci registra il prezzo di listino.
+   *
+   * Il nome dell'offerta è quello del prodotto: è la descrizione con cui il
+   * fornitore lo chiama, e finché non arriva un suo listino l'unica che
+   * abbiamo è la nostra. Il formato pure, se non se n'è indicato uno diverso
+   * — spesso il collo è di pezzi identici a quello dichiarato sopra.
+   */
+  async function collegaFornitura(productId: string): Promise<{ ok: boolean; errore?: string }> {
+    const analizzata = fornituraSchema.safeParse(fornitura);
+    if (!analizzata.success) {
+      return { ok: false, errore: analizzata.error.issues[0]?.message ?? 'Dati non validi.' };
+    }
+    const f = analizzata.data;
+
+    try {
+      const rispostaOfferta = await fetch(endpointOfferte, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          supplierId: f.supplierId,
+          rawName: valori.name,
+          supplierCode: f.supplierCode,
+          packQuantity: f.packQuantity,
+          // Dichiarato a mano vuol dire dichiarato: chi scrive «6» sa che
+          // sono sei. È diverso dall'1 di ripiego che mette un import
+          // quando il listino non dice quanti pezzi ci sono nel collo.
+          packQuantityConfirmed: true,
+          unitSize: f.unitSize.trim() || valori.unitSize,
+          unitOfMeasure: f.unitOfMeasure ?? valori.unitOfMeasure,
+          productId,
+        }),
+      });
+      const corpoOfferta = (await rispostaOfferta.json().catch(() => null)) as {
+        ok: boolean;
+        data?: { id: string };
+        error?: string;
+      } | null;
+      if (!rispostaOfferta.ok || !corpoOfferta?.ok || !corpoOfferta.data) {
+        return { ok: false, errore: corpoOfferta?.error ?? 'Offerta non creata.' };
+      }
+
+      const rispostaPrezzo = await fetch(
+        endpointPrezzi.replace('{id}', encodeURIComponent(corpoOfferta.data.id)),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            priceList: f.priceList.replace(',', '.'),
+            discounts: [],
+            vatRate: null,
+            validFrom: oggiCalendario(),
+          }),
+        },
+      );
+      const corpoPrezzo = (await rispostaPrezzo.json().catch(() => null)) as {
+        ok: boolean;
+        error?: string;
+      } | null;
+      if (!rispostaPrezzo.ok || !corpoPrezzo?.ok) {
+        return {
+          ok: false,
+          errore: `Fornitore collegato, prezzo no: ${corpoPrezzo?.error ?? 'errore del server'}`,
+        };
+      }
+      return { ok: true };
+    } catch {
+      return { ok: false, errore: 'Server non raggiungibile.' };
+    }
+  }
 
   async function invia(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -108,10 +197,28 @@ export function ProductForm({
         return;
       }
 
+      // ── Il fornitore e il prezzo, se sono stati compilati ─────────────
+      //
+      // Tre chiamate in fila e non una sola: prodotto, offerta, prezzo sono
+      // tre cose distinte anche nel database, e comporle qui riusa il
+      // percorso già collaudato invece di aprirne uno nuovo.
+      //
+      // Se una delle due ultime non riesce **si dice quale**, e il prodotto
+      // resta creato. È il motivo per cui si finisce comunque sulla sua
+      // scheda: da lì il pezzo mancante si aggiunge in due clic, mentre un
+      // errore che annulla tutto farebbe riscrivere anche ciò che era
+      // andato bene.
+      const esito = conFornitura ? await collegaFornitura(corpo.data.id) : null;
+
       toast({
-        title: mode === 'create' ? 'Prodotto creato' : 'Prodotto aggiornato',
-        description: corpo.data.name,
-        tone: 'success',
+        title:
+          esito === null || esito.ok
+            ? mode === 'create'
+              ? 'Prodotto creato'
+              : 'Prodotto aggiornato'
+            : 'Prodotto salvato, fornitore no',
+        description: esito === null || esito.ok ? corpo.data.name : esito.errore,
+        tone: esito === null || esito.ok ? 'success' : 'error',
       });
       router.push(`/prodotti/${corpo.data.id}`);
       router.refresh();
@@ -224,6 +331,117 @@ export function ProductForm({
           hint="Da 8 a 14 cifre. Nei listini della gelateria non ce n’è nessuno: si compila solo se lo si ha davvero."
           inputMode="numeric"
         />
+      </Sezione>
+
+      <Sezione
+        titolo="Da chi lo compri"
+        nota={
+          fornitori.length === 0
+            ? 'Non c’è ancora nessun fornitore: crealo prima, poi torna qui.'
+            : mode === 'create'
+              ? 'Facoltativo. Compilandolo il prodotto nasce già ordinabile, con un prezzo e un fornitore — altrimenti resta in catalogo senza prezzo, e nei confronti non compare.'
+              : 'Facoltativo. Aggiunge **un altro** fornitore a questo prodotto: quelli già collegati restano dove sono.'
+        }
+      >
+        {fornitori.length > 0 && (
+          <>
+            <label className="flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                checked={conFornitura}
+                onChange={(e) => setConFornitura(e.target.checked)}
+                className="text-brand-600 focus:ring-brand-500/30 mt-0.5 h-5 w-5 shrink-0 cursor-pointer rounded border-neutral-300 focus:ring-4"
+              />
+              <span className="text-sm font-semibold text-neutral-900">
+                {mode === 'create'
+                  ? 'So già da chi lo compro e quanto costa'
+                  : 'Aggiungi un fornitore con il suo prezzo'}
+              </span>
+            </label>
+
+            {conFornitura && (
+              <div className="space-y-4 border-l-2 border-neutral-100 pl-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Select
+                    name="supplierId"
+                    label="Fornitore"
+                    required
+                    value={fornitura.supplierId}
+                    onChange={(e) => setFornitura((f) => ({ ...f, supplierId: e.target.value }))}
+                  >
+                    <option value="">Scegli…</option>
+                    {fornitori.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name}
+                      </option>
+                    ))}
+                  </Select>
+                  <Input
+                    name="priceList"
+                    label="Prezzo di listino"
+                    required
+                    inputMode="decimal"
+                    value={fornitura.priceList}
+                    onChange={(e) => setFornitura((f) => ({ ...f, priceList: e.target.value }))}
+                    hint="Quello scritto sul listino, prima degli sconti. Gli sconti concordati si impostano sul fornitore."
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Input
+                    name="supplierCode"
+                    label="Codice del fornitore"
+                    value={fornitura.supplierCode ?? ''}
+                    onChange={(e) =>
+                      setFornitura((f) => ({ ...f, supplierCode: e.target.value || null }))
+                    }
+                    hint="Facoltativo. È l’unico codice che lui sa cercare a magazzino."
+                  />
+                  <Input
+                    name="packQuantity"
+                    label="Pezzi per confezione"
+                    inputMode="numeric"
+                    value={String(fornitura.packQuantity)}
+                    onChange={(e) =>
+                      setFornitura((f) => ({
+                        ...f,
+                        packQuantity: Number(e.target.value.replace(/[^0-9]/g, '')) || 1,
+                      }))
+                    }
+                    hint="Quante bottiglie ci sono nel collo che ti consegna. 1 se lo compri a pezzo."
+                  />
+                </div>
+
+                {/* Il conto, scritto per esteso.
+                    Il prezzo di listino è per **confezione**: con sei
+                    bottiglie in un collo, 60 € non sono 60 € a bottiglia.
+                    Vederlo mentre si scrive evita l\u2019errore che poi si
+                    ritrova nei confronti fra fornitori. */}
+                {fornitura.priceList.trim() && (
+                  <p className="rounded-xl bg-neutral-50 px-3 py-2 text-sm text-neutral-600">
+                    {fornitura.packQuantity > 1 ? (
+                      <>
+                        Confezione da <strong>{fornitura.packQuantity}</strong>:{' '}
+                        {fornitura.priceList.replace('.', ',')} € il collo, cioè{' '}
+                        <strong>
+                          {(Number(fornitura.priceList.replace(',', '.')) / fornitura.packQuantity)
+                            .toFixed(2)
+                            .replace('.', ',')}{' '}
+                          €
+                        </strong>{' '}
+                        al pezzo.
+                      </>
+                    ) : (
+                      <>
+                        <strong>{fornitura.priceList.replace('.', ',')} €</strong> al pezzo.
+                      </>
+                    )}
+                  </p>
+                )}
+              </div>
+            )}
+          </>
+        )}
       </Sezione>
 
       {/* I comandi restano a portata anche scorrendo: un modulo che si salva

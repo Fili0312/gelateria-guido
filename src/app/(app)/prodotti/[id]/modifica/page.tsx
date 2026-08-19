@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui';
 import { getCurrentUser } from '@/server/auth';
 import { withBasePath } from '@/server/base-path';
 import { productsRepository } from '@/server/repositories/products';
+import { suppliersRepository } from '@/server/repositories/suppliers';
 import { taxonomyRepository } from '@/server/repositories/taxonomy';
 
 export const dynamic = 'force-dynamic';
@@ -17,6 +18,11 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   const prodotto = await productsRepository(user.organizationId).get(id);
   if (!prodotto) notFound();
 
+  const fornitori = await suppliersRepository(user.organizationId).list({
+    q: '',
+    status: 'active',
+    sort: 'name-asc',
+  });
   const { departments } = await taxonomyRepository(user.organizationId).tree({
     // La categoria corrente può essere stata disattivata dopo la creazione
     // del prodotto. Va mostrata (ma non resa nuovamente selezionabile),
@@ -40,6 +46,9 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
         mode="edit"
         endpoint={withBasePath(`/api/products/${prodotto.id}`)}
         reparti={departments}
+        fornitori={fornitori.items.map((f) => ({ id: f.id, name: f.name }))}
+        endpointOfferte={withBasePath('/api/supplier-products')}
+        endpointPrezzi={withBasePath('/api/supplier-products/{id}/prices')}
         iniziale={{
           name: prodotto.name,
           brand: prodotto.brand,
