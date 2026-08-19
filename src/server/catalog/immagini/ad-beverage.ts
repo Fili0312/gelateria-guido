@@ -756,6 +756,66 @@ export async function catalogoAdBeverageConCache(): Promise<readonly ProdottoAdB
   return caricamento;
 }
 
+/**
+ * Il prodotto locale e la scheda condividono almeno **una parola che
+ * identifica**: non di categoria, non di quelle deboli.
+ *
+ * ── Perché serve, e perché sta qui ──────────────────────────────────────
+ * È il freno di sicurezza sul giudizio del modello. Quando il prodotto non
+ * sta nel catalogo AD, i candidati che gli arrivano sono dieci articoli
+ * della stessa famiglia e di marche diverse: DeepSeek a volte ne sceglie
+ * uno lo stesso, con una motivazione convincente. È successo davvero —
+ * «GINARTE DISTILLED DRY GIN» ha ricevuto la foto di «GIN SIPSMITH LONDON
+ * DRY», con scritto «corrisponde al candidato Gin Arte», che nel catalogo
+ * non esiste.
+ *
+ * Il controllo è volutamente **debole**: basta una parola in comune, con la
+ * tolleranza di un carattere per i refusi. Non deve rifare il lavoro del
+ * confronto — deve solo impedire che una scheda senza *niente* in comune
+ * passi perché qualcuno ne ha parlato bene. «Amaretto di Saronno» e
+ * «Amaretto Disaronno» condividono «amaretto»; «Ginarte» e «Sipsmith» non
+ * condividono niente, ed è tutto quello che serve sapere.
+ */
+export function condivideParolaIdentificativa(locale: string, candidato: string): boolean {
+  const identificative = (testo: string) =>
+    normalizzaAdBeverage(testo).parole.filter(
+      (p) => !PAROLE_CATEGORIA.has(p) && !PAROLE_DEBOLI.has(p),
+    );
+
+  const nostre = identificative(locale);
+  // Nessuna parola propria: non c'è niente da verificare, e quando non si
+  // può verificare non si associa.
+  if (nostre.length === 0) return false;
+  const loro = identificative(candidato);
+  return nostre.some((nostra) => loro.some((suo) => stessoNome(nostra, suo)));
+}
+
+/**
+ * Due parole che nominano la stessa cosa, con tre tolleranze misurate su
+ * casi veri di questo catalogo.
+ *
+ *  - **Refuso**: `stessaParola` perdona un carattere — «Chartreus» /
+ *    «Chartreuse».
+ *  - **Attaccato o staccato**: «SAN PELLEGRINO» da noi, «SANPELLEGRINO»
+ *    da loro. Una parola dentro l'altra, purché la più corta sia lunga
+ *    almeno cinque lettere — sotto quella misura «gin» starebbe dentro
+ *    «ginarte» e la protezione si aprirebbe da sola.
+ *  - **Coda diversa**: «BUSHMILSS» e «BUSHMILL S», che condividono le
+ *    prime sette lettere ma distano due caratteri.
+ */
+function stessoNome(a: string, b: string): boolean {
+  if (stessaParola(a, b)) return true;
+  const [corta, lunga] = a.length <= b.length ? [a, b] : [b, a];
+  // Solo fra parole di lettere: su numeri, annate ed età la somiglianza non
+  // vuol dire niente — «2012» dentro «2012 2013» sarebbe un caso, e 903 e
+  // 9030 sono due prodotti.
+  if (!/^[a-z]+$/.test(corta) || !/^[a-z]+$/.test(lunga)) return false;
+  if (corta.length >= 5 && lunga.includes(corta)) return true;
+  let comuni = 0;
+  while (comuni < corta.length && corta[comuni] === lunga[comuni]) comuni += 1;
+  return comuni >= 6;
+}
+
 export function isFornitoreAdBeverage(nome: string): boolean {
   const pulito = nome
     .toLowerCase()

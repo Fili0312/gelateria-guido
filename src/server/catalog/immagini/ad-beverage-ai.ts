@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { chiediAlModello, leggiRisposta, type ProviderAi } from '@/server/ai';
 import {
   catalogoAdBeverageConCache,
+  condivideParolaIdentificativa,
   normalizzaAdBeverage,
   selezionaCandidatiAdBeverage,
   trovaMiglioreAdBeverage,
@@ -148,7 +149,10 @@ export async function matchAdBeverageConIaLotto(
       !decisione.sicuro ||
       decisione.confidenza < SOGLIA_IA ||
       candidato.richiamo < 0.3 ||
-      !identitaCriticaCompatibile(richiesta.locale.name, candidato.prodotto.nome)
+      !identitaCriticaCompatibile(richiesta.locale.name, candidato.prodotto.nome) ||
+      // Il modello può sbagliare candidato e motivarlo bene: qui si pretende
+      // che le due schede abbiano almeno una parola propria in comune.
+      !condivideParolaIdentificativa(richiesta.locale.name, candidato.prodotto.nome)
     ) {
       continue;
     }

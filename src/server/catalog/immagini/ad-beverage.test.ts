@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
   estraiFormatoAdBeverage,
   estraiImmagineAdBeverage,
+  condivideParolaIdentificativa,
   isFornitoreAdBeverage,
   matchAdBeverageProduct,
   normalizzaAdBeverage,
@@ -246,6 +247,61 @@ describe('matching AD Beverage', () => {
 });
 
 describe('confini della fonte', () => {
+  it('pretende una parola propria in comune con la scheda scelta', () => {
+    // Caso vero: DeepSeek ha dato a «GINARTE» la foto di «SIPSMITH»
+    // scrivendo «corrisponde al candidato Gin Arte» — che nel catalogo non
+    // esiste. Le due schede non condividono niente se non «gin» e «dry»,
+    // che sono categoria e stile.
+    assert.equal(
+      condivideParolaIdentificativa(
+        'GINARTE DISTILLED DRY GIN CL.70 43,5%',
+        'GIN SIPSMITH LONDON DRY 41 6  70 CL',
+      ),
+      false,
+    );
+    // Non deve però rifare il lavoro del confronto: i refusi e le grafie
+    // diverse devono passare, o si perde tutto quello che il modello serve
+    // a recuperare.
+    assert.equal(
+      condivideParolaIdentificativa(
+        'KINGSTONE 62 GOLD RUM 40° LT 1',
+        'RUM KINGSTON 62 GOLD 40  1 L',
+      ),
+      true,
+    );
+    assert.equal(
+      condivideParolaIdentificativa(
+        'AMARETTO DI SARONNO LT 1',
+        'LIQUORE AMARETTO DISARONNO 28  1 L',
+      ),
+      true,
+    );
+    // Marca attaccata da una parte e staccata dall'altra.
+    assert.equal(
+      condivideParolaIdentificativa(
+        'SAN PELLEGRINO CHINO CL 20 VAP',
+        'CHINOTTO SANPELLEGRINO VAP TC 200 ML',
+      ),
+      true,
+    );
+    // Refuso che sposta due lettere ma lascia intatte le prime sette.
+    assert.equal(
+      condivideParolaIdentificativa(
+        'BUSHMILSS ORIG.40% CL 70',
+        'WHISKY BUSHMILL S ORIGINAL IRISH 40  70 CL',
+      ),
+      true,
+    );
+    // La parola dentro l'altra non deve aprire la porta a «gin» dentro
+    // «ginarte»: sotto le cinque lettere non vale.
+    assert.equal(
+      condivideParolaIdentificativa('GINARTE CL.70', 'GIN DOLCE VITA DRY 40  70 CL'),
+      false,
+    );
+    // Un nome fatto solo di categoria non è verificabile.
+    assert.equal(condivideParolaIdentificativa('VODKA LITRO', 'VODKA ABSOLUT BLU 40  1 L'), false);
+  });
+
   it('non abilita AD per altri fornitori', () => {
     assert.equal(isFornitoreAdBeverage('AD Beverage'), true);
     assert.equal(isFornitoreAdBeverage('A.D. Beverage'), true);
