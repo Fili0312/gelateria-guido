@@ -129,11 +129,103 @@ const PAROLE_DI_CONFEZIONE = new Set([
  * arriverebbe nemmeno fra quelli da valutare. Ripulire prima di cercare è ciò
  * che fa passare i tre modi di scrivere la stessa birra.
  */
+/**
+ * Le note che chi compila il listino aggiunge al nome, e che nome non sono.
+ *
+ * «CORONA CL.33X24 prezzo errato ft 28.07.26 inviato mess.assodrink 03/08»
+ * è la stessa birra di «CORONA CL.33X24», ma con undici parole in più: la
+ * somiglianza fra i due nomi crollava a 0,08 e la coppia non arrivava mai al
+ * modello. Stesso effetto su «KAHLUA LICOR DE CAFFE' 20% LT 1» contro
+ * «KAHLUA LITRO».
+ *
+ * Si toglie **solo il rumore riconoscibile**: promozioni, sostituzioni,
+ * solleciti, telefonate, date. Marche e varianti restano intatte, ed è
+ * quello che continua a tenere separati «St.Germain al sambuco» e «Monin
+ * fiori di sambuco» — che condividono il gusto e non il produttore.
+ */
+const RUMORE_COMMERCIALE = [
+  /\b(?:ancora\s+in\s+)?promoz(?:ione)?\b.*$/g,
+  /\b(?:in\s+)?sostituz(?:ione)?\b.*$/g,
+  /\bprezzo\s+(?:errato|litro|nuovo)\b.*$/g,
+  /\bnon\s+(?:la\s+)?(?:tiene|ordinare)\s+piu\b.*$/g,
+  /\b(?:inviato|inviata)\s+mess\w*\b.*$/g,
+  /\b(?:tel|telefono)\.?\s*\+?[\d\s/-]{6,}\b/g,
+  /\b\d{1,2}[./-]\d{1,2}[./-](?:\d{2}|\d{4})\b/g,
+  /\bft\s*\d/g,
+];
+
+/**
+ * Il nucleo su cui si misura la somiglianza fra due nomi.
+ *
+ * Toglie l'imballo — che descrive il contenitore e non il prodotto — e il
+ * rumore commerciale. Il **formato** invece resta dove sta: non lo si
+ * confronta qui, lo confronta `formatiCompatibili`, e lì un litro e venti
+ * centilitri restano due cose diverse.
+ */
 export function nucleoPerAbbinamento(nucleo: string): string {
-  return nucleo
+  let pulito = nucleo;
+  for (const re of RUMORE_COMMERCIALE) pulito = pulito.replace(re, ' ');
+  return pulito
     .split(/\s+/)
     .filter((p) => p && !PAROLE_DI_CONFEZIONE.has(p))
     .join(' ');
+}
+
+/** Formati e misure: dicono quanto, non che cosa. */
+const PAROLE_DI_FORMATO = new Set([
+  'litro',
+  'litri',
+  'lt',
+  'l',
+  'cl',
+  'ml',
+  'cc',
+  'dl',
+  'kg',
+  'gr',
+  'g',
+  'mg',
+  'pet',
+  'vap',
+  'bt',
+  'tv',
+  'tc',
+  'ast',
+  'off',
+]);
+
+/**
+ * Il nome corto e' il nome lungo scritto in breve.
+ *
+ * «KAHLUA LITRO» e «KAHLUA LICOR DE CAFFE 20% LT 1» sono lo stesso
+ * prodotto, ma la sovrapposizione di parole li da' al tredici per cento:
+ * dividendo per l'unione, un nome di due parole contro uno di sette non puo'
+ * che uscire basso, per quanto sia contenuto nell'altro.
+ *
+ * Qui si guarda un'altra cosa: **tutte** le parole che identificano il nome
+ * corto compaiono in quello lungo? Se si' e' un'abbreviazione, e la coppia
+ * merita di essere valutata. Se anche una sola manca — «monin» che non sta
+ * in «st germain», «barcelo» che non sta in «kingstone» — non lo e', e resta
+ * fuori.
+ *
+ * Non allarga la maglia: il formato lo controlla comunque
+ * `formatiCompatibili`, e un litro contro venti centilitri non passa di qui.
+ */
+export function abbreviazioneDi(a: string, b: string): boolean {
+  const utili = (testo: string) =>
+    nucleoPerAbbinamento(testo)
+      .split(/\s+/)
+      .filter((p) => p.length >= 4 && !PAROLE_DI_FORMATO.has(p) && !/^\d+$/.test(p));
+
+  const x = utili(a);
+  const y = utili(b);
+  if (x.length === 0 || y.length === 0) return false;
+  const [corto, lungo] = x.length <= y.length ? [x, y] : [y, x];
+  // Due nomi lunghi uguali non sono un'abbreviazione: quelli li giudica gia'
+  // la sovrapposizione, e qui passerebbero senza essere davvero confrontati.
+  if (corto.length > 3) return false;
+  const dentro = new Set(lungo);
+  return corto.every((parola) => dentro.has(parola));
 }
 
 export function sovrapposizioneParole(a: string, b: string): number {

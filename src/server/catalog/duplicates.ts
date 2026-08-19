@@ -7,6 +7,7 @@ import { SISTEMA_DOPPIONI, utenteDoppioni, VERSIONE_PROMPT } from '@/server/ai/p
 import { prismaForOrganization } from '@/server/db';
 import { unisciProdotti } from './merge';
 import {
+  abbreviazioneDi,
   formatiCompatibili,
   nucleoPerAbbinamento,
   sovrapposizioneParole,
@@ -223,7 +224,13 @@ export async function cercaDoppioni(
         nucleoPerAbbinamento(a.normalizedName),
         nucleoPerAbbinamento(b.normalizedName),
       );
-      if (somiglianza < SOGLIA_MINIMA) continue;
+      // Sotto soglia si passa comunque se un nome è l'abbreviazione
+      // dell'altro: «KAHLUA LITRO» contro «KAHLUA LICOR DE CAFFE' 20% LT 1»
+      // esce al tredici per cento perché è corto, non perché sia un altro
+      // prodotto. Chi decide resta il modello.
+      if (somiglianza < SOGLIA_MINIMA && !abbreviazioneDi(a.normalizedName, b.normalizedName)) {
+        continue;
+      }
 
       candidate.push({ a, b, somiglianza });
     }
